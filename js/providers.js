@@ -1,0 +1,125 @@
+/* ============ Provider clients: fal.ai (queue) + ElevenLabs ============
+ * Both providers allow direct browser calls with your own API key, so this
+ * app needs no server. Keys live only in localStorage on your machine.
+ */
+
+const Providers = {
+
+  keys() {
+    return {
+      fal: localStorage.getItem("riu.key.fal") || "",
+      eleven: localStorage.getItem("riu.key.eleven") || "",
+    };
+  },
+
+  /* ---------------- fal.ai queue API ----------------
+   * Submit → poll status → fetch result. Handles long video jobs without
+   * browser timeouts. modelId e.g. "fal-ai/flux/dev".
+   */
+  async falRun(modelId, input, onStatus) {
+    const key = this.keys().fal;
+    if (!key) throw new Error("No fal.ai API key set. Add it in ⚙️ Settings.");
+
+    const submit = await fetch(`${RIU_DATA.falQueueBase}/${modelId}`, {
+      method: "POST",
+      headers: { "Authorization": `Key ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!submit.ok) throw new Error(`fal.ai submit failed (${submit.status}): ${await submit.text()}`);
+    const job = await submit.json();
+
+    const statusUrl = job.status_url;
+    const resultUrl = job.response_url;
+    if (!statusUrl || !resultUrl) return job; // some endpoints answer synchronously
+
+    const started = Date.now();
+    while (true) {
+      await new Promise(r => setTimeout(r, 2500));
+      const sRes = await fetch(statusUrl, { headers: { "Authorization": `Key ${key}` } });
+      if (!sRes.ok) throw new Error(`fal.ai status failed (${sRes.status})`);
+      const s = await sRes.json();
+      const mins = ((Date.now() - started) / 60000).toFixed(1);
+      if (onStatus) onStatus(`${s.status}${s.queue_position != null ? ` — queue position ${s.queue_position}` : ""} · ${mins} min`);
+      if (s.status === "COMPLETED") break;
+      if (s.status === "FAILED" || s.status === "ERROR") {
+        throw new Error("Generation failed on fal.ai: " + JSON.stringify(s));
+      }
+      if (Date.now() - started > 15 * 60 * 1000) throw new Error("Timed out after 15 minutes.");
+    }
+
+    const rRes = await fetch(resultUrl, { headers: { "Authorization": `Key ${key}` } });
+    if (!rRes.ok) throw new Error(`fal.ai result fetch failed (${rRes.status}): ${await rRes.text()}`);
+    return await rRes.json();
+  },
+
+  /* Pull the first media URL out of any fal result shape. */
+  extractMedia(result) {
+    if (!result) return null;
+    const r = result;
+    const cand =
+      r.video?.url || r.image?.url ||
+      (Array.isArray(r.images) && r.images[0]?.url) ||
+      (Array.isArray(r.videos) && r.videos[0]?.url) ||
+      r.audio?.url || r.audio_file?.url || r.audio_url ||
+      r.output?.url || r.url || null;
+    return cand;
+  },
+
+  /* Read a local file into a data: URI (fal endpoints accept data URIs). */
+  fileToDataUri(file) {
+    return new Promise((resolve, reject) => {
+      const rd = new FileReader();
+      rd.onload = () => resolve(rd.result);
+      rd.onerror = reject;
+      rd.readAsDataURL(file);
+    });
+  },
+
+  /* ---------------- ElevenLabs ---------------- */
+  elHeaders(extra = {}) {
+    const key = this.keys().eleven;
+    if (!key) throw new Error("No ElevenLabs API key set. Add it in ⚙️ Settings.");
+    return { "xi-api-key": key, ...extra };
+  },
+
+  async elVoices() {
+    const res = await fetch("https://api.elevenlabs.io/v1/voices", { headers: this.elHeaders() });
+    if (!res.ok) throw new Error(`ElevenLabs voices failed (${res.status}): ${await res.text()}`);
+    return (await res.json()).voices || [];
+  },
+
+  /* Text-to-speech → returns a blob URL you can play/download or feed to lip sync. */
+  async elSpeak(voiceId, text, modelId = "eleven_multilingual_v2") {
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      method: "POST",
+      headers: this.elHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ text, model_id: modelId, voice_settings: { stability: 0.5, similarity_boost: 0.8 } }),
+    });
+    if (!res.ok) throw new Error(`ElevenLabs TTS failed (${res.status}): ${await res.text()}`);
+    const blob = await res.blob();
+    return { blobUrl: URL.createObjectURL(blob), blob };
+  },
+
+  /* Instant voice clone from 1+ audio samples (Starter plan or above). */
+  async elCloneVoice(name, files, description = "") {
+    const fd = new FormData();
+    fd.append("name", name);
+    if (description) fd.append("description", description);
+    for (const f of files) fd.append("files", f);
+    const res = await fetch("https://api.elevenlabs.io/v1/voices/add", {
+      method: "POST", headers: this.elHeaders(), body: fd,
+    });
+    if (!res.ok) throw new Error(`Voice clone failed (${res.status}): ${await res.text()}`);
+    return await res.json(); // { voice_id }
+  },
+
+  /* Upload an audio blob somewhere fal can read: we pass data URIs directly. */
+  async blobToDataUri(blob) {
+    return new Promise((resolve, reject) => {
+      const rd = new FileReader();
+      rd.onload = () => resolve(rd.result);
+      rd.onerror = reject;
+      rd.readAsDataURL(blob);
+    });
+  },
+};
