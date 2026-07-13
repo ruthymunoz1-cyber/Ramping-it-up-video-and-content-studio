@@ -597,6 +597,15 @@ const Views = {
     return `
       <div class="page-head"><div class="page-title">🎥 Director</div>
       <div class="page-desc">The one-click pipeline: type a topic and the Director drafts the script (free writing model), builds a storyboard with your character, generates every panel, records the narration, and produces word-timed captions — ready for batch animation. Script + images can run <b>100% free</b>; video animation is the only paid step and is always quoted first.</div></div>
+      <div class="card scene-card">
+        <h3>🎬 The Director's Checklist (enforced by this pipeline)</h3>
+        <table class="plain">
+          <tr><td><b>1. Lock the look</b></td><td>One proof shot is generated FIRST. Nothing else renders until you approve it — re-roll for pennies until it's right, then that look anchors every panel.</td></tr>
+          <tr><td><b>2. Pacing is everything</b></td><td>The script plan assigns each scene a target length (3–10s) based on its job. Batch animation renders each shot at its planned length — no flat 5s-everything pacing.</td></tr>
+          <tr><td><b>3. Every scene has an emotional job</b></td><td>Each scene is broken down with the feeling it must deliver (curiosity, tension, awe, relief…). The emotion is shown on the panel and baked into its animation prompt.</td></tr>
+          <tr><td><b>4. Keep the action continuous</b></td><td>Every animation prompt carries "action flows continuously from the previous shot" so cuts feel like one moving story, not disconnected clips.</td></tr>
+        </table>
+      </div>
       <div class="card">
         <div class="row">
           <div style="flex:2"><label class="f-label">Topic</label>
@@ -671,6 +680,8 @@ const Views = {
                   <span class="fixed panel-num">${i + 1}</span>
                   <select data-panel-shot="${i}" class="fixed" style="width:auto">${RIU_DATA.shotTypes.map(s =>
                     `<option${s === p.shot ? " selected" : ""}>${s}</option>`).join("")}</select>
+                  ${p.emotion ? `<span class="tag fixed">${esc(p.emotion)}</span>` : ""}
+                  ${p.secs ? `<span class="tag gold fixed">${p.secs}s</span>` : ""}
                   <button class="btn sm fixed" data-panel-gen="${i}" style="margin-left:auto">🎨</button>
                 </div>
                 <textarea data-panel-desc="${i}" placeholder="What happens in this panel…">${esc(p.desc)}</textarea>
@@ -1416,7 +1427,9 @@ const Bind = {
             `You are an expert YouTube director. Plan a ${fmt.name} video about: "${topic}". ` +
             `Return ONLY valid JSON, no markdown: {"title": "video title", "scenes": [{"beat": "2-4 word label", ` +
             `"narration": "1-3 sentences of spoken voiceover", "visual": "detailed visual description of the shot for an image generator", ` +
-            `"shot": "WIDE" | "MED" | "CLOSE-UP"}]} with exactly ${fmt.scenes} scenes. Strong hook in scene 1, payoff in the last scene.`);
+            `"shot": "WIDE" | "MED" | "CLOSE-UP", "emotion": "the ONE emotional job this scene does for the audience (e.g. curiosity, tension, awe, relief, joy)", ` +
+            `"seconds": integer 3-10 — this scene's target length; pace it by its job (hooks punchy 3-4s, explanations 6-8s, payoffs 8-10s)}]} ` +
+            `with exactly ${fmt.scenes} scenes. Strong hook in scene 1, payoff in the last scene, continuous action from scene to scene.`);
           if (!plan.scenes?.length) throw new Error("empty plan");
         } catch {
           // offline/busy fallback: deterministic plan from the format template
@@ -1424,7 +1437,8 @@ const Bind = {
           plan = {
             title: topic,
             scenes: tpl.beats.slice(0, fmt.scenes).map(b => ({
-              beat: b.beat, narration: "", shot: "MED",
+              beat: b.beat, narration: "", shot: "MED", emotion: "curiosity",
+              seconds: Math.min(10, Math.max(3, Math.round((b.secs || 30) / 8))),
               visual: `${b.beat} of a video about ${topic} — ${b.tip}`,
             })),
           };
@@ -1441,21 +1455,27 @@ const Bind = {
         setStatus("dir-status", "info", "Step 2/4 — building the storyboard…");
         const board = {
           id: "b" + Date.now(), title: plan.title, style, charId, model: modelId,
-          panels: plan.scenes.map(s => ({ shot: s.shot || "MED", desc: s.visual, imgUrl: null })),
+          panels: plan.scenes.map(s => ({
+            shot: s.shot || "MED", desc: s.visual, imgUrl: null,
+            emotion: s.emotion || "", secs: Math.min(10, Math.max(3, +s.seconds || 5)),
+          })),
         };
         State.storyboards.unshift(board);
         State.saveStoryboards();
+        const totalSecs = board.panels.reduce((a, p) => a + p.secs, 0);
+        log(`Scene breakdown: ${board.panels.map((p, i) => `S${i + 1} ${p.secs}s (${p.emotion || "—"})`).join(" · ")} — ${totalSecs}s total`, true);
 
-        /* ③ panels */
         const refs = characterRefs(charId);
-        for (let i = 0; i < board.panels.length; i++) {
-          setStatus("dir-status", "info", `Step 3/4 — panel art ${i + 1}/${board.panels.length}…`);
+        const genDirPanel = async (i) => {
           const p = board.panels[i];
           const prompt = characterPrefix(charId) + p.desc + `. ${p.shot} shot. ` +
+            (p.emotion ? `The frame's emotional job: ${p.emotion}. ` : "") +
             (style ? "Style: " + style + ". " : "") + "Single storyboard still frame, strong cinematic composition.";
-          const seed = (characterSeed(charId) ?? 1234) + i;
+          const seed = (characterSeed(charId) ?? 1234) + i + (board.seedShift || 0) * 1000;
           if (modelId.startsWith("pollinations:")) {
             p.imgUrl = Providers.freeImageUrl(prompt, { width: fmt.ar === "9:16" ? 720 : 1280, height: fmt.ar === "9:16" ? 1280 : 720, seed, model: modelId.split(":")[1] });
+            // force the fetch so failures surface here, not in the <img>
+            await Providers.freeImage(prompt, { width: 64, height: 36, seed, model: modelId.split(":")[1] }).catch(() => {});
           } else {
             const input = /edit/.test(modelId) && refs.length
               ? { prompt, image_urls: refs, num_images: 1 }
@@ -1464,43 +1484,83 @@ const Bind = {
             p.imgUrl = Providers.extractMedia(res);
           }
           State.saveStoryboards();
-        }
-        log(`Storyboard built: ${board.panels.length} panels (open it in the Storyboard Studio)`, true);
+        };
 
-        /* ④ narration + captions */
-        const narration = plan.scenes.map(s => s.narration).filter(Boolean).join(" ");
-        let narrationHtml = "";
-        if (narration) {
-          setStatus("dir-status", "info", "Step 4/4 — recording narration + captions…");
-          try {
-            const { blobUrl, blob } = await Providers.freeSpeak(narration, $("#dir-voice").value);
-            const dur = await Providers.audioDuration(blob);
-            const srt = buildSrt(narration, dur, fmt.id === "short" ? 3 : 6);
-            narrationHtml = `<audio src="${blobUrl}" controls style="width:100%"></audio>
+        /* ③ finish: remaining panels + narration + package (runs after look-lock) */
+        const finishProduction = async () => {
+          for (let i = 1; i < board.panels.length; i++) {
+            setStatus("dir-status", "info", `Step 3/4 — panel art ${i + 1}/${board.panels.length}…`);
+            await genDirPanel(i);
+          }
+          log(`Storyboard built: ${board.panels.length} panels (open it in the Storyboard Studio)`, true);
+
+          /* ④ narration + captions */
+          const narration = plan.scenes.map(s => s.narration).filter(Boolean).join(" ");
+          let narrationHtml = "";
+          if (narration) {
+            setStatus("dir-status", "info", "Step 4/4 — recording narration + captions…");
+            try {
+              const { blobUrl, blob } = await Providers.freeSpeak(narration, $("#dir-voice").value);
+              const dur = await Providers.audioDuration(blob);
+              const srt = buildSrt(narration, dur, fmt.id === "short" ? 3 : 6);
+              narrationHtml = `<audio src="${blobUrl}" controls style="width:100%"></audio>
+                <div class="mt row">
+                  <a class="btn sm fixed" href="${blobUrl}" download="${esc(plan.title)}-narration.mp3">⬇ Narration audio</a>
+                  <button class="btn sm fixed" id="dir-srt">⬇ Captions (.srt)</button>
+                </div>`;
+              window._dirSrt = { name: plan.title.replace(/\W+/g, "-") + ".srt", srt };
+              log(`Narration recorded (${dur.toFixed(0)}s) + word-timed captions built`, true);
+            } catch (e) { log("Narration skipped: " + e.message); }
+          } else {
+            log("No narration text yet — write the beats in the Script Builder, then narrate in the Voice Studio.");
+          }
+
+          setStatus("dir-status", "ok", "Production package ready 🎬");
+          $("#dir-out").innerHTML = `
+            <div class="card scene-card">
+              <h3>${esc(plan.title)}</h3>
+              ${narrationHtml}
               <div class="mt row">
-                <a class="btn sm fixed" href="${blobUrl}" download="${esc(plan.title)}-narration.mp3">⬇ Narration audio</a>
-                <button class="btn sm fixed" id="dir-srt">⬇ Captions (.srt)</button>
-              </div>`;
-            window._dirSrt = { name: plan.title.replace(/\W+/g, "-") + ".srt", srt };
-            log(`Narration recorded (${dur.toFixed(0)}s) + word-timed captions built`, true);
-          } catch (e) { log("Narration skipped: " + e.message); }
-        } else {
-          log("No narration text yet — write the beats in the Script Builder, then narrate in the Voice Studio.");
-        }
+                <button class="btn primary fixed" id="dir-open-board">🎬 Open storyboard → review panels → 📦 batch-animate</button>
+              </div>
+              <p class="hint">Next: review the board (retry any panel you don't love — pennies each), then batch-animate. Each shot renders at its planned length; the exact total is quoted before anything runs.</p>
+            </div>`;
+          $("#dir-open-board").onclick = () => { State.activeBoardId = board.id; render("storyboard"); };
+          const srtBtn = $("#dir-srt");
+          if (srtBtn) srtBtn.onclick = () => downloadText(window._dirSrt.name, window._dirSrt.srt);
+          btn.disabled = false;
+        };
 
-        setStatus("dir-status", "ok", "Production package ready 🎬");
-        $("#dir-out").innerHTML = `
-          <div class="card scene-card">
-            <h3>${esc(plan.title)}</h3>
-            ${narrationHtml}
-            <div class="mt row">
-              <button class="btn primary fixed" id="dir-open-board">🎬 Open storyboard → review panels → 📦 batch-animate</button>
-            </div>
-            <p class="hint">Next: review the board (retry any panel you don't love — pennies each), then batch-animate. Animation is the only paid step and the exact total is quoted before it runs.</p>
-          </div>`;
-        $("#dir-open-board").onclick = () => { State.activeBoardId = board.id; render("storyboard"); };
-        const srtBtn = $("#dir-srt");
-        if (srtBtn) srtBtn.onclick = () => downloadText(window._dirSrt.name, window._dirSrt.srt);
+        /* ② LOCK THE LOOK — one proof shot, approval-gated */
+        setStatus("dir-status", "info", "Step 2/4 — proving the look in ONE shot…");
+        await genDirPanel(0);
+        log("Proof shot rendered — lock the look before anything else spends a cent.", true);
+        setStatus("dir-status", "info", "Waiting for your call on the look…");
+        const showProof = () => {
+          $("#dir-out").innerHTML = `
+            <div class="card scene-card">
+              <h3>🔒 Lock the look?</h3>
+              <p class="muted">Scene 1 — "${esc(board.panels[0].desc.slice(0, 80))}". Every other panel inherits this look.</p>
+              <div class="result-media"><img src="${board.panels[0].imgUrl}" alt="proof shot"></div>
+              <div class="mt row">
+                <button class="btn primary fixed" id="dir-lock">🔒 Lock it — build the rest</button>
+                <button class="btn fixed" id="dir-reroll">🔁 Re-roll the look</button>
+              </div>
+            </div>`;
+          $("#dir-lock").onclick = () => { $("#dir-out").innerHTML = ""; finishProduction().catch(e => { setStatus("dir-status", "err", e.message); btn.disabled = false; }); };
+          $("#dir-reroll").onclick = async () => {
+            board.panels[0].imgUrl = null;
+            setStatus("dir-status", "info", "Re-rolling the proof shot…");
+            try {
+              board.seedShift = (board.seedShift || 0) + 1; // new look for THIS board only
+              await genDirPanel(0);
+              showProof();
+              setStatus("dir-status", "info", "Waiting for your call on the look…");
+            } catch (e) { setStatus("dir-status", "err", e.message); btn.disabled = false; }
+          };
+        };
+        showProof();
+        return; // finishProduction re-enables the button
       } catch (e) {
         setStatus("dir-status", "err", e.message);
       }
@@ -1644,19 +1704,22 @@ const Bind = {
       /* batch-animate: one image→video job per panel with art, quoted first */
       const batchCost = () => {
         const b = board();
-        const ready = b.panels.filter(p => p.imgUrl).length;
+        const readyPanels = b.panels.filter(p => p.imgUrl && !p.videoUrl);
         const rate = +($("#sb-vmodel").selectedOptions[0]?.dataset.cost || 0);
-        const secs = +$("#sb-vsecs").value || 5;
-        $("#sb-batch-cost").textContent = ready ? `${ready} clips ≈ $${(ready * secs * rate).toFixed(2)}` : "no panels ready";
-        return { ready, total: ready * secs * rate, secs };
+        const defSecs = +$("#sb-vsecs").value || 5;
+        // pacing: each panel renders at ITS planned length (falls back to the default)
+        const totalSecs = readyPanels.reduce((a, p) => a + (p.secs || defSecs), 0);
+        $("#sb-batch-cost").textContent = readyPanels.length
+          ? `${readyPanels.length} clips · ${totalSecs}s ≈ $${(totalSecs * rate).toFixed(2)}` : "no panels ready";
+        return { ready: readyPanels.length, total: totalSecs * rate, defSecs, totalSecs };
       };
       $("#sb-vmodel").onchange = batchCost; $("#sb-vsecs").oninput = batchCost; batchCost();
 
       $("#sb-batch").onclick = async () => {
         const b = board(); syncPanelEdits();
-        const { ready, total, secs } = batchCost();
+        const { ready, total, defSecs, totalSecs } = batchCost();
         if (!ready) return setStatus("sb-batch-status", "err", "Generate panel art first — batch animates panels that have images.");
-        if (!confirm(`Animate ${ready} panels at ${secs}s each?\n\nEstimated total: $${total.toFixed(2)}\n\nThis runs one clip at a time; you can leave the tab open.`)) return;
+        if (!confirm(`Animate ${ready} panels (${totalSecs}s total, each at its planned length)?\n\nEstimated total: $${total.toFixed(2)}\n\nThis runs one clip at a time; you can leave the tab open.`)) return;
         const modelId = $("#sb-vmodel").value;
         const motion = $("#sb-vmotion").value.trim();
         const btn = $("#sb-batch"); btn.disabled = true;
@@ -1665,14 +1728,18 @@ const Bind = {
           const p = b.panels[i];
           if (!p.imgUrl || p.videoUrl) continue;
           setStatus("sb-batch-status", "info", `Animating panel ${i + 1} (${done + failed + 1}/${ready})…`);
+          const clipSecs = p.secs || defSecs;
           try {
             const res = await Providers.falRun(modelId, {
-              prompt: p.desc + ". " + motion,
-              image_url: p.imgUrl, duration: secs,
+              prompt: p.desc +
+                (p.emotion ? `. The shot's emotional job for the audience: ${p.emotion}` : "") +
+                ". " + motion +
+                (i > 0 ? ", action flows continuously from the previous shot — same energy carrying through the cut" : ""),
+              image_url: p.imgUrl, duration: clipSecs,
             }, s => setStatus("sb-batch-status", "info", `Panel ${i + 1} — ${s}`));
             p.videoUrl = Providers.extractMedia(res);
             if (p.videoUrl) {
-              State.addToGallery({ kind: "video", url: p.videoUrl, prompt: `${b.title} — shot ${i + 1}`, model: modelId, cost: secs * (+$("#sb-vmodel").selectedOptions[0].dataset.cost) });
+              State.addToGallery({ kind: "video", url: p.videoUrl, prompt: `${b.title} — shot ${i + 1}`, model: modelId, cost: clipSecs * (+$("#sb-vmodel").selectedOptions[0].dataset.cost) });
               done++;
             } else failed++;
             State.saveStoryboards();
