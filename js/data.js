@@ -6,25 +6,31 @@
 
 const RIU_DATA = {
 
-  /* ---------- generative models (fal.ai queue API) ---------- */
+  /* ---------- generative models (fal.ai queue API) ----------
+   * Registry refreshed 2026-07 from the media-gen / re-light skill packs.
+   * "FREE:" entries run on Pollinations.ai — no API key, no cost. */
   models: {
     image: [
-      { id: "fal-ai/flux/schnell",          name: "FLUX Schnell — fast drafts",        cost: 0.003, unit: "image" },
-      { id: "fal-ai/flux/dev",              name: "FLUX Dev — quality stills",          cost: 0.025, unit: "image" },
-      { id: "fal-ai/flux-pro/v1.1-ultra",   name: "FLUX Pro Ultra — 4K-class detail",   cost: 0.06,  unit: "image" },
-      { id: "fal-ai/nano-banana",           name: "Nano Banana — edits & realism",      cost: 0.039, unit: "image" },
+      { id: "pollinations:flux",            name: "FREE — Pollinations Flux (no API key needed!)", cost: 0, unit: "image", free: true },
+      { id: "pollinations:turbo",           name: "FREE — Pollinations Turbo (fast drafts)",       cost: 0, unit: "image", free: true },
+      { id: "fal-ai/nano-banana-pro",       name: "Nano Banana Pro — photoreal, top prompt adherence (2K)", cost: 0.04, unit: "image" },
+      { id: "fal-ai/gpt-image-2",           name: "GPT Image 2 — complex multi-subject scenes & text", cost: 0.06, unit: "image" },
+      { id: "fal-ai/flux/schnell",          name: "FLUX Schnell — cheap drafts",         cost: 0.003, unit: "image" },
     ],
     imageEdit: [
-      { id: "fal-ai/nano-banana/edit",      name: "Nano Banana Edit — reference-based (best for character consistency)", cost: 0.039, unit: "image" },
-      { id: "fal-ai/flux-pro/kontext",      name: "FLUX Kontext — edit with instructions", cost: 0.04, unit: "image" },
+      { id: "fal-ai/nano-banana-pro/edit",  name: "Nano Banana Pro Edit — reference-based, exact character likeness", cost: 0.04, unit: "image" },
+      { id: "fal-ai/nano-banana-2/edit",    name: "Nano Banana 2 Edit — identity-locked relight/re-scene", cost: 0.10, unit: "image" },
     ],
     video: [
-      { id: "fal-ai/kling-video/v2.1/standard/image-to-video", name: "Kling 2.1 Standard (image→video) — best value", cost: 0.05, unit: "second" },
-      { id: "fal-ai/kling-video/v2.1/master/image-to-video",   name: "Kling 2.1 Master (image→video) — cinematic",    cost: 0.28, unit: "second" },
-      { id: "fal-ai/minimax/hailuo-02/standard/image-to-video",name: "Hailuo 02 Standard (image→video) — motion",     cost: 0.045,unit: "second" },
-      { id: "fal-ai/minimax/hailuo-02/standard/text-to-video", name: "Hailuo 02 (text→video)",                        cost: 0.045,unit: "second" },
-      { id: "fal-ai/wan/v2.2-a14b/text-to-video",              name: "Wan 2.2 (text→video) — budget",                 cost: 0.04, unit: "second" },
-      { id: "fal-ai/veo3/fast",                                 name: "Veo 3 Fast (text→video, with audio) — premium", cost: 0.40, unit: "second" },
+      { id: "fal-ai/kling-video/v3/pro/image-to-video",   name: "Kling v3 Pro (image→video) — cinematic + native audio, best value", cost: 0.168, unit: "second" },
+      { id: "bytedance/seedance-2.0/fast/image-to-video", name: "Seedance 2.0 Fast (image→video) — cheap drafts, 720p", cost: 0.2419, unit: "second" },
+      { id: "bytedance/seedance-2.0/image-to-video",      name: "Seedance 2.0 Pro (image→video) — flagship, synced audio, 1080p", cost: 0.6804, unit: "second" },
+      { id: "fal-ai/kling-video/v3/4k/image-to-video",    name: "Kling v3 4K (image→video) — native 4K masters", cost: 0.42, unit: "second" },
+      { id: "fal-ai/minimax/hailuo-02/standard/text-to-video", name: "Hailuo 02 (text→video, no start image)", cost: 0.045, unit: "second" },
+    ],
+    videoEdit: [
+      { id: "fal-ai/kling-video/o3/pro/video-to-video/edit", name: "Kling O3 Pro Edit — relight/re-scene a clip, audio preserved", cost: 0.168, unit: "second" },
+      { id: "fal-ai/kling-video/o1/video-to-video/edit",     name: "Kling O1 Edit — faster/cheaper draft", cost: 0.168, unit: "second" },
     ],
     lipsync: [
       { id: "fal-ai/sync-lipsync",          name: "Sync LipSync — video + audio",       cost: 0.06, unit: "second" },
@@ -36,10 +42,20 @@ const RIU_DATA = {
       { id: "CassetteAI/music-generator",   name: "Cassette — fast background beds",       cost: 0.02, unit: "track" },
     ],
     upscale: [
-      { id: "fal-ai/topaz/upscale/video",   name: "Topaz Video Upscale — to 4K",         cost: 0.10, unit: "second" },
-      { id: "fal-ai/esrgan",                name: "ESRGAN — image upscale",              cost: 0.01, unit: "image" },
+      { id: "fal-ai/topaz/upscale/video",   name: "Topaz Video Upscale — clean + sharpen to HD/4K", cost: 0.02, unit: "second" },
+      { id: "fal-ai/topaz/upscale/image",   name: "Topaz Image Upscale — Standard V2",   cost: 0.01, unit: "image" },
     ],
   },
+
+  /* Restyle presets for the Restyle & Animate studio (photo ↔ animation). */
+  restylePresets: [
+    { name: "→ Realistic human (from cartoon/drawing)", prompt: "Recreate the subject from the reference image as a hyper-realistic photograph of a real human — photorealistic skin with natural texture and true-to-life undertones, real fabric, natural lighting, shot on a cinema camera, 4K detail. Keep the same identity, outfit, pose and framing." },
+    { name: "→ 3D animated film (Pixar-class)",        prompt: "Recreate the subject from the reference image as a high-end 3D animated film character — expressive stylized proportions, subsurface skin scattering, soft global illumination, detailed hair groom, cinematic render. Keep the same identity, outfit, pose and framing." },
+    { name: "→ Anime",                                  prompt: "Recreate the subject from the reference image in high-quality anime style — clean line art, expressive eyes, dramatic cel lighting, detailed painted background. Keep the same identity, outfit, pose and framing." },
+    { name: "→ Claymation",                             prompt: "Recreate the subject from the reference image as a handcrafted stop-motion claymation character — visible clay texture, miniature set, shallow depth of field. Keep the same identity, outfit, pose and framing." },
+    { name: "→ Comic / graphic novel",                  prompt: "Recreate the subject from the reference image as bold graphic-novel art — inked lines, halftone shading, dramatic composition. Keep the same identity, outfit, pose and framing." },
+    { name: "→ Watercolor storybook",                   prompt: "Recreate the subject from the reference image as a soft watercolor children's-storybook illustration — gentle washes, warm paper texture. Keep the same identity, outfit, pose and framing." },
+  ],
 
   /* ElevenLabs pricing reference (subscription credits, approx per-1k chars) */
   voicePricing: [

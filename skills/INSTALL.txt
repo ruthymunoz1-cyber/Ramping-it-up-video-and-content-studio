@@ -1,0 +1,26 @@
+PERFECT CUTS — INSTALL (30 seconds)
+====================================
+Skill Created by Vic Laranja. Get more Free Creator Skills at https://skool.com/vic
+
+WHAT IT DOES
+Drop a raw talking-head clip into Claude Code and say "perfect cut this" —
+you get back a frame-perfect edit: retakes removed, false starts caught,
+zero gap space. Delivered as a package: Premiere/Resolve timeline, MP4,
+captions, cut log, and one-click Remotion launchers.
+
+INSTALL
+1. Unzip this file.
+2. Move the "perfect-cuts" folder into:
+     Mac:      ~/.claude/skills/
+     Windows:  %USERPROFILE%\.claude\skills\
+   (Create the skills folder if it doesn't exist.)
+3. Open Claude Code and say: "perfect cut this clip: [drag your video in]"
+
+FIRST RUN
+Claude checks for ffmpeg + WhisperX and offers to install anything missing
+(one-time, ~3GB, it asks first). After that, each video takes a few minutes.
+
+REQUIREMENTS
+- Claude Code (claude.com/claude-code)
+- ~3GB disk for the one-time speech-recognition install
+- Node.js only if you want the Remotion launchers (free, nodejs.org)

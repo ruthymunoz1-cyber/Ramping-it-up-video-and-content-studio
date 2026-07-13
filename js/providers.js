@@ -113,6 +113,55 @@ const Providers = {
     return await res.json(); // { voice_id }
   },
 
+  /* ---------------- Pollinations.ai — 100% FREE, no API key ----------------
+   * Image generation and voiceover at zero cost. Quality is below the paid
+   * models but perfect for drafts, storyboards, curriculum art and mockups.
+   */
+  freeImageUrl(prompt, { width = 1280, height = 720, seed, model = "flux" } = {}) {
+    const p = encodeURIComponent(prompt);
+    let url = `https://image.pollinations.ai/prompt/${p}?width=${width}&height=${height}&nologo=true&model=${model}`;
+    if (seed != null) url += `&seed=${seed}`;
+    return url;
+  },
+
+  async freeImage(prompt, opts, onStatus) {
+    if (onStatus) onStatus("Generating on Pollinations (free)…");
+    const url = this.freeImageUrl(prompt, opts);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Pollinations failed (${res.status}). Try again in a moment — the free tier can be busy.`);
+    const blob = await res.blob();
+    return { blobUrl: URL.createObjectURL(blob), blob, sourceUrl: url };
+  },
+
+  freeVoices: ["nova", "alloy", "echo", "fable", "onyx", "shimmer"],
+
+  async freeSpeak(text, voice = "nova") {
+    const p = encodeURIComponent(`Read the following text exactly as written, verbatim, with natural delivery: ${text}`);
+    const res = await fetch(`https://text.pollinations.ai/${p}?model=openai-audio&voice=${voice}`);
+    if (!res.ok) throw new Error(`Free TTS failed (${res.status}). Try again — the free tier can be busy — or use ElevenLabs.`);
+    const blob = await res.blob();
+    if (!/audio/.test(blob.type)) throw new Error("Free TTS returned no audio (service busy). Try again or use ElevenLabs.");
+    return { blobUrl: URL.createObjectURL(blob), blob };
+  },
+
+  /* Grab a frame from a local video file as a data URI (for Relight). */
+  videoFrame(file, atSeconds = 0.5) {
+    return new Promise((resolve, reject) => {
+      const v = document.createElement("video");
+      v.preload = "auto"; v.muted = true;
+      v.src = URL.createObjectURL(file);
+      v.onloadedmetadata = () => { v.currentTime = Math.min(atSeconds, Math.max(0, v.duration - 0.1)); };
+      v.onseeked = () => {
+        const c = document.createElement("canvas");
+        c.width = v.videoWidth; c.height = v.videoHeight;
+        c.getContext("2d").drawImage(v, 0, 0);
+        resolve({ dataUri: c.toDataURL("image/png"), duration: v.duration, width: v.videoWidth, height: v.videoHeight });
+        URL.revokeObjectURL(v.src);
+      };
+      v.onerror = () => reject(new Error("Could not read that video file."));
+    });
+  },
+
   /* Upload an audio blob somewhere fal can read: we pass data URIs directly. */
   async blobToDataUri(blob) {
     return new Promise((resolve, reject) => {

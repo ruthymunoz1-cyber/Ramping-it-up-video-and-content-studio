@@ -11,20 +11,45 @@ one to render **melanin-rich skin tones beautifully and consistently**.
 | Studio | What it does |
 |---|---|
 | 🎭 **Character Lab** | Create reusable characters with the Monk Skin Tone scale (1–10), undertones, hair textures (1A–4C), and reference photos. Every studio auto-injects your character's "consistency token" so they look the same in every image and video. |
-| 🖼️ **Image Studio** | FLUX, Nano Banana and more — cinematic stills, thumbnails, curriculum illustrations. Seed-locking for repeatable results. |
-| 🎥 **Video Studio** | Text-to-video and image-to-video (Kling, Hailuo/MiniMax, Wan, Veo) with shorts (9:16) and cinematic (16:9) presets, plus a 4K upscale pass. |
+| 🖼️ **Image Studio** | **FREE Pollinations models (no key, $0)** plus Nano Banana Pro / GPT Image 2 — cinematic stills, thumbnails, curriculum illustrations. Seed-locking for repeatable results. |
+| 🎥 **Video Studio** | Image-to-video and text-to-video (Kling v3 Pro/4K, Seedance 2.0, Hailuo) with shorts (9:16) and cinematic (16:9) presets, plus a Topaz 4K upscale pass. |
+| 💡 **Relight Studio** | Higgsfield's signature "change the light in any video," done directly on the models: relight one frame (~$0.10), approve it, then push the look onto the whole 3–10s clip with the **original audio preserved**. |
+| 🎞️ **Restyle & Animate** | Turn anything into anything, identity preserved: photo → 3D animated (Pixar-class) / anime / claymation, or a drawing → **realistic human** — then animate the result into video. |
 | 👄 **Lip Sync Studio** | Sync any voice track to any face video — the backbone of your talking-avatar pipeline. |
-| 🗣️ **Voice Studio** | Clone your own voice (ElevenLabs instant clone) and generate narration in any of your voices, in 30+ languages. |
+| 🗣️ **Voice Studio** | **FREE voiceover (6 stock voices, $0)**, plus ElevenLabs voice cloning and narration in 30+ languages. |
 | 🎵 **Music Studio** | Generate background scores, intros/outros, and full songs with lyrics. |
-| 🧑‍🚀 **Avatar Pipeline** | One flow: character portrait → narration → lip-synced talking avatar. Perfect for lesson presenters and channel hosts. |
-| ✍️ **Script & Scene Builder** | Curriculum lesson templates (hook → teach → recap), viral shorts beat sheets, and longform cinematic structures. Turns a script into a shot list you can generate scene-by-scene. |
+| 🧑‍🚀 **Avatar Pipeline** | One flow: character portrait → animate → narration → lip-synced talking avatar. Perfect for lesson presenters and channel hosts. |
+| ✍️ **Script & Scene Builder** | Curriculum lesson templates (hook → teach → recap), viral shorts beat sheets, edutainment and longform cinematic structures. |
+| ✂️ **Editor's Room** | The frame-perfect cutting rules from the `perfect-cuts` skill, plus how to run automatic retake/false-start removal on your raw footage. |
 | 💰 **Cost Planner** | Live per-generation price estimates and a whole-project budget calculator, so you always know the cost *before* you hit generate. |
+
+## 💚 Completely-free mode
+
+Images, voiceover, scripts and planning cost **$0** — the Image and Voice studios
+include Pollinations.ai free models that need **no API key at all**. Honest note:
+there is currently no truly free API for *video* generation — video is the one
+thing that costs money everywhere (it's heavy compute). The cheapest quality path
+here is Kling v3 Pro at ~$0.17/second (a 5-second clip ≈ $0.85), which is far
+below credit-platform pricing. Everything else can be run entirely free.
+
+## 🧰 Bundled Claude Code skills (`skills/`)
+
+This repo also ships three production skills you can use from Claude Code on
+your computer (copy them to `~/.claude/skills/`, see `skills/INSTALL.txt`):
+
+- **media-gen** — command-line image/video generation with the same curated 2026
+  model registry the app uses (Nano Banana Pro, Seedance 2.0, Kling v3, Topaz).
+- **re-light** — the full relight pipeline with frame-exact conform and
+  audio-preserving output (the app's 💡 Relight Studio is the browser version).
+- **perfect-cuts** — turns raw talking-head footage into a clean edited timeline:
+  retakes and false starts removed, frame-accurate cuts, delivered as MP4 +
+  Premiere/Resolve XML + SRT captions + EDL + cut log.
 
 ## 🚀 Getting started (5 minutes)
 
 1. **Open the app.** Just open `index.html` in your browser — or host the folder
    for free on GitHub Pages / Netlify / Vercel (it's 100% static, no server needed).
-2. **Get your API keys** (pay-as-you-go, no subscriptions):
+2. **Get your API keys** *(optional — free-mode images & voiceover work with no keys at all)*:
    - [fal.ai](https://fal.ai/dashboard/keys) → powers image, video, lip sync, music, upscaling.
    - [ElevenLabs](https://elevenlabs.io/app/settings/api-keys) → powers voice cloning & narration (free tier available).
 3. **Paste your keys** into ⚙️ Settings inside the app. Keys are stored only in

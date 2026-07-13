@@ -135,6 +135,8 @@ const Views = {
       ["characters", "🎭", "Character Lab", "Build consistent hosts & avatars — melanin-true by design"],
       ["image", "🖼️", "Image Studio", "Stills, thumbnails, curriculum art"],
       ["video", "🎥", "Video Studio", "Text/image → video, shorts & cinematic"],
+      ["relight", "💡", "Relight", "Change the light in any clip — audio kept"],
+      ["animate", "🎞️", "Restyle & Animate", "Photo ↔ realistic / 3D / anime, then animate"],
       ["lipsync", "👄", "Lip Sync", "Sync any voice to any face"],
       ["voice", "🗣️", "Voice Studio", "Clone your voice, generate narration"],
       ["music", "🎵", "Music Studio", "Scores, intros, full songs"],
@@ -288,6 +290,91 @@ const Views = {
       </div>`;
   },
 
+  /* ---------------- relight (Higgsfield-style, raw fal) ---------------- */
+  relight() {
+    return `
+      <div class="page-head"><div class="page-title">💡 Relight Studio</div>
+      <div class="page-desc">Change the lighting or drop your clip into any scene — Higgsfield's signature "Relight", done directly on the models with no middleman. Two steps with an approval gate: ① relight one frame (~$0.10) → check it → ② push that exact look onto the whole clip with your <b>original audio preserved</b> (~$0.17/sec). Clips must be 3–10 seconds.</div></div>
+      <div class="card">
+        <h3>① Relight a frame</h3>
+        <label class="f-label">Your clip (3–10s) — or a single photo</label>
+        <div class="row"><input type="file" id="rl-video" accept="video/*"><input type="file" id="rl-image" accept="image/*"></div>
+        <div class="hint" id="rl-clipinfo"></div>
+        <label class="f-label">New scene / lighting</label>
+        <textarea id="rl-prompt" placeholder="e.g. golden-hour rooftop at dusk — hard warm key from front-left sculpts the face, cool blue rim from behind, city bokeh background, amber-and-teal grade, warm natural skin"></textarea>
+        <div class="hint">Rules that make it work: keep the SAME framing/pose (only light + background change), give the light a direction, name a color palette, and keep a warm key on the face so skin stays true — never grey.</div>
+        <div class="mt"><button class="btn primary" id="rl-still-go">💡 Relight frame (~$0.10)</button></div>
+        <div class="status" id="rl-status"></div>
+        <div class="result-media" id="rl-still-result"></div>
+      </div>
+      <div class="card">
+        <h3>② Approve → relight the whole clip</h3>
+        <p class="muted">Happy with the still above? This pushes that exact look onto every frame of your clip — identity, lip movement and original audio preserved (Kling O3 Pro Edit).</p>
+        <label class="f-label">Background motion (subtle — name what should drift)</label>
+        <input type="text" id="rl-motion" value="haze drifting slowly, background lights shimmering gently; subject stays locked, all original motion and timing preserved">
+        <div class="mt"><button class="btn primary" id="rl-video-go" disabled>🎬 Relight full clip <span class="cost" id="rl-cost"></span></button></div>
+        <div class="status" id="rl-vstatus"></div>
+        <div class="result-media" id="rl-video-result"></div>
+      </div>`;
+  },
+
+  /* ---------------- restyle & animate ---------------- */
+  animate() {
+    return `
+      <div class="page-head"><div class="page-title">🎞️ Restyle & Animate</div>
+      <div class="page-desc">Turn anything into anything: a photo into a 3D animated character, a drawing into a realistic human, your host into anime — identity preserved — then bring the result to life as video. Two steps: ① restyle (image) → ② animate (video).</div></div>
+      <div class="card">
+        <h3>① Restyle</h3>
+        ${charSelectHtml("an-char", "Start from a character (uses their reference photo)…")}
+        <label class="f-label">…or upload any image (photo, drawing, cartoon, product)</label>
+        <input type="file" id="an-image" accept="image/*">
+        <label class="f-label">Target style</label>
+        ${chipsHtml("an-style", RIU_DATA.restylePresets)}
+        <label class="f-label">Extra notes (optional)</label>
+        <input type="text" id="an-notes" placeholder="e.g. keep the gold hoop earrings; brighter palette">
+        <div class="mt"><button class="btn primary" id="an-go">🎨 Restyle (~$0.04)</button></div>
+        <div class="status" id="an-status"></div>
+        <div class="result-media" id="an-result"></div>
+      </div>
+      <div class="card">
+        <h3>② Animate the result</h3>
+        ${modelSelectHtml("an-vmodel", "video")}
+        <label class="f-label">Motion prompt — what HAPPENS (different from what it looks like)</label>
+        <textarea id="an-motion" placeholder="e.g. she turns her head and smiles at the camera, hair moving softly, slow cinematic dolly-in"></textarea>
+        <div class="row">
+          <div><label class="f-label">Duration (s)</label><input type="number" id="an-secs" value="5" min="3" max="10"></div>
+          <div><label class="f-label">Aspect</label><select id="an-ar">${RIU_DATA.aspectRatios.map(a => `<option value="${a.value}">${a.label}</option>`).join("")}</select></div>
+        </div>
+        <div class="mt"><button class="btn primary" id="an-vgo" disabled>🎬 Animate <span class="cost" id="an-vcost"></span></button></div>
+        <div class="status" id="an-vstatus"></div>
+        <div class="result-media" id="an-vresult"></div>
+      </div>`;
+  },
+
+  /* ---------------- editor's room ---------------- */
+  editor() {
+    return `
+      <div class="page-head"><div class="page-title">✂️ Editor's Room</div>
+      <div class="page-desc">The post-production half of your pipeline. This studio generates footage; these workflows turn footage into finished videos.</div></div>
+      <div class="card">
+        <h3>Perfect Cuts — automatic clean cuts for talking-head footage</h3>
+        <p class="muted">This repo ships the <code class="k">perfect-cuts</code> skill (in the <code class="k">skills/</code> folder). Open this project in Claude Code, drop a raw recording, and say <b>"perfect cut this"</b> — it removes retakes, false starts and dead air with frame-accurate cuts, then delivers a package: finished MP4, Premiere/Resolve timeline XML, captions SRT, EDL, and a cut log you can revive cuts from.</p>
+        <div class="divider"></div>
+        <h3>The locked cutting rules (use these even when editing by hand)</h3>
+        <table class="plain">
+          <tr><th>Rule</th><th>Why</th></tr>
+          <tr><td>Cut IN where the voice crosses <b>-30dB</b> — zero padding</td><td>Breaths and mouth noise live below -30dB; starting earlier reads as dead frames.</td></tr>
+          <tr><td>Cut OUT where speech drops below <b>-38dB</b>, +1 frame</td><td>Word tails are quiet — cutting at -30dB clips the ends of words.</td></tr>
+          <tr><td>A ≥0.25s pause mid-sentence = probable false start</td><td>Transcripts merge restarts and hide them; the waveform tells the truth. Keep the later take.</td></tr>
+          <tr><td>Keep the LAST take of a repeated line</td><td>…unless an earlier take flows better into what follows. Read the words, don't count takes.</td></tr>
+          <tr><td>Don't surgically remove "ums" mid-flow</td><td>It forces jump cuts that damage more than they fix.</td></tr>
+        </table>
+        <div class="divider"></div>
+        <h3>Also in <code class="k">skills/</code></h3>
+        <p class="muted"><b>media-gen</b> — generate images/video from the command line with the same 2026 model registry this app uses. <b>re-light</b> — the full relight pipeline with frame-exact audio-preserving conform (the in-app 💡 Relight Studio is the browser version of it).</p>
+      </div>`;
+  },
+
   /* ---------------- lip sync ---------------- */
   lipsync() {
     return `
@@ -311,7 +398,20 @@ const Views = {
       <div class="page-head"><div class="page-title">🗣️ Voice Studio</div>
       <div class="page-desc">Powered by ElevenLabs. Clone your own voice from a 1–3 minute clean recording (Starter plan+), then generate narration in 30+ languages. Generated audio can go straight into Lip Sync or your editor.</div></div>
       <div class="card">
-        <h3>Narrate</h3>
+        <h3>FREE voiceover — no API key, $0</h3>
+        <p class="muted">Six solid stock voices at zero cost (Pollinations). Great for drafts, timing passes and budget projects. For your own cloned voice, use ElevenLabs below.</p>
+        <div class="row">
+          <div><label class="f-label">Voice</label>
+            <select id="fv-voice">${Providers.freeVoices.map(v => `<option>${v}</option>`).join("")}</select></div>
+        </div>
+        <label class="f-label">Script</label>
+        <textarea id="fv-text" placeholder="Paste your narration…"></textarea>
+        <div class="mt"><button class="btn primary" id="fv-go">🎙 Generate FREE narration</button></div>
+        <div class="status" id="fv-status"></div>
+        <div class="result-media" id="fv-result"></div>
+      </div>
+      <div class="card">
+        <h3>Narrate (ElevenLabs — your cloned voice)</h3>
         <label class="f-label">Voice</label>
         <div class="row">
           <select id="vo-voice"><option value="">Load voices first…</option></select>
@@ -418,6 +518,7 @@ const Views = {
     return `
       <div class="page-head"><div class="page-title">💰 Cost Planner</div>
       <div class="page-desc">Know the bill before you generate. Estimate a full project below, and compare raw provider prices — you pay the model makers directly, with no credit-system markup.</div></div>
+      <p class="pill-note">💚 Completely-free mode: images (Pollinations) + voiceover (free voices) + scripts cost $0. Only video generation has real compute cost — the cheapest quality path is Kling v3 Pro at ~$0.17/sec.</p>
       <div class="card">
         <h3>Project estimator</h3>
         <div class="row">
@@ -543,13 +644,21 @@ const Bind = {
 
     $$("[data-gen-portrait]").forEach(b => b.onclick = async () => {
       const c = State.characters.find(x => x.id === b.dataset.genPortrait);
-      const m = models("image").find(x => x.id.includes("flux/dev")) || models("image")[0];
       b.disabled = true; b.textContent = "Generating…";
+      const prompt = compileCharacterToken(c) +
+        ". Professional master portrait, chest-up, looking at camera, neutral studio background, photorealistic, extremely detailed";
       try {
-        const prompt = compileCharacterToken(c) +
-          ". Professional master portrait, chest-up, looking at camera, neutral studio background, photorealistic, extremely detailed";
-        const result = await Providers.falRun(m.id, { prompt, seed: c.seed, image_size: "portrait_4_3" });
-        const url = Providers.extractMedia(result);
+        let url, m;
+        if (Providers.keys().fal) {
+          m = models("image").find(x => !x.free) || models("image")[0];
+          const result = await Providers.falRun(m.id, { prompt, seed: c.seed, aspect_ratio: "3:4" });
+          url = Providers.extractMedia(result);
+        } else {
+          // no fal key yet — use the free provider
+          m = { id: "pollinations:flux", cost: 0 };
+          const out = await Providers.freeImage(prompt, { width: 1024, height: 1280, seed: c.seed });
+          url = out.sourceUrl;
+        }
         if (url) {
           State.addToGallery({ kind: "image", url, prompt: "Master portrait: " + c.name, model: m.id, cost: m.cost });
           alert("Master portrait ready! Find it in the Gallery — save it and set it as this character's reference photo for exact likeness in edits.");
@@ -567,18 +676,33 @@ const Bind = {
     };
     $("#img-model").onchange = updateCost; updateCost();
 
-    $("#img-go").onclick = () => {
+    $("#img-go").onclick = async () => {
       const modelId = $("#img-model").value;
       const m = models("image").find(x => x.id === modelId);
       const charId = $("#img-char").value;
       const style = chipValue("img-style", RIU_DATA.stylePresets);
       const arSel = $$("#img-ar .chip.on")[0];
       const ar = arSel ? RIU_DATA.aspectRatios[+arSel.dataset.i].value : "16:9";
-      const sizeMap = { "9:16": "portrait_16_9", "16:9": "landscape_16_9", "1:1": "square_hd", "4:5": "portrait_4_3" };
       const prompt = characterPrefix(charId) + $("#img-prompt").value.trim() + (style ? ". Style: " + style : "");
       if (!$("#img-prompt").value.trim()) return setStatus("img-status", "err", "Describe the scene first.");
-      const input = { prompt, image_size: sizeMap[ar] || "landscape_16_9" };
       const seed = characterSeed(charId);
+
+      if (modelId.startsWith("pollinations:")) {
+        // FREE path — no API key, no cost
+        const dims = { "9:16": [720, 1280], "16:9": [1280, 720], "1:1": [1024, 1024], "4:5": [1024, 1280] }[ar] || [1280, 720];
+        try {
+          setStatus("img-status", "info", "Generating on the FREE provider (can take 20–60s)…");
+          const out = await Providers.freeImage(prompt, { width: dims[0], height: dims[1], seed, model: modelId.split(":")[1] });
+          setStatus("img-status", "ok", "Done — cost: $0.00 (free tier)");
+          showMedia("img-result", "image", out.blobUrl);
+          State.addToGallery({ kind: "image", url: out.sourceUrl, prompt, model: modelId, cost: 0 });
+        } catch (e) { setStatus("img-status", "err", e.message); }
+        return;
+      }
+
+      const sizeMap = { "9:16": "portrait_16_9", "16:9": "landscape_16_9", "1:1": "square_hd", "4:5": "portrait_4_3" };
+      const input = { prompt, image_size: sizeMap[ar] || "landscape_16_9" };
+      if (/nano-banana|gpt-image/.test(modelId)) { delete input.image_size; input.aspect_ratio = ar; }
       if (seed != null) input.seed = seed;
       // Reference-based models take image_urls for likeness
       const ref = characterRef(charId);
@@ -623,6 +747,122 @@ const Bind = {
     };
   },
 
+  relight() {
+    const st = { frameUri: null, videoUri: null, duration: 0, stillUrl: null };
+    const updateCost = () => {
+      const secs = Math.min(st.duration || 5, 10);
+      $("#rl-cost").textContent = `~$${(secs * 0.168 + 0.1).toFixed(2)}`;
+    };
+    updateCost();
+
+    $("#rl-video").onchange = async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        setStatus("rl-status", "info", "Reading clip…");
+        const fr = await Providers.videoFrame(f, 0.5);
+        if (fr.duration < 3 || fr.duration > 10.5)
+          return setStatus("rl-status", "err", `Clip is ${fr.duration.toFixed(1)}s — it must be 3–10 seconds. Trim it first.`);
+        st.frameUri = fr.dataUri; st.duration = fr.duration;
+        st.videoUri = await Providers.fileToDataUri(f);
+        $("#rl-clipinfo").textContent = `Clip loaded: ${fr.duration.toFixed(1)}s, ${fr.width}×${fr.height}. Reference frame extracted.`;
+        clearStatus("rl-status"); updateCost();
+      } catch (err) { setStatus("rl-status", "err", err.message); }
+    };
+    $("#rl-image").onchange = async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      st.frameUri = await Providers.fileToDataUri(f); st.videoUri = null; st.duration = 0;
+      $("#rl-clipinfo").textContent = "Photo loaded — step ① will relight it (step ② needs a clip).";
+    };
+
+    $("#rl-still-go").onclick = async () => {
+      if (!st.frameUri) return setStatus("rl-status", "err", "Upload a clip or photo first.");
+      const scene = $("#rl-prompt").value.trim();
+      if (!scene) return setStatus("rl-status", "err", "Describe the new scene/lighting.");
+      const prompt = `Relight and re-scene this exact shot: ${scene}. CRITICAL: keep the same camera angle, framing, crop, subject size, head pose and expression as the source image — only the lighting and background change. Preserve the subject's identity and skin fidelity exactly: warm healthy true-to-life skin tones, no added texture or age, never grey or ashen.`;
+      try {
+        setStatus("rl-status", "info", "Relighting frame…");
+        const m = models("imageEdit").find(x => /nano-banana-2/.test(x.id)) || models("imageEdit")[0];
+        const result = await Providers.falRun(m.id, {
+          prompt, image_urls: [st.frameUri], aspect_ratio: "16:9", resolution: "2K", num_images: 1,
+        }, s => setStatus("rl-status", "info", s));
+        st.stillUrl = Providers.extractMedia(result);
+        if (!st.stillUrl) throw new Error("No still returned.");
+        setStatus("rl-status", "ok", "Frame relit — check it below. Re-run with a tweaked prompt until it's right (pennies per try), then run step ②.");
+        showMedia("rl-still-result", "image", st.stillUrl);
+        State.addToGallery({ kind: "image", url: st.stillUrl, prompt: "Relight still: " + scene.slice(0, 50), model: m.id, cost: 0.1 });
+        if (st.videoUri) $("#rl-video-go").disabled = false;
+      } catch (e) { setStatus("rl-status", "err", e.message); }
+    };
+
+    $("#rl-video-go").onclick = async () => {
+      if (!st.videoUri || !st.stillUrl) return;
+      const motion = $("#rl-motion").value.trim();
+      const prompt = `Place the person from the video into the environment and lighting of the reference image; match its background and lighting exactly; preserve identity, exact lip and mouth movements, clothing, and all original motion and timing. ${motion}`;
+      const mv = models("videoEdit")[0];
+      try {
+        setStatus("rl-vstatus", "info", "Relighting full clip (1–3 min)…");
+        const result = await Providers.falRun(mv.id, {
+          video_url: st.videoUri, prompt, image_urls: [st.stillUrl], keep_audio: true,
+        }, s => setStatus("rl-vstatus", "info", s));
+        const url = Providers.extractMedia(result);
+        if (!url) throw new Error("No video returned.");
+        setStatus("rl-vstatus", "ok", "Clip relit — original audio preserved. 🎉");
+        showMedia("rl-video-result", "video", url);
+        State.addToGallery({ kind: "video", url, prompt: "Relit clip", model: mv.id, cost: st.duration * 0.168 });
+      } catch (e) { setStatus("rl-vstatus", "err", e.message); }
+    };
+  },
+
+  animate() {
+    bindChips("an-style");
+    let restyledUrl = null;
+    const vcost = () => {
+      const opt = $("#an-vmodel").selectedOptions[0];
+      $("#an-vcost").textContent = `~$${((+opt.dataset.cost) * (+$("#an-secs").value || 5)).toFixed(2)}`;
+    };
+    $("#an-vmodel").onchange = vcost; $("#an-secs").oninput = vcost; vcost();
+
+    $("#an-go").onclick = async () => {
+      const sel = $$("#an-style .chip.on")[0];
+      if (!sel) return setStatus("an-status", "err", "Pick a target style.");
+      const preset = RIU_DATA.restylePresets[+sel.dataset.i];
+      let ref = null;
+      const f = $("#an-image").files[0];
+      if (f) ref = await Providers.fileToDataUri(f);
+      else ref = characterRef($("#an-char").value);
+      if (!ref) return setStatus("an-status", "err", "Upload an image, or pick a character that has a reference photo.");
+      const notes = $("#an-notes").value.trim();
+      const prompt = preset.prompt + (notes ? " " + notes : "");
+      try {
+        setStatus("an-status", "info", "Restyling…");
+        const m = models("imageEdit").find(x => /nano-banana-pro/.test(x.id)) || models("imageEdit")[0];
+        const result = await Providers.falRun(m.id, { prompt, image_urls: [ref], resolution: "2K", num_images: 1 },
+          s => setStatus("an-status", "info", s));
+        restyledUrl = Providers.extractMedia(result);
+        if (!restyledUrl) throw new Error("No image returned.");
+        setStatus("an-status", "ok", "Restyled! Now animate it below.");
+        showMedia("an-result", "image", restyledUrl);
+        State.addToGallery({ kind: "image", url: restyledUrl, prompt: "Restyle: " + preset.name, model: m.id, cost: m.cost });
+        $("#an-vgo").disabled = false;
+      } catch (e) { setStatus("an-status", "err", e.message); }
+    };
+
+    $("#an-vgo").onclick = () => {
+      if (!restyledUrl) return;
+      const modelId = $("#an-vmodel").value;
+      const m = models("video").find(x => x.id === modelId);
+      const secs = +$("#an-secs").value || 5;
+      const motion = $("#an-motion").value.trim() || "subtle natural motion, cinematic";
+      runFalJob({
+        statusId: "an-vstatus", resultId: "an-vresult", kind: "video", modelId,
+        input: { prompt: motion, image_url: restyledUrl, duration: secs, aspect_ratio: $("#an-ar").value },
+        prompt: "Animate restyled: " + motion.slice(0, 50), cost: m.cost * secs,
+      });
+    };
+  },
+
+  editor() { /* static page — no bindings */ },
+
   lipsync() {
     $("#ls-go").onclick = async () => {
       const modelId = $("#ls-model").value;
@@ -644,6 +884,17 @@ const Bind = {
         setStatus(statusId, "ok", `${voices.length} voices loaded.`);
       } catch (e) { setStatus(statusId, "err", e.message); }
     };
+    $("#fv-go").onclick = async () => {
+      const text = $("#fv-text").value.trim();
+      if (!text) return setStatus("fv-status", "err", "Write a script first.");
+      try {
+        setStatus("fv-status", "info", "Generating free narration…");
+        const { blobUrl } = await Providers.freeSpeak(text, $("#fv-voice").value);
+        setStatus("fv-status", "ok", "Done — cost: $0.00. Download it for lip sync or your editor.");
+        showMedia("fv-result", "audio", blobUrl);
+      } catch (e) { setStatus("fv-status", "err", e.message); }
+    };
+
     $("#vo-load").onclick = () => loadVoices("vo-voice", "vo-status");
     $("#vo-text").oninput = () => $("#vo-chars").textContent = $("#vo-text").value.length;
 
@@ -701,10 +952,10 @@ const Bind = {
       try {
         // ① portrait
         setStatus("av-status", "info", "Step 1/4 — generating portrait…");
-        const imgModel = models("image").find(x => x.id.includes("flux/dev")) || models("image")[0];
+        const imgModel = models("image").find(x => !x.free) || models("image")[0];
         const portraitPrompt = characterPrefix(charId) + $("#av-setting").value.trim() +
           ", photorealistic, extremely detailed, mouth closed, neutral pleasant expression";
-        const imgIn = { prompt: portraitPrompt, image_size: $("#av-ar").value === "9:16" ? "portrait_16_9" : "landscape_16_9" };
+        const imgIn = { prompt: portraitPrompt, aspect_ratio: $("#av-ar").value };
         const seed = characterSeed(charId); if (seed != null) imgIn.seed = seed;
         const imgRes = await Providers.falRun(imgModel.id, imgIn, s => setStatus("av-status", "info", "Step 1/4 — " + s));
         const portraitUrl = Providers.extractMedia(imgRes);
@@ -782,7 +1033,7 @@ const Bind = {
       const imgs = +$("#cp-images").value, music = +$("#cp-music").value;
       const chars = +$("#cp-chars").value, lip = +$("#cp-lip").value, up = +$("#cp-up").value;
       const video = scenes * secs * takes * vRate;
-      const image = imgs * 0.025;
+      const image = imgs * 0.04;
       const mus = music * 0.10;
       const voice = (chars / 1000) * 0.20;
       const lipC = lip * 0.06;
@@ -838,11 +1089,14 @@ const NAV = [
   ["characters", "🎭", "Character Lab", null],
   ["image", "🖼️", "Image Studio", null],
   ["video", "🎥", "Video Studio", null],
+  ["relight", "💡", "Relight", null],
+  ["animate", "🎞️", "Restyle & Animate", null],
   ["lipsync", "👄", "Lip Sync", null],
   ["voice", "🗣️", "Voice Studio", null],
   ["music", "🎵", "Music Studio", null],
   ["avatar", "🧑‍🚀", "Avatar Pipeline", null],
   ["script", "✍️", "Script Builder", "Plan"],
+  ["editor", "✂️", "Editor's Room", null],
   ["cost", "💰", "Cost Planner", null],
   ["galleryView", "🗂", "Gallery", "Library"],
   ["settings", "⚙️", "Settings", null],
