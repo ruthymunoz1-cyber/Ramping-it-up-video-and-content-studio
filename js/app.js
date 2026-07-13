@@ -17,9 +17,14 @@ const State = {
   characters: Store.get("characters", []),
   gallery: Store.get("gallery", []),      // { kind, url, prompt, model, cost, ts }
   scripts: Store.get("scripts", []),
+  storyboards: Store.get("storyboards", []), // { id, title, style, charId, model, panels: [{shot, desc, imgUrl}] }
+  locations: Store.get("locations", []),     // { id, name, desc, url }
+  activeBoardId: null,
   saveCharacters() { Store.set("characters", this.characters); },
   saveGallery() { Store.set("gallery", this.gallery.slice(0, 200)); },
   saveScripts() { Store.set("scripts", this.scripts); },
+  saveStoryboards() { Store.set("storyboards", this.storyboards); },
+  saveLocations() { Store.set("locations", this.locations); },
   addToGallery(item) { this.gallery.unshift({ ...item, ts: Date.now() }); this.saveGallery(); },
 };
 
@@ -149,6 +154,8 @@ const Views = {
       ["music", "🎵", "Music Studio", "Scores, intros, full songs"],
       ["avatar", "🧑‍🚀", "Avatar Pipeline", "Portrait → narration → talking host"],
       ["script", "✍️", "Script Builder", "Curriculum, shorts & longform beat sheets"],
+      ["storyboard", "🎬", "Storyboard Studio", "Script → printable shot-by-shot board"],
+      ["locations", "🗺️", "Location Scout", "Landmarks, museums, sets — a reusable library"],
       ["cost", "💰", "Cost Planner", "Budget a whole project before spending"],
     ];
     return `
@@ -259,6 +266,8 @@ const Views = {
         ${charSelectHtml("img-char")}
         ${modelSelectHtml("img-model", "image", "imageEdit")}
         <div class="hint">Tip: when your character has a turnaround sheet or reference photo, pick an <b>Edit</b> model — it anchors on the sheet for exact likeness from any angle.</div>
+        <label class="f-label">Setting (optional — from your 🗺️ Location Scout library)</label>
+        <select id="img-loc"><option value="">— none —</option>${State.locations.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join("")}</select>
         <label class="f-label">Scene prompt</label>
         <textarea id="img-prompt" placeholder="e.g. standing at a bright modern whiteboard explaining fractions, medium shot, smiling at camera"></textarea>
         <label class="f-label">Style preset</label>
@@ -533,6 +542,105 @@ const Views = {
       ${saved}`;
   },
 
+  /* ---------------- storyboard studio ---------------- */
+  storyboard() {
+    const board = State.storyboards.find(b => b.id === State.activeBoardId);
+    const scriptOpts = State.scripts.map((s, i) => `<option value="${i}">${esc(s.title)} (${esc(s.template)})</option>`).join("");
+
+    const boardEditor = board ? `
+      <div class="card">
+        <div class="row">
+          <h3 class="fixed" style="margin:0">🎬 ${esc(board.title)}</h3>
+          <span class="fixed" style="margin-left:auto">
+            <button class="btn sm" id="sb-gen-all">✨ Generate all missing panels</button>
+            <button class="btn sm" id="sb-print">🖨 Print / save PDF</button>
+            <button class="btn sm" id="sb-close">Close</button>
+          </span>
+        </div>
+        <div class="status" id="sb-status"></div>
+        <div class="board-grid mt">
+          ${board.panels.map((p, i) => `
+            <div class="panel">
+              <div class="panel-img" data-panel-img="${i}">
+                ${p.imgUrl ? `<img src="${p.imgUrl}" alt="panel ${i + 1}">` : `<div class="panel-empty">panel ${i + 1}</div>`}
+              </div>
+              <div class="panel-meta">
+                <div class="row" style="gap:6px">
+                  <span class="fixed panel-num">${i + 1}</span>
+                  <select data-panel-shot="${i}" class="fixed" style="width:auto">${RIU_DATA.shotTypes.map(s =>
+                    `<option${s === p.shot ? " selected" : ""}>${s}</option>`).join("")}</select>
+                  <button class="btn sm fixed" data-panel-gen="${i}" style="margin-left:auto">🎨</button>
+                </div>
+                <textarea data-panel-desc="${i}" placeholder="What happens in this panel…">${esc(p.desc)}</textarea>
+              </div>
+            </div>`).join("")}
+        </div>
+        <div class="mt row">
+          <button class="btn sm fixed" id="sb-add-panel">＋ Add panel</button>
+          <span class="muted fixed">Panels save automatically. 🎨 regenerates one panel; edits to text are picked up on the next generate.</span>
+        </div>
+      </div>` : "";
+
+    return `
+      <div class="page-head"><div class="page-title">🎬 Storyboard Studio</div>
+      <div class="page-desc">Plan every shot before you spend a cent on video. Import a saved script (each beat becomes a panel) or start blank, generate consistent panel art with your character, then print the board or use each approved panel as the start-image for the Video Studio.</div></div>
+      ${boardEditor}
+      <div class="card">
+        <h3>New storyboard</h3>
+        <div class="row">
+          <div><label class="f-label">Title</label><input type="text" id="sb-title" placeholder="e.g. Water Cycle — Episode 1"></div>
+          <div><label class="f-label">Start from</label>
+            <select id="sb-source">
+              <option value="">Blank — 6 panels</option>
+              <option value="blank9">Blank — 9 panels</option>
+              <option value="blank12">Blank — 12 panels</option>
+              ${scriptOpts ? `<optgroup label="Your saved scripts">${scriptOpts}</optgroup>` : ""}
+            </select></div>
+        </div>
+        ${charSelectHtml("sb-char")}
+        ${modelSelectHtml("sb-model", "image", "imageEdit")}
+        <label class="f-label">Art style</label>
+        ${chipsHtml("sb-style", RIU_DATA.stylePresets)}
+        <div class="mt"><button class="btn primary" id="sb-create">＋ Create storyboard</button></div>
+      </div>
+      ${State.storyboards.length ? `<div class="card"><h3>Saved storyboards</h3>
+        <table class="plain">${State.storyboards.map(b => `<tr>
+          <td><b>${esc(b.title)}</b></td><td>${b.panels.length} panels</td>
+          <td class="right">
+            <button class="btn sm" data-open-board="${b.id}">Open</button>
+            <button class="btn sm danger" data-del-board="${b.id}">Delete</button>
+          </td></tr>`).join("")}</table></div>` : ""}`;
+  },
+
+  /* ---------------- location scout ---------------- */
+  locations() {
+    return `
+      <div class="page-head"><div class="page-title">🗺️ Location Scout</div>
+      <div class="page-desc">Build a library of establishing shots and set plates — city landmarks, museums & exhibitions, classrooms, nature, historical eras. Saved locations appear as a "Setting" option in the Image Studio so your character can be placed anywhere, consistently.</div></div>
+      <div class="card">
+        <h3>Scout a location</h3>
+        <label class="f-label">Ideas by category (click to use as a starting point)</label>
+        ${chipsHtml("loc-cat", RIU_DATA.locationCategories, x => x.name)}
+        <div class="hint" id="loc-hint"></div>
+        <label class="f-label">Describe the place</label>
+        <textarea id="loc-desc" placeholder="e.g. the Eiffel Tower esplanade at golden hour, warm haze, wide cinematic view"></textarea>
+        <div class="row">
+          <div><label class="f-label">Save as (name)</label><input type="text" id="loc-name" placeholder="e.g. Paris — Eiffel golden hour"></div>
+          <div>${modelSelectHtml("loc-model", "image")}</div>
+        </div>
+        <div class="mt"><button class="btn primary" id="loc-go">🗺 Generate location plate</button></div>
+        <div class="status" id="loc-status"></div>
+        <div class="result-media" id="loc-result"></div>
+        <div class="mt"><button class="btn" id="loc-save" disabled>💾 Save to library</button></div>
+      </div>
+      ${State.locations.length ? `<div class="card"><h3>Your location library</h3>
+        <div class="gallery">${State.locations.map(l => `
+          <div class="g-item"><img src="${l.url}" loading="lazy">
+          <div class="g-meta"><b>${esc(l.name)}</b><br>${esc(l.desc.slice(0, 50))}…<br>
+          <a href="${l.url}" target="_blank" rel="noopener">open ↗</a> · <a href="#" data-del-loc="${l.id}">delete</a></div></div>`).join("")}
+        </div></div>` : ""}`;
+  },
+
   /* ---------------- cost planner ---------------- */
   cost() {
     const img = models("image"), vid = models("video"), mus = models("music"), lip = models("lipsync");
@@ -776,7 +884,9 @@ const Bind = {
       const style = chipValue("img-style", RIU_DATA.stylePresets);
       const arSel = $$("#img-ar .chip.on")[0];
       const ar = arSel ? RIU_DATA.aspectRatios[+arSel.dataset.i].value : "16:9";
-      const prompt = characterPrefix(charId) + $("#img-prompt").value.trim() + (style ? ". Style: " + style : "");
+      const loc = State.locations.find(l => l.id === $("#img-loc").value);
+      const prompt = characterPrefix(charId) + $("#img-prompt").value.trim() +
+        (loc ? `. Setting: ${loc.desc}` : "") + (style ? ". Style: " + style : "");
       if (!$("#img-prompt").value.trim()) return setStatus("img-status", "err", "Describe the scene first.");
       const seed = characterSeed(charId);
 
@@ -1125,6 +1235,175 @@ const Bind = {
     });
   },
 
+  storyboard() {
+    bindChips("sb-style");
+
+    /* Build one panel's prompt from character + shot + description + style. */
+    const board = () => State.storyboards.find(b => b.id === State.activeBoardId);
+    const panelPrompt = (b, p) =>
+      characterPrefix(b.charId) + p.desc + `. ${p.shot} shot. ` +
+      (b.style ? "Style: " + b.style + ". " : "") +
+      "Single storyboard still frame, strong cinematic composition.";
+
+    const syncPanelEdits = () => {
+      const b = board(); if (!b) return;
+      $$("[data-panel-desc]").forEach(t => b.panels[+t.dataset.panelDesc].desc = t.value);
+      $$("[data-panel-shot]").forEach(s => b.panels[+s.dataset.panelShot].shot = s.value);
+      State.saveStoryboards();
+    };
+
+    const genPanel = async (i) => {
+      const b = board(); syncPanelEdits();
+      const p = b.panels[i];
+      if (!p.desc.trim()) throw new Error(`Panel ${i + 1} has no description yet.`);
+      const prompt = panelPrompt(b, p);
+      const seed = (characterSeed(b.charId) ?? 1234) + i;
+      if (b.model.startsWith("pollinations:")) {
+        p.imgUrl = Providers.freeImageUrl(prompt, { width: 1280, height: 720, seed, model: b.model.split(":")[1] });
+      } else {
+        const input = /edit/.test(b.model) && characterRefs(b.charId).length
+          ? { prompt, image_urls: characterRefs(b.charId), num_images: 1 }
+          : { prompt, aspect_ratio: "16:9", seed };
+        const res = await Providers.falRun(b.model, input, s => setStatus("sb-status", "info", `Panel ${i + 1} — ${s}`));
+        p.imgUrl = Providers.extractMedia(res);
+        if (!p.imgUrl) throw new Error(`Panel ${i + 1}: no image returned.`);
+        const m = modelsIn("image", "imageEdit").find(x => x.id === b.model);
+        State.addToGallery({ kind: "image", url: p.imgUrl, prompt: `${b.title} — panel ${i + 1}`, model: b.model, cost: m?.cost || 0 });
+      }
+      State.saveStoryboards();
+      const box = $(`[data-panel-img="${i}"]`);
+      if (box) box.innerHTML = `<img src="${p.imgUrl}" alt="panel ${i + 1}">`;
+    };
+
+    $("#sb-create").onclick = () => {
+      const title = $("#sb-title").value.trim() || "Untitled board";
+      const src = $("#sb-source").value;
+      const style = chipValue("sb-style", RIU_DATA.stylePresets);
+      let panels;
+      if (src === "" || src.startsWith("blank")) {
+        const n = src === "blank9" ? 9 : src === "blank12" ? 12 : 6;
+        panels = Array.from({ length: n }, () => ({ shot: "MED", desc: "", imgUrl: null }));
+      } else {
+        const script = State.scripts[+src];
+        // only beats the user actually wrote become prompts; empty beats stay
+        // empty (the template's coaching tips make poor image prompts)
+        panels = script.beats.map(bt => ({ shot: "MED", desc: bt.content || "", imgUrl: null }));
+      }
+      const b = {
+        id: "b" + Date.now(), title, style,
+        charId: $("#sb-char").value, model: $("#sb-model").value, panels,
+      };
+      State.storyboards.unshift(b);
+      State.activeBoardId = b.id;
+      State.saveStoryboards();
+      render("storyboard");
+    };
+
+    if (board()) {
+      $$("[data-panel-gen]").forEach(btn => btn.onclick = async () => {
+        btn.disabled = true;
+        try { await genPanel(+btn.dataset.panelGen); clearStatus("sb-status"); }
+        catch (e) { setStatus("sb-status", "err", e.message); }
+        btn.disabled = false;
+      });
+
+      $("#sb-gen-all").onclick = async () => {
+        const b = board(); syncPanelEdits();
+        for (let i = 0; i < b.panels.length; i++) {
+          if (b.panels[i].imgUrl || !b.panels[i].desc.trim()) continue;
+          setStatus("sb-status", "info", `Generating panel ${i + 1} of ${b.panels.length}…`);
+          try { await genPanel(i); } catch (e) { setStatus("sb-status", "err", e.message); return; }
+        }
+        setStatus("sb-status", "ok", "Board complete — print it, or animate panels in the Video Studio.");
+      };
+
+      $("#sb-add-panel").onclick = () => {
+        syncPanelEdits();
+        board().panels.push({ shot: "MED", desc: "", imgUrl: null });
+        State.saveStoryboards(); render("storyboard");
+      };
+
+      $("#sb-close").onclick = () => { syncPanelEdits(); State.activeBoardId = null; render("storyboard"); };
+
+      $("#sb-print").onclick = () => {
+        const b = board(); syncPanelEdits();
+        const w = window.open("", "_blank");
+        w.document.write(`<!DOCTYPE html><html><head><title>${esc(b.title)}</title><style>
+          body{font-family:Georgia,serif;background:#f6f2e8;color:#222;padding:24px}
+          h1{font-size:20px;letter-spacing:.05em} .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+          .p{background:#fff;border:1px solid #ccc;border-radius:6px;overflow:hidden;page-break-inside:avoid}
+          .p img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#ddd}
+          .m{padding:8px 10px;font-size:11px} .n{font-weight:bold} .s{color:#8a6d1f;font-size:10px;letter-spacing:.08em}
+          footer{margin-top:16px;font-size:10px;color:#777}</style></head><body>
+          <h1>${esc(b.title).toUpperCase()}</h1><div class="grid">
+          ${b.panels.map((p, i) => `<div class="p">${p.imgUrl ? `<img src="${p.imgUrl}">` : `<div style="aspect-ratio:16/9;background:#eee"></div>`}
+            <div class="m"><span class="n">${i + 1}</span> <span class="s">${esc(p.shot)}</span><br>${esc(p.desc)}</div></div>`).join("")}
+          </div><footer>Ramping It Up Studio — ${new Date().toLocaleDateString()}</footer>
+          <script>window.onload=()=>setTimeout(()=>window.print(),600)<\/script></body></html>`);
+        w.document.close();
+      };
+    }
+
+    $$("[data-open-board]").forEach(b => b.onclick = () => { State.activeBoardId = b.dataset.openBoard; render("storyboard"); });
+    $$("[data-del-board]").forEach(b => b.onclick = () => {
+      State.storyboards = State.storyboards.filter(x => x.id !== b.dataset.delBoard);
+      if (State.activeBoardId === b.dataset.delBoard) State.activeBoardId = null;
+      State.saveStoryboards(); render("storyboard");
+    });
+  },
+
+  locations() {
+    bindChips("loc-cat");
+    let lastUrl = null;
+    $("#loc-cat").addEventListener("click", () => {
+      const on = $$("#loc-cat .chip.on")[0];
+      $("#loc-hint").textContent = on ? "Ideas: " + RIU_DATA.locationCategories[+on.dataset.i].hint : "";
+    });
+
+    $("#loc-go").onclick = async () => {
+      const desc = $("#loc-desc").value.trim();
+      if (!desc) return setStatus("loc-status", "err", "Describe the place first.");
+      const prompt = desc + ". " + RIU_DATA.locationSuffix;
+      const modelId = $("#loc-model").value;
+      try {
+        if (modelId.startsWith("pollinations:")) {
+          setStatus("loc-status", "info", "Generating location (FREE, 20–60s)…");
+          const out = await Providers.freeImage(prompt, { width: 1600, height: 900, model: modelId.split(":")[1] });
+          lastUrl = out.sourceUrl;
+          showMedia("loc-result", "image", out.blobUrl);
+          setStatus("loc-status", "ok", "Location plate ready — $0.00.");
+        } else {
+          const m = models("image").find(x => x.id === modelId);
+          setStatus("loc-status", "info", "Generating location…");
+          const res = await Providers.falRun(modelId, { prompt, aspect_ratio: "16:9" }, s => setStatus("loc-status", "info", s));
+          lastUrl = Providers.extractMedia(res);
+          if (!lastUrl) throw new Error("No image returned.");
+          showMedia("loc-result", "image", lastUrl);
+          setStatus("loc-status", "ok", `Location plate ready — ~$${m.cost}.`);
+        }
+        $("#loc-save").disabled = false;
+      } catch (e) { setStatus("loc-status", "err", e.message); }
+    };
+
+    $("#loc-save").onclick = () => {
+      if (!lastUrl) return;
+      const desc = $("#loc-desc").value.trim();
+      State.locations.unshift({
+        id: "l" + Date.now(),
+        name: $("#loc-name").value.trim() || desc.slice(0, 40),
+        desc, url: lastUrl,
+      });
+      State.saveLocations();
+      render("locations");
+    };
+
+    $$("[data-del-loc]").forEach(a => a.onclick = (e) => {
+      e.preventDefault();
+      State.locations = State.locations.filter(l => l.id !== a.dataset.delLoc);
+      State.saveLocations(); render("locations");
+    });
+  },
+
   cost() {
     $("#cp-go").onclick = () => {
       const scenes = +$("#cp-scenes").value, secs = +$("#cp-secs").value, takes = +$("#cp-takes").value;
@@ -1195,6 +1474,8 @@ const NAV = [
   ["music", "🎵", "Music Studio", null],
   ["avatar", "🧑‍🚀", "Avatar Pipeline", null],
   ["script", "✍️", "Script Builder", "Plan"],
+  ["storyboard", "🎬", "Storyboard Studio", null],
+  ["locations", "🗺️", "Location Scout", null],
   ["editor", "✂️", "Editor's Room", null],
   ["cost", "💰", "Cost Planner", null],
   ["galleryView", "🗂", "Gallery", "Library"],

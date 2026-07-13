@@ -76,6 +76,8 @@ const RIU_DATA = {
     { name: "→ Claymation",                             prompt: "Recreate the subject from the reference image as a handcrafted stop-motion claymation character — visible clay texture, miniature set, shallow depth of field. Keep the same identity, outfit, pose and framing." },
     { name: "→ Comic / graphic novel",                  prompt: "Recreate the subject from the reference image as bold graphic-novel art — inked lines, halftone shading, dramatic composition. Keep the same identity, outfit, pose and framing." },
     { name: "→ Watercolor storybook",                   prompt: "Recreate the subject from the reference image as a soft watercolor children's-storybook illustration — gentle washes, warm paper texture. Keep the same identity, outfit, pose and framing." },
+    { name: "→ Children's picture-book illustration",   prompt: "Recreate the subject from the reference image as a warm, professional children's picture-book illustration — soft painted textures, friendly expressive style, storybook composition, print-quality. Keep the same identity, outfit, pose and framing." },
+    { name: "→ Coloring book page (line art, NO color)", prompt: "Convert the subject from the reference image into a clean black-and-white coloring book page — bold smooth black outlines only, absolutely no color, no shading, no grey fills, pure white background, kid-friendly simplified details, large open areas to color, printable quality. Keep the same identity, outfit, pose and framing." },
   ],
 
   /* ElevenLabs pricing reference (subscription credits, approx per-1k chars) */
@@ -148,6 +150,8 @@ const RIU_DATA = {
     { name: "Claymation", prompt: "stop-motion claymation style, handcrafted texture, miniature set depth of field" },
     { name: "Documentary natural", prompt: "natural documentary look, soft window light, true-to-life color, unobtrusive framing" },
     { name: "Whiteboard / explainer", prompt: "clean explainer illustration style, flat design, generous white space, friendly shapes" },
+    { name: "Children's book", prompt: "warm children's picture-book illustration, soft painted textures, friendly expressive characters, storybook composition, print-quality" },
+    { name: "Coloring book (line art, no color)", prompt: "clean black-and-white coloring book page — bold smooth black outlines only, no color, no shading, no grey fills, pure white background, kid-friendly simplified details, large open areas to color, printable" },
   ],
 
   aspectRatios: [
@@ -211,6 +215,21 @@ const RIU_DATA = {
       ],
     },
   ],
+
+  /* Location Scout — categories of establishing shots / set plates. */
+  locationCategories: [
+    { name: "World landmarks",        hint: "the Eiffel Tower at golden hour · the Great Wall of China in morning mist · the Pyramids of Giza at dusk" },
+    { name: "Cities & streets",       hint: "a rainy Tokyo neon street at night · a Brooklyn brownstone block in autumn · a sunny Caribbean harbor town" },
+    { name: "Museums & exhibitions",  hint: "a grand natural-history museum hall with a dinosaur skeleton · a bright modern art gallery · a science-center exhibition with interactive displays" },
+    { name: "Classrooms & campuses",  hint: "a bright modern elementary classroom · a university lecture hall · a cozy school library reading corner" },
+    { name: "Nature & wonders",       hint: "the Grand Canyon at sunrise · a bioluminescent beach at night · an African savanna with acacia trees" },
+    { name: "Historical eras",        hint: "an ancient Roman forum bustling with life · a 1920s Harlem jazz street · a medieval castle great hall" },
+    { name: "Fantasy & sci-fi sets",  hint: "a floating sky city above the clouds · a neon cyberpunk market · an enchanted glowing forest" },
+  ],
+  locationSuffix: "Cinematic wide establishing shot, no people in frame, photorealistic, rich natural light, high detail, room for a subject to be composited into the scene",
+
+  /* Storyboard panel shot types. */
+  shotTypes: ["WIDE", "ESTABLISHING", "MED", "MED CLOSE-UP", "CLOSE-UP", "EXTREME CU", "OVER-SHOULDER", "LOW ANGLE", "HIGH ANGLE", "POV", "INSERT"],
 
   /* fal endpoints that accept these common params — used to build inputs */
   falQueueBase: "https://queue.fal.run",

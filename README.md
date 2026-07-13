@@ -14,7 +14,9 @@ one to render **melanin-rich skin tones beautifully and consistently**.
 | 🖼️ **Image Studio** | **FREE Pollinations models (no key, $0)** plus Nano Banana Pro / GPT Image 2 — cinematic stills, thumbnails, curriculum illustrations. Seed-locking for repeatable results. |
 | 🎥 **Video Studio** | Image-to-video and text-to-video (Kling v3 Pro/4K, Seedance 2.0, Hailuo) with shorts (9:16) and cinematic (16:9) presets, plus a Topaz 4K upscale pass. |
 | 💡 **Relight Studio** | Higgsfield's signature "change the light in any video," done directly on the models: relight one frame (~$0.10), approve it, then push the look onto the whole 3–10s clip with the **original audio preserved**. |
-| 🎞️ **Restyle & Animate** | Turn anything into anything, identity preserved: photo → 3D animated (Pixar-class) / anime / claymation, or a drawing → **realistic human** — then animate the result into video. |
+| 🎞️ **Restyle & Animate** | Turn anything into anything, identity preserved: photo → 3D animated (Pixar-class) / anime / claymation, or a drawing → **realistic human** — plus **children's-book illustration** and **coloring-book line art (no color, printable)** for your books — then animate the result into video. |
+| 🎬 **Storyboard Studio** | Import a saved script (each beat becomes a panel) or start blank; generate consistent panel art with your character; print the board as a PDF or use approved panels as start-images for the Video Studio. |
+| 🗺️ **Location Scout** | Build a reusable library of establishing shots — world landmarks, cities, museums & exhibitions, classrooms, nature, historical eras, fantasy sets. Saved locations appear as a "Setting" option in the Image Studio. |
 | 👄 **Lip Sync Studio** | Sync any voice track to any face video — the backbone of your talking-avatar pipeline. |
 | 🗣️ **Voice Studio** | **FREE voiceover (6 stock voices, $0)**, plus ElevenLabs voice cloning and narration in 30+ languages. |
 | 🎵 **Music Studio** | Generate background scores, intros/outros, and full songs with lyrics. |
