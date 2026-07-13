@@ -135,6 +135,34 @@ const Providers = {
 
   freeVoices: ["nova", "alloy", "echo", "fable", "onyx", "shimmer"],
 
+  /* Free LLM (Pollinations) — used by the Director to draft scripts. */
+  async freeText(prompt) {
+    const res = await fetch(`https://text.pollinations.ai/${encodeURIComponent(prompt)}`);
+    if (!res.ok) throw new Error(`Free writing model failed (${res.status}) — try again in a moment.`);
+    return await res.text();
+  },
+
+  /* Ask the free LLM for JSON and parse it defensively (strips code fences,
+   * trims to the outermost braces). */
+  async freeJson(prompt) {
+    let t = await this.freeText(prompt);
+    t = t.replace(/```json|```/g, "").trim();
+    const a = t.indexOf("{"), b = t.lastIndexOf("}");
+    if (a === -1 || b === -1) throw new Error("The writing model returned no JSON.");
+    return JSON.parse(t.slice(a, b + 1));
+  },
+
+  /* Duration (seconds) of an audio blob/URL. */
+  audioDuration(src) {
+    return new Promise((resolve, reject) => {
+      const a = new Audio();
+      a.preload = "metadata";
+      a.onloadedmetadata = () => resolve(a.duration);
+      a.onerror = () => reject(new Error("Could not read audio duration."));
+      a.src = typeof src === "string" ? src : URL.createObjectURL(src);
+    });
+  },
+
   async freeSpeak(text, voice = "nova") {
     const p = encodeURIComponent(`Read the following text exactly as written, verbatim, with natural delivery: ${text}`);
     const res = await fetch(`https://text.pollinations.ai/${p}?model=openai-audio&voice=${voice}`);

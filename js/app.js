@@ -122,6 +122,39 @@ function showMedia(containerId, kind, url) {
   else box.innerHTML = `<audio src="${url}" controls></audio>` + dl;
 }
 
+/* Word-timed SRT built from a script + the measured audio duration. Words are
+ * weighted by length so long words get proportionally more screen time. This
+ * is the standard estimation approach; for frame-exact captions from raw
+ * footage use the perfect-cuts skill (Whisper-based). */
+function buildSrt(text, duration, wordsPerLine = 4) {
+  const words = text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  if (!words.length || !duration) return "";
+  const weights = words.map(w => w.length + 2);
+  const total = weights.reduce((a, b) => a + b, 0);
+  const fmt = (s) => {
+    const ms = Math.max(0, Math.round(s * 1000));
+    const h = String(Math.floor(ms / 3600000)).padStart(2, "0");
+    const m = String(Math.floor(ms / 60000) % 60).padStart(2, "0");
+    const sec = String(Math.floor(ms / 1000) % 60).padStart(2, "0");
+    return `${h}:${m}:${sec},${String(ms % 1000).padStart(3, "0")}`;
+  };
+  let t = 0, out = [], n = 1;
+  for (let i = 0; i < words.length; i += wordsPerLine) {
+    const chunk = words.slice(i, i + wordsPerLine);
+    const w = weights.slice(i, i + wordsPerLine).reduce((a, b) => a + b, 0);
+    const dur = (w / total) * duration;
+    out.push(`${n++}\n${fmt(t)} --> ${fmt(t + dur)}\n${chunk.join(" ")}\n`);
+    t += dur;
+  }
+  return out.join("\n");
+}
+
+function downloadText(name, content, type = "text/plain") {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = name; a.click();
+}
+
 async function runFalJob({ statusId, resultId, kind, modelId, input, prompt, cost }) {
   try {
     setStatus(statusId, "info", "Submitting job…");
@@ -144,6 +177,7 @@ const Views = {
   /* ---------------- dashboard ---------------- */
   dashboard() {
     const tiles = [
+      ["director", "🎥", "Director", "Topic in → script, board, panels, narration & captions out"],
       ["characters", "🎭", "Character Lab", "Build consistent hosts & avatars — melanin-true by design"],
       ["image", "🖼️", "Image Studio", "Stills, thumbnails, curriculum art"],
       ["video", "🎥", "Video Studio", "Text/image → video, shorts & cinematic"],
@@ -154,7 +188,8 @@ const Views = {
       ["music", "🎵", "Music Studio", "Scores, intros, full songs"],
       ["avatar", "🧑‍🚀", "Avatar Pipeline", "Portrait → narration → talking host"],
       ["script", "✍️", "Script Builder", "Curriculum, shorts & longform beat sheets"],
-      ["storyboard", "🎬", "Storyboard Studio", "Script → printable shot-by-shot board"],
+      ["storyboard", "🎬", "Storyboard Studio", "Script → printable shot-by-shot board + batch animate"],
+      ["thumbs", "🖼️", "Thumbnail Lab", "A/B test high-CTR thumbnail variants"],
       ["locations", "🗺️", "Location Scout", "Landmarks, museums, sets — a reusable library"],
       ["cost", "💰", "Cost Planner", "Budget a whole project before spending"],
     ];
@@ -455,6 +490,21 @@ const Views = {
         <div class="result-media" id="vo-result"></div>
       </div>
       <div class="card">
+        <h3>📝 Auto-captions (SRT) — word-timed, free</h3>
+        <p class="muted">Captions boost Shorts retention massively. Upload the narration audio + paste its script — you get a word-timed .srt for CapCut, Premiere, Resolve, or YouTube. (For frame-exact captions from raw camera footage, use the perfect-cuts skill.)</p>
+        <label class="f-label">Narration audio file</label>
+        <input type="file" id="cap-audio" accept="audio/*">
+        <label class="f-label">Exact script that was spoken</label>
+        <textarea id="cap-text"></textarea>
+        <div class="row">
+          <div class="fixed"><label class="f-label">Words per caption</label>
+            <select id="cap-wpl"><option value="3">3 — Shorts style</option><option value="4" selected>4 — snappy</option><option value="7">7 — longform</option></select></div>
+        </div>
+        <div class="mt"><button class="btn primary" id="cap-go">📝 Build captions</button></div>
+        <div class="status" id="cap-status"></div>
+        <pre id="cap-preview" class="muted" style="white-space:pre-wrap;font-size:12px;margin-top:10px"></pre>
+      </div>
+      <div class="card">
         <h3>Clone a voice</h3>
         <p class="muted">Upload 1–3 clean voice samples (each 30s–3min, no background noise/music). The clone appears in your voice list above.</p>
         <label class="f-label">Voice name</label><input type="text" id="vc-name" placeholder="e.g. Ruthy Narration Voice">
@@ -542,6 +592,58 @@ const Views = {
       ${saved}`;
   },
 
+  /* ---------------- director: one-click pipeline ---------------- */
+  director() {
+    return `
+      <div class="page-head"><div class="page-title">🎥 Director</div>
+      <div class="page-desc">The one-click pipeline: type a topic and the Director drafts the script (free writing model), builds a storyboard with your character, generates every panel, records the narration, and produces word-timed captions — ready for batch animation. Script + images can run <b>100% free</b>; video animation is the only paid step and is always quoted first.</div></div>
+      <div class="card">
+        <div class="row">
+          <div style="flex:2"><label class="f-label">Topic</label>
+            <input type="text" id="dir-topic" placeholder="e.g. Why the water cycle never stops — for 4th graders"></div>
+          <div><label class="f-label">Format</label>
+            <select id="dir-format">${RIU_DATA.directorFormats.map((f, i) => `<option value="${i}">${f.name}</option>`).join("")}</select></div>
+        </div>
+        ${charSelectHtml("dir-char", "Host character (recommended)")}
+        <div class="row">
+          <div>${modelSelectHtml("dir-model", "image", "imageEdit")}</div>
+          <div><label class="f-label">Narration voice (free)</label>
+            <select id="dir-voice">${Providers.freeVoices.map(v => `<option>${v}</option>`).join("")}</select>
+            <div class="hint">Want your cloned voice instead? Run the narration in the Voice Studio after — the script will be saved there.</div></div>
+        </div>
+        <label class="f-label">Visual style</label>
+        ${chipsHtml("dir-style", RIU_DATA.stylePresets)}
+        <div class="mt"><button class="btn primary" id="dir-go">🎬 Direct it</button></div>
+        <div class="status" id="dir-status"></div>
+        <div id="dir-log" class="mt"></div>
+        <div id="dir-out" class="mt"></div>
+      </div>`;
+  },
+
+  /* ---------------- thumbnail A/B lab ---------------- */
+  thumbs() {
+    return `
+      <div class="page-head"><div class="page-title">🖼️ Thumbnail A/B Lab</div>
+      <div class="page-desc">The thumbnail decides whether anyone sees the video. Generate 2–4 variants using proven high-CTR compositions, compare side by side, upload your favorites to YouTube's own Test & Compare. Tip: GPT Image 2 renders title text best; free models are fine for exploring compositions.</div></div>
+      <div class="card">
+        ${charSelectHtml("th-char")}
+        ${modelSelectHtml("th-model", "image", "imageEdit")}
+        <div class="row">
+          <div style="flex:2"><label class="f-label">Title text on the thumbnail (3–5 words max)</label>
+            <input type="text" id="th-headline" placeholder="e.g. WATER NEVER DIES?!"></div>
+          <div><label class="f-label">Emotion</label>
+            <select id="th-emotion">${RIU_DATA.thumbEmotions.map(e => `<option>${e}</option>`).join("")}</select></div>
+        </div>
+        <label class="f-label">Compositions to test (each selected = one variant)</label>
+        ${chipsHtml("th-comp", RIU_DATA.thumbCompositions)}
+        <label class="f-label">Extra context (optional)</label>
+        <input type="text" id="th-notes" placeholder="e.g. holding a glowing water droplet, classroom background">
+        <div class="mt"><button class="btn primary" id="th-go">🧪 Generate variants</button></div>
+        <div class="status" id="th-status"></div>
+        <div class="gallery mt" id="th-grid"></div>
+      </div>`;
+  },
+
   /* ---------------- storyboard studio ---------------- */
   storyboard() {
     const board = State.storyboards.find(b => b.id === State.activeBoardId);
@@ -572,6 +674,7 @@ const Views = {
                   <button class="btn sm fixed" data-panel-gen="${i}" style="margin-left:auto">🎨</button>
                 </div>
                 <textarea data-panel-desc="${i}" placeholder="What happens in this panel…">${esc(p.desc)}</textarea>
+                ${p.videoUrl ? `<a href="${p.videoUrl}" target="_blank" rel="noopener" style="color:var(--mint);font-size:12px">▶ animated clip ready — open</a>` : ""}
               </div>
             </div>`).join("")}
         </div>
@@ -579,6 +682,17 @@ const Views = {
           <button class="btn sm fixed" id="sb-add-panel">＋ Add panel</button>
           <span class="muted fixed">Panels save automatically. 🎨 regenerates one panel; edits to text are picked up on the next generate.</span>
         </div>
+        <div class="divider"></div>
+        <h3>📦 Batch-animate this board</h3>
+        <p class="muted">Queues an image→video job for every panel that has art. The total cost is quoted before anything runs.</p>
+        <div class="row">
+          <div>${modelSelectHtml("sb-vmodel", "video")}</div>
+          <div class="fixed"><label class="f-label">Secs/clip</label><input type="number" id="sb-vsecs" value="5" min="3" max="10" style="width:80px"></div>
+        </div>
+        <label class="f-label">Motion notes added to every clip</label>
+        <input type="text" id="sb-vmotion" value="natural cinematic motion, subtle camera movement">
+        <div class="mt"><button class="btn primary" id="sb-batch">📦 Batch-animate <span class="cost" id="sb-batch-cost"></span></button></div>
+        <div class="status" id="sb-batch-status"></div>
       </div>` : "";
 
     return `
@@ -680,8 +794,18 @@ const Views = {
   galleryView() {
     return `
       <div class="page-head"><div class="page-title">🗂 Gallery</div>
-      <div class="page-desc">Everything you've generated in this browser. Media is hosted by the provider (URLs can expire after a few days — download keepers!).</div></div>
-      ${State.gallery.length ? `<div class="gallery">${State.gallery.map(g => galleryItem(g)).join("")}</div>`
+      <div class="page-desc">Everything you've generated in this browser. Media is hosted by the provider and <b>URLs can expire after a few days</b> — use the Asset Vault below to pull everything onto your computer, then drop the folder into Google Drive or Dropbox for permanent, shareable storage.</div></div>
+      ${State.gallery.length ? `
+      <div class="card">
+        <h3>🗄️ Asset Vault</h3>
+        <div class="row">
+          <button class="btn primary fixed" id="gal-dl-all">⬇ Download everything (${State.gallery.length} items)</button>
+          <button class="btn fixed danger" id="gal-clear">Clear gallery list</button>
+        </div>
+        <div class="status" id="gal-status"></div>
+        <p class="hint">Files download one by one into your Downloads folder. Move them into a synced Google Drive / Dropbox folder and they're safe forever and shareable with collaborators.</p>
+      </div>
+      <div class="gallery">${State.gallery.map(g => galleryItem(g)).join("")}</div>`
         : `<div class="card"><p class="muted">Nothing here yet.</p></div>`}`;
   },
 
@@ -1114,6 +1238,19 @@ const Bind = {
       } catch (e) { setStatus("vo-status", "err", e.message); }
     };
 
+    $("#cap-go").onclick = async () => {
+      const f = $("#cap-audio").files[0];
+      const text = $("#cap-text").value.trim();
+      if (!f || !text) return setStatus("cap-status", "err", "Both the audio file and its script are needed.");
+      try {
+        const dur = await Providers.audioDuration(f);
+        const srt = buildSrt(text, dur, +$("#cap-wpl").value);
+        downloadText(f.name.replace(/\.\w+$/, "") + ".srt", srt);
+        $("#cap-preview").textContent = srt.split("\n").slice(0, 12).join("\n") + "\n…";
+        setStatus("cap-status", "ok", `Captions built for ${dur.toFixed(1)}s of audio — .srt downloaded. Import into CapCut/Premiere/Resolve or upload to YouTube.`);
+      } catch (e) { setStatus("cap-status", "err", e.message); }
+    };
+
     $("#vc-go").onclick = async () => {
       const name = $("#vc-name").value.trim(), files = $("#vc-files").files;
       if (!name || !files.length) return setStatus("vc-status", "err", "Name + at least one audio sample required.");
@@ -1235,6 +1372,169 @@ const Bind = {
     });
   },
 
+  director() {
+    bindChips("dir-style");
+    const log = (msg, ok = false) => {
+      const d = document.createElement("div");
+      d.className = "muted"; d.style.padding = "3px 0";
+      d.textContent = (ok ? "✅ " : "▸ ") + msg;
+      $("#dir-log").appendChild(d);
+    };
+
+    $("#dir-go").onclick = async () => {
+      const topic = $("#dir-topic").value.trim();
+      if (!topic) return setStatus("dir-status", "err", "What's the video about?");
+      const fmt = RIU_DATA.directorFormats[+$("#dir-format").value];
+      const charId = $("#dir-char").value;
+      const modelId = $("#dir-model").value;
+      const style = chipValue("dir-style", RIU_DATA.stylePresets);
+      const btn = $("#dir-go"); btn.disabled = true;
+      $("#dir-log").innerHTML = ""; $("#dir-out").innerHTML = "";
+
+      try {
+        /* ① script */
+        setStatus("dir-status", "info", "Step 1/4 — drafting the script (free writing model)…");
+        let plan;
+        try {
+          plan = await Providers.freeJson(
+            `You are an expert YouTube director. Plan a ${fmt.name} video about: "${topic}". ` +
+            `Return ONLY valid JSON, no markdown: {"title": "video title", "scenes": [{"beat": "2-4 word label", ` +
+            `"narration": "1-3 sentences of spoken voiceover", "visual": "detailed visual description of the shot for an image generator", ` +
+            `"shot": "WIDE" | "MED" | "CLOSE-UP"}]} with exactly ${fmt.scenes} scenes. Strong hook in scene 1, payoff in the last scene.`);
+          if (!plan.scenes?.length) throw new Error("empty plan");
+        } catch {
+          // offline/busy fallback: deterministic plan from the format template
+          const tpl = RIU_DATA.scriptTemplates.find(t => t.id === fmt.id) || RIU_DATA.scriptTemplates[0];
+          plan = {
+            title: topic,
+            scenes: tpl.beats.slice(0, fmt.scenes).map(b => ({
+              beat: b.beat, narration: "", shot: "MED",
+              visual: `${b.beat} of a video about ${topic} — ${b.tip}`,
+            })),
+          };
+          log("Free writing model unavailable — used the template structure instead (fill narration in the Script Builder).");
+        }
+        State.scripts.unshift({
+          title: plan.title, template: "🎥 Director — " + fmt.name,
+          beats: plan.scenes.map(s => ({ beat: s.beat, secs: 0, tip: s.visual, content: s.narration })),
+        });
+        State.saveScripts();
+        log(`Script drafted: "${plan.title}" — ${plan.scenes.length} scenes (saved in Script Builder)`, true);
+
+        /* ② storyboard */
+        setStatus("dir-status", "info", "Step 2/4 — building the storyboard…");
+        const board = {
+          id: "b" + Date.now(), title: plan.title, style, charId, model: modelId,
+          panels: plan.scenes.map(s => ({ shot: s.shot || "MED", desc: s.visual, imgUrl: null })),
+        };
+        State.storyboards.unshift(board);
+        State.saveStoryboards();
+
+        /* ③ panels */
+        const refs = characterRefs(charId);
+        for (let i = 0; i < board.panels.length; i++) {
+          setStatus("dir-status", "info", `Step 3/4 — panel art ${i + 1}/${board.panels.length}…`);
+          const p = board.panels[i];
+          const prompt = characterPrefix(charId) + p.desc + `. ${p.shot} shot. ` +
+            (style ? "Style: " + style + ". " : "") + "Single storyboard still frame, strong cinematic composition.";
+          const seed = (characterSeed(charId) ?? 1234) + i;
+          if (modelId.startsWith("pollinations:")) {
+            p.imgUrl = Providers.freeImageUrl(prompt, { width: fmt.ar === "9:16" ? 720 : 1280, height: fmt.ar === "9:16" ? 1280 : 720, seed, model: modelId.split(":")[1] });
+          } else {
+            const input = /edit/.test(modelId) && refs.length
+              ? { prompt, image_urls: refs, num_images: 1 }
+              : { prompt, aspect_ratio: fmt.ar, seed };
+            const res = await Providers.falRun(modelId, input);
+            p.imgUrl = Providers.extractMedia(res);
+          }
+          State.saveStoryboards();
+        }
+        log(`Storyboard built: ${board.panels.length} panels (open it in the Storyboard Studio)`, true);
+
+        /* ④ narration + captions */
+        const narration = plan.scenes.map(s => s.narration).filter(Boolean).join(" ");
+        let narrationHtml = "";
+        if (narration) {
+          setStatus("dir-status", "info", "Step 4/4 — recording narration + captions…");
+          try {
+            const { blobUrl, blob } = await Providers.freeSpeak(narration, $("#dir-voice").value);
+            const dur = await Providers.audioDuration(blob);
+            const srt = buildSrt(narration, dur, fmt.id === "short" ? 3 : 6);
+            narrationHtml = `<audio src="${blobUrl}" controls style="width:100%"></audio>
+              <div class="mt row">
+                <a class="btn sm fixed" href="${blobUrl}" download="${esc(plan.title)}-narration.mp3">⬇ Narration audio</a>
+                <button class="btn sm fixed" id="dir-srt">⬇ Captions (.srt)</button>
+              </div>`;
+            window._dirSrt = { name: plan.title.replace(/\W+/g, "-") + ".srt", srt };
+            log(`Narration recorded (${dur.toFixed(0)}s) + word-timed captions built`, true);
+          } catch (e) { log("Narration skipped: " + e.message); }
+        } else {
+          log("No narration text yet — write the beats in the Script Builder, then narrate in the Voice Studio.");
+        }
+
+        setStatus("dir-status", "ok", "Production package ready 🎬");
+        $("#dir-out").innerHTML = `
+          <div class="card scene-card">
+            <h3>${esc(plan.title)}</h3>
+            ${narrationHtml}
+            <div class="mt row">
+              <button class="btn primary fixed" id="dir-open-board">🎬 Open storyboard → review panels → 📦 batch-animate</button>
+            </div>
+            <p class="hint">Next: review the board (retry any panel you don't love — pennies each), then batch-animate. Animation is the only paid step and the exact total is quoted before it runs.</p>
+          </div>`;
+        $("#dir-open-board").onclick = () => { State.activeBoardId = board.id; render("storyboard"); };
+        const srtBtn = $("#dir-srt");
+        if (srtBtn) srtBtn.onclick = () => downloadText(window._dirSrt.name, window._dirSrt.srt);
+      } catch (e) {
+        setStatus("dir-status", "err", e.message);
+      }
+      btn.disabled = false;
+    };
+  },
+
+  thumbs() {
+    bindChips("th-comp", false); // multi-select: each chip = one variant
+    $("#th-go").onclick = async () => {
+      const headline = $("#th-headline").value.trim();
+      if (!headline) return setStatus("th-status", "err", "Write the title text first (3–5 punchy words).");
+      let comps = $$("#th-comp .chip.on").map(c => RIU_DATA.thumbCompositions[+c.dataset.i]);
+      if (!comps.length) comps = RIU_DATA.thumbCompositions.slice(0, 4);
+      const charId = $("#th-char").value;
+      const modelId = $("#th-model").value;
+      const emotion = $("#th-emotion").value.replace(/\s*\S+$/, ""); // strip emoji
+      const notes = $("#th-notes").value.trim();
+      const refs = characterRefs(charId);
+      const grid = $("#th-grid"); grid.innerHTML = "";
+      const btn = $("#th-go"); btn.disabled = true;
+
+      for (let i = 0; i < comps.length; i++) {
+        setStatus("th-status", "info", `Variant ${i + 1}/${comps.length} — ${comps[i].name}…`);
+        const prompt = characterPrefix(charId) + comps[i].prompt +
+          `, ${emotion} expression. Giant bold readable title text on the thumbnail: "${headline}". ` +
+          (notes ? notes + ". " : "") + RIU_DATA.thumbSuffix;
+        try {
+          let url;
+          if (modelId.startsWith("pollinations:")) {
+            url = Providers.freeImageUrl(prompt, { width: 1280, height: 720, seed: 500 + i, model: modelId.split(":")[1] });
+          } else {
+            const input = /edit/.test(modelId) && refs.length
+              ? { prompt, image_urls: refs, num_images: 1 }
+              : { prompt, aspect_ratio: "16:9", seed: 500 + i };
+            const res = await Providers.falRun(modelId, input);
+            url = Providers.extractMedia(res);
+          }
+          if (url) {
+            grid.insertAdjacentHTML("beforeend",
+              `<div class="g-item"><img src="${url}"><div class="g-meta"><b>${esc(comps[i].name)}</b><br><a href="${url}" target="_blank" rel="noopener">open / download ↗</a></div></div>`);
+            State.addToGallery({ kind: "image", url, prompt: `Thumb ${comps[i].name}: ${headline}`, model: modelId, cost: modelId.startsWith("pollinations:") ? 0 : (modelsIn("image", "imageEdit").find(x => x.id === modelId)?.cost || 0) });
+          }
+        } catch (e) { setStatus("th-status", "err", `Variant ${i + 1}: ${e.message}`); btn.disabled = false; return; }
+      }
+      setStatus("th-status", "ok", `${comps.length} variants ready — compare below, then A/B test the top 2–3 in YouTube Studio → Test & Compare.`);
+      btn.disabled = false;
+    };
+  },
+
   storyboard() {
     bindChips("sb-style");
 
@@ -1324,6 +1624,48 @@ const Bind = {
       };
 
       $("#sb-close").onclick = () => { syncPanelEdits(); State.activeBoardId = null; render("storyboard"); };
+
+      /* batch-animate: one image→video job per panel with art, quoted first */
+      const batchCost = () => {
+        const b = board();
+        const ready = b.panels.filter(p => p.imgUrl).length;
+        const rate = +($("#sb-vmodel").selectedOptions[0]?.dataset.cost || 0);
+        const secs = +$("#sb-vsecs").value || 5;
+        $("#sb-batch-cost").textContent = ready ? `${ready} clips ≈ $${(ready * secs * rate).toFixed(2)}` : "no panels ready";
+        return { ready, total: ready * secs * rate, secs };
+      };
+      $("#sb-vmodel").onchange = batchCost; $("#sb-vsecs").oninput = batchCost; batchCost();
+
+      $("#sb-batch").onclick = async () => {
+        const b = board(); syncPanelEdits();
+        const { ready, total, secs } = batchCost();
+        if (!ready) return setStatus("sb-batch-status", "err", "Generate panel art first — batch animates panels that have images.");
+        if (!confirm(`Animate ${ready} panels at ${secs}s each?\n\nEstimated total: $${total.toFixed(2)}\n\nThis runs one clip at a time; you can leave the tab open.`)) return;
+        const modelId = $("#sb-vmodel").value;
+        const motion = $("#sb-vmotion").value.trim();
+        const btn = $("#sb-batch"); btn.disabled = true;
+        let done = 0, failed = 0;
+        for (let i = 0; i < b.panels.length; i++) {
+          const p = b.panels[i];
+          if (!p.imgUrl || p.videoUrl) continue;
+          setStatus("sb-batch-status", "info", `Animating panel ${i + 1} (${done + failed + 1}/${ready})…`);
+          try {
+            const res = await Providers.falRun(modelId, {
+              prompt: p.desc + ". " + motion,
+              image_url: p.imgUrl, duration: secs,
+            }, s => setStatus("sb-batch-status", "info", `Panel ${i + 1} — ${s}`));
+            p.videoUrl = Providers.extractMedia(res);
+            if (p.videoUrl) {
+              State.addToGallery({ kind: "video", url: p.videoUrl, prompt: `${b.title} — shot ${i + 1}`, model: modelId, cost: secs * (+$("#sb-vmodel").selectedOptions[0].dataset.cost) });
+              done++;
+            } else failed++;
+            State.saveStoryboards();
+          } catch (e) { failed++; setStatus("sb-batch-status", "err", `Panel ${i + 1}: ${e.message}`); }
+        }
+        setStatus("sb-batch-status", failed ? "err" : "ok",
+          `Batch finished: ${done} clips generated${failed ? `, ${failed} failed (re-run to retry just those)` : ""}. All clips are in the Gallery — download them from the Asset Vault.`);
+        btn.disabled = false;
+      };
 
       $("#sb-print").onclick = () => {
         const b = board(); syncPanelEdits();
@@ -1424,6 +1766,39 @@ const Bind = {
     };
   },
 
+  galleryView() {
+    if (!State.gallery.length) return;
+    $("#gal-dl-all").onclick = async () => {
+      const btn = $("#gal-dl-all"); btn.disabled = true;
+      let ok = 0, fail = 0;
+      for (let i = 0; i < State.gallery.length; i++) {
+        const g = State.gallery[i];
+        setStatus("gal-status", "info", `Downloading ${i + 1}/${State.gallery.length}…`);
+        try {
+          const res = await fetch(g.url);
+          if (!res.ok) throw new Error();
+          const blob = await res.blob();
+          const ext = blob.type.includes("video") ? "mp4" : blob.type.includes("audio") ? "mp3" :
+                      blob.type.includes("png") ? "png" : "jpg";
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `riu-${new Date(g.ts).toISOString().slice(0, 10)}-${i + 1}.${ext}`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+          ok++;
+          await new Promise(r => setTimeout(r, 400)); // let the browser breathe
+        } catch { fail++; }
+      }
+      setStatus("gal-status", fail ? "err" : "ok",
+        `${ok} files downloaded${fail ? `, ${fail} skipped (expired or blocked URLs)` : ""}. Move them into your Google Drive / Dropbox folder to keep them forever.`);
+      btn.disabled = false;
+    };
+    $("#gal-clear").onclick = () => {
+      if (!confirm("Clear the gallery list? (This only clears the list in this browser — downloaded files are untouched.)")) return;
+      State.gallery = []; State.saveGallery(); render("galleryView");
+    };
+  },
+
   settings() {
     $("#set-save").onclick = () => {
       localStorage.setItem("riu.key.fal", $("#set-fal").value.trim());
@@ -1464,6 +1839,7 @@ const Bind = {
 /* ---------------- router ---------------- */
 const NAV = [
   ["dashboard", "🏠", "Dashboard", "Create"],
+  ["director", "🎥", "Director", null],
   ["characters", "🎭", "Character Lab", null],
   ["image", "🖼️", "Image Studio", null],
   ["video", "🎥", "Video Studio", null],
@@ -1475,6 +1851,7 @@ const NAV = [
   ["avatar", "🧑‍🚀", "Avatar Pipeline", null],
   ["script", "✍️", "Script Builder", "Plan"],
   ["storyboard", "🎬", "Storyboard Studio", null],
+  ["thumbs", "🖼️", "Thumbnail Lab", null],
   ["locations", "🗺️", "Location Scout", null],
   ["editor", "✂️", "Editor's Room", null],
   ["cost", "💰", "Cost Planner", null],

@@ -228,6 +228,24 @@ const RIU_DATA = {
   ],
   locationSuffix: "Cinematic wide establishing shot, no people in frame, photorealistic, rich natural light, high detail, room for a subject to be composited into the scene",
 
+  /* Director one-click pipeline formats. */
+  directorFormats: [
+    { id: "short",       name: "⚡ Viral Short (30–60s, 9:16)",        scenes: 5,  ar: "9:16" },
+    { id: "curriculum",  name: "📚 Curriculum lesson (3–8 min, 16:9)", scenes: 7,  ar: "16:9" },
+    { id: "edutainment", name: "🎪 Edutainment (8–15 min, 16:9)",      scenes: 9,  ar: "16:9" },
+    { id: "longform",    name: "🎬 Longform cinematic (15+ min, 16:9)",scenes: 12, ar: "16:9" },
+  ],
+
+  /* Thumbnail A/B Lab — proven high-CTR composition patterns. */
+  thumbCompositions: [
+    { name: "Big face + emotion",   prompt: "extreme close-up of the character's face filling the right half of the frame with a huge exaggerated expression, direct eye contact with camera" },
+    { name: "Pointing at the text", prompt: "character on one side pointing emphatically at the giant title text, eyebrows raised" },
+    { name: "Before / after split", prompt: "dramatic split composition — left side shows the problem state, right side the amazing result, character reacting in the middle" },
+    { name: "Object + shock",       prompt: "character holding up a key object from the video toward the camera, shocked expression, object slightly oversized" },
+  ],
+  thumbEmotions: ["shocked 😱", "excited 🤩", "curious 🤔", "laughing 😂", "serious 😐", "mind-blown 🤯"],
+  thumbSuffix: "YouTube thumbnail style: ultra high contrast, punchy saturated colors, crisp rim lighting on the subject, clean uncluttered background with strong color, sharp focus, composition leaves clear space for the title text, 4K quality",
+
   /* Storyboard panel shot types. */
   shotTypes: ["WIDE", "ESTABLISHING", "MED", "MED CLOSE-UP", "CLOSE-UP", "EXTREME CU", "OVER-SHOULDER", "LOW ANGLE", "HIGH ANGLE", "POV", "INSERT"],
 

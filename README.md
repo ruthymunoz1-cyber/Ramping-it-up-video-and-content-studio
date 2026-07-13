@@ -10,15 +10,18 @@ one to render **melanin-rich skin tones beautifully and consistently**.
 
 | Studio | What it does |
 |---|---|
+| 🎥 **Director** | The one-click pipeline: type a topic → it drafts the script (free writing model), builds the storyboard with your character, generates every panel, records narration, and produces word-timed captions. Script + images can run 100% free; animation is quoted before it runs. |
 | 🎭 **Character Lab** | Create reusable characters with the Monk Skin Tone scale (1–10), undertones, hair textures (1A–4C), and reference photos — then generate a **multi-angle turnaround sheet** (front, ¾ views, profiles, back, close-ups) that anchors their likeness from any camera angle. Every studio auto-injects the consistency token and uses the sheet as the master reference. Single **angle shots** (low-angle hero, over-the-shoulder, etc.) can be pulled off the sheet on demand. |
 | 🖼️ **Image Studio** | **FREE Pollinations models (no key, $0)** plus Nano Banana Pro / GPT Image 2 — cinematic stills, thumbnails, curriculum illustrations. Seed-locking for repeatable results. |
 | 🎥 **Video Studio** | Image-to-video and text-to-video (Kling v3 Pro/4K, Seedance 2.0, Hailuo) with shorts (9:16) and cinematic (16:9) presets, plus a Topaz 4K upscale pass. |
 | 💡 **Relight Studio** | Higgsfield's signature "change the light in any video," done directly on the models: relight one frame (~$0.10), approve it, then push the look onto the whole 3–10s clip with the **original audio preserved**. |
 | 🎞️ **Restyle & Animate** | Turn anything into anything, identity preserved: photo → 3D animated (Pixar-class) / anime / claymation, or a drawing → **realistic human** — plus **children's-book illustration** and **coloring-book line art (no color, printable)** for your books — then animate the result into video. |
-| 🎬 **Storyboard Studio** | Import a saved script (each beat becomes a panel) or start blank; generate consistent panel art with your character; print the board as a PDF or use approved panels as start-images for the Video Studio. |
+| 🎬 **Storyboard Studio** | Import a saved script (each beat becomes a panel) or start blank; generate consistent panel art with your character; print the board as a PDF — then **📦 batch-animate** every approved panel into video clips with one quoted, confirmed run. |
+| 🗄️ **Asset Vault** | Provider URLs expire after a few days — the Gallery's vault downloads everything to your computer in one click, ready to drop into Google Drive / Dropbox for permanent storage. |
 | 🗺️ **Location Scout** | Build a reusable library of establishing shots — world landmarks, cities, museums & exhibitions, classrooms, nature, historical eras, fantasy sets. Saved locations appear as a "Setting" option in the Image Studio. |
 | 👄 **Lip Sync Studio** | Sync any voice track to any face video — the backbone of your talking-avatar pipeline. |
-| 🗣️ **Voice Studio** | **FREE voiceover (6 stock voices, $0)**, plus ElevenLabs voice cloning and narration in 30+ languages. |
+| 🗣️ **Voice Studio** | **FREE voiceover (6 stock voices, $0)**, plus ElevenLabs voice cloning and narration in 30+ languages — and a free **auto-captions** builder (word-timed .srt for CapCut/Premiere/Resolve/YouTube). |
+| 🖼️ **Thumbnail A/B Lab** | Generate 2–4 thumbnail variants from proven high-CTR compositions (big face + emotion, pointing at text, before/after split…), compare side by side, then A/B test in YouTube Studio. |
 | 🎵 **Music Studio** | Generate background scores, intros/outros, and full songs with lyrics. |
 | 🧑‍🚀 **Avatar Pipeline** | One flow: character portrait → animate → narration → lip-synced talking avatar. Perfect for lesson presenters and channel hosts. |
 | ✍️ **Script & Scene Builder** | Curriculum lesson templates (hook → teach → recap), viral shorts beat sheets, edutainment and longform cinematic structures. |
