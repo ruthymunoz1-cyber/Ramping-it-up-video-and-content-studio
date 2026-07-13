@@ -825,6 +825,22 @@ const Views = {
         <div class="status" id="set-status"></div>
       </div>
       <div class="card">
+        <h3>✅ Test my setup (live)</h3>
+        <p class="muted">Runs real generations with your keys so you know everything works before a big project. Each step tells you exactly what passed or failed.</p>
+        <div class="row">
+          <button class="btn fixed" id="test-free">1️⃣ Test FREE image ($0)</button>
+          <button class="btn fixed" id="test-fal">2️⃣ Test fal.ai image (~$0.04)</button>
+          <button class="btn fixed" id="test-eleven">3️⃣ Test ElevenLabs ($0)</button>
+        </div>
+        <div class="status" id="test-status"></div>
+        <div class="result-media" id="test-result"></div>
+        <div class="divider"></div>
+        <p class="muted">Step 4 — the real video test. Uses the image from step 2 and animates it for 5 seconds with Kling v3 Pro.</p>
+        <button class="btn primary" id="test-video" disabled>4️⃣ Test video (~$0.84 — the only paid test)</button>
+        <div class="status" id="test-vstatus"></div>
+        <div class="result-media" id="test-vresult"></div>
+      </div>
+      <div class="card">
         <h3>Model registry (advanced)</h3>
         <p class="muted">When providers release new models, update IDs/prices here — no code changes needed. JSON format matching the built-in registry.</p>
         <textarea id="set-models" style="min-height:200px">${esc(JSON.stringify(Store.get("modelOverrides", RIU_DATA.models), null, 2))}</textarea>
@@ -1805,6 +1821,73 @@ const Bind = {
       localStorage.setItem("riu.key.eleven", $("#set-eleven").value.trim());
       setStatus("set-status", "ok", "Keys saved (in this browser only).");
     };
+    /* ---- live setup tests ---- */
+    const TEST_PROMPT = "A joyful Black woman teacher with deep, rich mahogany brown skin (Monk Skin Tone 8), " +
+      "knotless braids, warm golden rim light, luminous properly exposed skin, teaching at a bright modern " +
+      "whiteboard, chest-up, smiling at camera, photorealistic, extremely detailed";
+    let testImageUrl = null;
+
+    $("#test-free").onclick = async () => {
+      try {
+        setStatus("test-status", "info", "FREE image test — generating on Pollinations (no key needed, 20–60s)…");
+        const out = await Providers.freeImage(TEST_PROMPT, { width: 1280, height: 720, seed: 7 });
+        setStatus("test-status", "ok", "✅ FREE provider works — image below cost $0.00.");
+        showMedia("test-result", "image", out.blobUrl);
+      } catch (e) {
+        setStatus("test-status", "err", "❌ Free provider: " + e.message);
+      }
+    };
+
+    $("#test-fal").onclick = async () => {
+      if (!Providers.keys().fal) return setStatus("test-status", "err", "Paste your fal.ai key above and click Save keys first.");
+      try {
+        setStatus("test-status", "info", "fal.ai test — generating with Nano Banana Pro…");
+        const m = models("image").find(x => !x.free) || { id: "fal-ai/nano-banana-pro", cost: 0.04 };
+        const res = await Providers.falRun(m.id, { prompt: TEST_PROMPT, aspect_ratio: "16:9" },
+          s => setStatus("test-status", "info", "fal.ai test — " + s));
+        testImageUrl = Providers.extractMedia(res);
+        if (!testImageUrl) throw new Error("job finished but returned no image.");
+        setStatus("test-status", "ok", `✅ fal.ai works! Key is valid, billing is set up, model responded (~$${m.cost}). Step 4 is now unlocked.`);
+        showMedia("test-result", "image", testImageUrl);
+        State.addToGallery({ kind: "image", url: testImageUrl, prompt: "Setup test image", model: m.id, cost: m.cost });
+        $("#test-video").disabled = false;
+      } catch (e) {
+        let msg = e.message;
+        if (/401|403/.test(msg)) msg += "\n→ The key looks invalid or was revoked. Copy it again from fal.ai → Dashboard → Keys.";
+        if (/402|balance|payment/i.test(msg)) msg += "\n→ Add a payment method / credits at fal.ai → Billing.";
+        setStatus("test-status", "err", "❌ fal.ai: " + msg);
+      }
+    };
+
+    $("#test-eleven").onclick = async () => {
+      if (!Providers.keys().eleven) return setStatus("test-status", "err", "No ElevenLabs key saved — that's fine, the free voices still work. Add a key to enable voice cloning.");
+      try {
+        setStatus("test-status", "info", "ElevenLabs test — listing your voices…");
+        const voices = await Providers.elVoices();
+        setStatus("test-status", "ok", `✅ ElevenLabs works — ${voices.length} voices available (listing is free).`);
+      } catch (e) { setStatus("test-status", "err", "❌ ElevenLabs: " + e.message); }
+    };
+
+    $("#test-video").onclick = async () => {
+      if (!testImageUrl) return;
+      const m = models("video")[0];
+      if (!confirm(`Run the live video test?\n\n5 seconds × ${m.name}\nEstimated cost: ~$${(m.cost * 5).toFixed(2)}`)) return;
+      const btn = $("#test-video"); btn.disabled = true;
+      try {
+        setStatus("test-vstatus", "info", "Animating your test image (1–3 min — this is the real thing)…");
+        const res = await Providers.falRun(m.id, {
+          prompt: "she gestures warmly while explaining, natural motion, slow cinematic dolly-in",
+          image_url: testImageUrl, duration: 5,
+        }, s => setStatus("test-vstatus", "info", "Video test — " + s));
+        const url = Providers.extractMedia(res);
+        if (!url) throw new Error("job finished but returned no video.");
+        setStatus("test-vstatus", "ok", `✅ VIDEO WORKS! Your studio is fully operational. (~$${(m.cost * 5).toFixed(2)})`);
+        showMedia("test-vresult", "video", url);
+        State.addToGallery({ kind: "video", url, prompt: "Setup test video", model: m.id, cost: m.cost * 5 });
+      } catch (e) { setStatus("test-vstatus", "err", "❌ Video: " + e.message); }
+      btn.disabled = false;
+    };
+
     $("#set-models-save").onclick = () => {
       try {
         Store.set("modelOverrides", JSON.parse($("#set-models").value));
