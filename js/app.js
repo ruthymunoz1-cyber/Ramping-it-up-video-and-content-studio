@@ -58,10 +58,14 @@ function characterSeed(charId) {
   const c = State.characters.find(x => x.id === charId);
   return c ? c.seed : undefined;
 }
-function characterRef(charId) {
+/* Reference images for a character: the turnaround sheet is the strongest
+ * anchor (it carries every angle), the uploaded photo second. Max 2 refs —
+ * more muddies edit-model results. */
+function characterRefs(charId) {
   const c = State.characters.find(x => x.id === charId);
-  return c?.refImage || null;
+  return c ? [c.sheetUrl, c.refImage].filter(Boolean).slice(0, 2) : [];
 }
+function characterRef(charId) { return characterRefs(charId)[0] || null; }
 
 /* ---------------- shared UI helpers ---------------- */
 function charSelectHtml(id, label = "Character (optional — keeps your host consistent)") {
@@ -70,8 +74,11 @@ function charSelectHtml(id, label = "Character (optional — keeps your host con
     <select id="${id}"><option value="">— none —</option>${opts}</select>`;
 }
 
-function modelSelectHtml(id, category) {
-  const opts = models(category).map(m =>
+function modelsIn(...categories) {
+  return categories.flatMap(c => models(c));
+}
+function modelSelectHtml(id, ...categories) {
+  const opts = modelsIn(...categories).map(m =>
     `<option value="${esc(m.id)}" data-cost="${m.cost}" data-unit="${m.unit}">${esc(m.name)} — ~$${m.cost}/${m.unit}</option>`).join("");
   return `<label class="f-label">Model</label><select id="${id}">${opts}</select>
     <div class="hint">Prices are provider estimates. Edit the registry in ⚙️ Settings when new models ship.</div>`;
@@ -176,19 +183,32 @@ const Views = {
             <span class="tag">seed ${c.seed}</span>
           </div>
           <div class="char-token">${esc(compileCharacterToken(c))}</div>
+          ${c.sheetUrl ? `
+          <div class="mt"><span class="tag gold">✓ Turnaround sheet on file — used as the master reference in every generation</span></div>
+          <div class="result-media"><img src="${c.sheetUrl}" alt="character sheet" style="max-height:220px"></div>
+          <label class="f-label">Generate a single angle shot from the sheet</label>
+          <div class="row">
+            <select data-angle-sel="${c.id}">${RIU_DATA.angleShots.map((a, i) => `<option value="${i}">${a.name}</option>`).join("")}</select>
+            <button class="btn sm fixed" data-gen-angle="${c.id}">📐 Generate angle (~$0.04)</button>
+          </div>` : ""}
           <div class="mt row">
-            <button class="btn sm fixed" data-gen-portrait="${c.id}">🖼 Generate master portrait</button>
+            <button class="btn sm fixed" data-gen-sheet="${c.id}">🧩 ${c.sheetUrl ? "Regenerate" : "Generate"} character sheet (all angles)</button>
+            <button class="btn sm fixed" data-gen-portrait="${c.id}">🖼 Master portrait</button>
             <button class="btn sm danger fixed" data-del-char="${c.id}">Delete</button>
           </div>
+          <div class="status" data-char-status="${c.id}"></div>
+          <div class="result-media" data-char-result="${c.id}"></div>
         </div>
       </div>`;
     }).join("");
 
     return `
       <div class="page-head"><div class="page-title">🎭 Character Lab</div>
-      <div class="page-desc">Define a character once — the studio compiles a precise <b>consistency token</b>
-      and locks a seed, so your host looks like the same person in every image and video. The skin-tone system
-      uses the Monk Skin Tone (MST) scale and adds lighting guidance so deep skin renders luminous, never ashy.</div></div>
+      <div class="page-desc">Define a character once — the studio compiles a precise <b>consistency token</b>,
+      locks a seed, and builds a <b>multi-angle turnaround sheet</b> (front, profiles, back, ¾ views + close-ups)
+      that anchors their likeness from <b>any camera angle</b> in every studio. The skin-tone system uses the
+      Monk Skin Tone (MST) scale and adds lighting guidance so deep skin renders luminous, never ashy.
+      <br><span class="muted">Workflow: create character → 🧩 generate the sheet → everything else stays consistent automatically.</span></div></div>
 
       ${list || `<p class="pill-note">No characters yet — create your first host below.</p>`}
 
@@ -237,7 +257,8 @@ const Views = {
       <div class="page-desc">Cinematic stills, thumbnails and curriculum illustrations. Pick a character to keep your host consistent; pick a style; generate. If your character has a reference photo, use a Nano Banana Edit model for exact likeness.</div></div>
       <div class="card">
         ${charSelectHtml("img-char")}
-        ${modelSelectHtml("img-model", "image")}
+        ${modelSelectHtml("img-model", "image", "imageEdit")}
+        <div class="hint">Tip: when your character has a turnaround sheet or reference photo, pick an <b>Edit</b> model — it anchors on the sheet for exact likeness from any angle.</div>
         <label class="f-label">Scene prompt</label>
         <textarea id="img-prompt" placeholder="e.g. standing at a bright modern whiteboard explaining fractions, medium shot, smiling at camera"></textarea>
         <label class="f-label">Style preset</label>
@@ -642,6 +663,69 @@ const Bind = {
       State.saveCharacters(); render("characters");
     });
 
+    const charSay = (id, kind, msg) => {
+      const el = $(`[data-char-status="${id}"]`);
+      el.className = `status show ${kind}`;
+      el.innerHTML = kind === "info" ? `<span class="spinner"></span>${esc(msg)}` : esc(msg);
+    };
+
+    /* Turnaround sheet: the master any-angle reference. Built from the
+     * uploaded photo when there is one (exact likeness), otherwise from the
+     * consistency token + locked seed. Free provider used when no fal key. */
+    $$("[data-gen-sheet]").forEach(b => b.onclick = async () => {
+      const c = State.characters.find(x => x.id === b.dataset.genSheet);
+      const prompt = compileCharacterToken(c) + ". " + RIU_DATA.sheetPrompt;
+      b.disabled = true;
+      try {
+        let url, cost = 0;
+        if (Providers.keys().fal) {
+          if (c.refImage) {
+            const m = models("imageEdit").find(x => /nano-banana-pro/.test(x.id)) || models("imageEdit")[0];
+            charSay(c.id, "info", "Building turnaround sheet from your reference photo…");
+            const res = await Providers.falRun(m.id,
+              { prompt: "Using the exact person in the reference image: " + prompt, image_urls: [c.refImage], aspect_ratio: "16:9", resolution: "2K", num_images: 1 },
+              s => charSay(c.id, "info", s));
+            url = Providers.extractMedia(res); cost = m.cost;
+          } else {
+            const m = models("image").find(x => !x.free) || models("image")[0];
+            charSay(c.id, "info", "Building turnaround sheet…");
+            const res = await Providers.falRun(m.id, { prompt, seed: c.seed, aspect_ratio: "16:9" }, s => charSay(c.id, "info", s));
+            url = Providers.extractMedia(res); cost = m.cost;
+          }
+        } else {
+          charSay(c.id, "info", "Building turnaround sheet on the FREE provider (20–60s)…");
+          const out = await Providers.freeImage(prompt, { width: 1792, height: 1024, seed: c.seed });
+          url = out.sourceUrl;
+        }
+        if (!url) throw new Error("No sheet returned — try again.");
+        c.sheetUrl = url;
+        State.saveCharacters();
+        State.addToGallery({ kind: "image", url, prompt: "Character turnaround sheet: " + c.name, model: "character-sheet", cost });
+        render("characters");
+      } catch (e) { charSay(c.id, "err", e.message); b.disabled = false; }
+    });
+
+    /* Single angle shot pulled off the sheet — any camera angle, same person. */
+    $$("[data-gen-angle]").forEach(b => b.onclick = async () => {
+      const c = State.characters.find(x => x.id === b.dataset.genAngle);
+      if (!Providers.keys().fal)
+        return charSay(c.id, "err", "Angle shots use a reference-based edit model, which needs your fal.ai key (⚙️ Settings). The sheet itself can be made free.");
+      const angle = RIU_DATA.angleShots[+$(`[data-angle-sel="${c.id}"]`).value];
+      const m = models("imageEdit").find(x => /nano-banana-pro/.test(x.id)) || models("imageEdit")[0];
+      const prompt = `The exact same character as in the reference turnaround sheet — same face, same hairstyle, same outfit and colors — now shown as a single ${angle.prompt}. Photorealistic, highly detailed, plain studio background.`;
+      b.disabled = true;
+      try {
+        charSay(c.id, "info", `Generating ${angle.name} shot…`);
+        const res = await Providers.falRun(m.id, { prompt, image_urls: [c.sheetUrl], num_images: 1 }, s => charSay(c.id, "info", s));
+        const url = Providers.extractMedia(res);
+        if (!url) throw new Error("No image returned.");
+        charSay(c.id, "ok", `${angle.name} shot ready — also saved to the Gallery.`);
+        $(`[data-char-result="${c.id}"]`).innerHTML = `<img src="${url}" alt="${esc(angle.name)}">`;
+        State.addToGallery({ kind: "image", url, prompt: `${c.name} — ${angle.name} angle`, model: m.id, cost: m.cost });
+      } catch (e) { charSay(c.id, "err", e.message); }
+      b.disabled = false;
+    });
+
     $$("[data-gen-portrait]").forEach(b => b.onclick = async () => {
       const c = State.characters.find(x => x.id === b.dataset.genPortrait);
       b.disabled = true; b.textContent = "Generating…";
@@ -649,7 +733,16 @@ const Bind = {
         ". Professional master portrait, chest-up, looking at camera, neutral studio background, photorealistic, extremely detailed";
       try {
         let url, m;
-        if (Providers.keys().fal) {
+        const refs = characterRefs(c.id);
+        if (Providers.keys().fal && refs.length) {
+          // exact likeness: edit model anchored on the sheet / reference photo
+          m = models("imageEdit").find(x => /nano-banana-pro/.test(x.id)) || models("imageEdit")[0];
+          const result = await Providers.falRun(m.id, {
+            prompt: "Using the exact person in the reference image(s): " + prompt,
+            image_urls: refs, aspect_ratio: "3:4", num_images: 1,
+          });
+          url = Providers.extractMedia(result);
+        } else if (Providers.keys().fal) {
           m = models("image").find(x => !x.free) || models("image")[0];
           const result = await Providers.falRun(m.id, { prompt, seed: c.seed, aspect_ratio: "3:4" });
           url = Providers.extractMedia(result);
@@ -678,7 +771,7 @@ const Bind = {
 
     $("#img-go").onclick = async () => {
       const modelId = $("#img-model").value;
-      const m = models("image").find(x => x.id === modelId);
+      const m = modelsIn("image", "imageEdit").find(x => x.id === modelId);
       const charId = $("#img-char").value;
       const style = chipValue("img-style", RIU_DATA.stylePresets);
       const arSel = $$("#img-ar .chip.on")[0];
@@ -704,9 +797,10 @@ const Bind = {
       const input = { prompt, image_size: sizeMap[ar] || "landscape_16_9" };
       if (/nano-banana|gpt-image/.test(modelId)) { delete input.image_size; input.aspect_ratio = ar; }
       if (seed != null) input.seed = seed;
-      // Reference-based models take image_urls for likeness
-      const ref = characterRef(charId);
-      if (ref && /edit|kontext/i.test(modelId)) input.image_urls = [ref];
+      // Reference-based models take image_urls for likeness — the turnaround
+      // sheet (if the character has one) is the strongest anchor
+      const refs = characterRefs(charId);
+      if (refs.length && /edit|kontext/i.test(modelId)) input.image_urls = refs;
       runFalJob({ statusId: "img-status", resultId: "img-result", kind: "image", modelId, input, prompt, cost: m.cost });
     };
   },
@@ -952,10 +1046,15 @@ const Bind = {
       try {
         // ① portrait
         setStatus("av-status", "info", "Step 1/4 — generating portrait…");
-        const imgModel = models("image").find(x => !x.free) || models("image")[0];
-        const portraitPrompt = characterPrefix(charId) + $("#av-setting").value.trim() +
+        const refs = characterRefs(charId);
+        const imgModel = refs.length
+          ? (models("imageEdit").find(x => /nano-banana-pro/.test(x.id)) || models("imageEdit")[0])
+          : (models("image").find(x => !x.free) || models("image")[0]);
+        const portraitPrompt = (refs.length ? "Using the exact person in the reference image(s): " : "") +
+          characterPrefix(charId) + $("#av-setting").value.trim() +
           ", photorealistic, extremely detailed, mouth closed, neutral pleasant expression";
         const imgIn = { prompt: portraitPrompt, aspect_ratio: $("#av-ar").value };
+        if (refs.length) imgIn.image_urls = refs;
         const seed = characterSeed(charId); if (seed != null) imgIn.seed = seed;
         const imgRes = await Providers.falRun(imgModel.id, imgIn, s => setStatus("av-status", "info", "Step 1/4 — " + s));
         const portraitUrl = Providers.extractMedia(imgRes);

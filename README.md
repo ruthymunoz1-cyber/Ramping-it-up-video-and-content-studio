@@ -10,7 +10,7 @@ one to render **melanin-rich skin tones beautifully and consistently**.
 
 | Studio | What it does |
 |---|---|
-| 🎭 **Character Lab** | Create reusable characters with the Monk Skin Tone scale (1–10), undertones, hair textures (1A–4C), and reference photos. Every studio auto-injects your character's "consistency token" so they look the same in every image and video. |
+| 🎭 **Character Lab** | Create reusable characters with the Monk Skin Tone scale (1–10), undertones, hair textures (1A–4C), and reference photos — then generate a **multi-angle turnaround sheet** (front, ¾ views, profiles, back, close-ups) that anchors their likeness from any camera angle. Every studio auto-injects the consistency token and uses the sheet as the master reference. Single **angle shots** (low-angle hero, over-the-shoulder, etc.) can be pulled off the sheet on demand. |
 | 🖼️ **Image Studio** | **FREE Pollinations models (no key, $0)** plus Nano Banana Pro / GPT Image 2 — cinematic stills, thumbnails, curriculum illustrations. Seed-locking for repeatable results. |
 | 🎥 **Video Studio** | Image-to-video and text-to-video (Kling v3 Pro/4K, Seedance 2.0, Hailuo) with shorts (9:16) and cinematic (16:9) presets, plus a Topaz 4K upscale pass. |
 | 💡 **Relight Studio** | Higgsfield's signature "change the light in any video," done directly on the models: relight one frame (~$0.10), approve it, then push the look onto the whole 3–10s clip with the **original audio preserved**. |
@@ -75,7 +75,13 @@ button and totals up full projects (e.g. a 10-scene lesson video).
    style, eyes, face, wardrobe, age, vibe — plus optional reference photos.
 2. The Lab compiles this into a rich **consistency token** (a precise reusable
    description block) and pins a **seed**.
-3. Every studio prepends that token + seed to your prompts, and image-to-video
+3. Generate the **turnaround sheet** — one image showing the character full-body
+   from five angles plus face close-ups, identical outfit and features. The
+   sheet is stored on the character and passed as the primary reference to
+   every reference-based generation, which is what keeps the likeness locked
+   **from any camera angle** (profiles and backs included, where text prompts
+   alone drift).
+4. Every studio prepends the token + seed to your prompts, and image-to-video
    flows reuse the same portrait — so your host looks like the *same person*
    across your whole channel.
 4. For deep skin tones, prompts automatically include exposure/lighting

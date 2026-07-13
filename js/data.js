@@ -47,6 +47,27 @@ const RIU_DATA = {
     ],
   },
 
+  /* Character turnaround sheet — the master reference for any-angle consistency. */
+  sheetPrompt:
+    "Character reference turnaround sheet on a single image: the EXACT same character shown " +
+    "full-body from five angles side by side — front view, three-quarter left view, left profile, " +
+    "back view, three-quarter right view — plus a chest-up front close-up and a side-face close-up. " +
+    "Identical face, identical hairstyle, identical outfit and colors in every view. Neutral relaxed " +
+    "standing pose, arms at sides, plain light-grey seamless studio background, soft even professional " +
+    "lighting, photorealistic, highly detailed, no text, no labels, no props.",
+
+  angleShots: [
+    { name: "Front",            prompt: "straight-on front view, looking at camera" },
+    { name: "¾ Left",           prompt: "three-quarter view from the left" },
+    { name: "¾ Right",          prompt: "three-quarter view from the right" },
+    { name: "Left profile",     prompt: "exact left side profile" },
+    { name: "Right profile",    prompt: "exact right side profile" },
+    { name: "Back",             prompt: "view from directly behind" },
+    { name: "Face close-up",    prompt: "front face close-up portrait, chest-up" },
+    { name: "Low-angle hero",   prompt: "dramatic low-angle hero shot looking up at the character" },
+    { name: "Over-the-shoulder",prompt: "over-the-shoulder view from behind, face turned slightly toward camera" },
+  ],
+
   /* Restyle presets for the Restyle & Animate studio (photo ↔ animation). */
   restylePresets: [
     { name: "→ Realistic human (from cartoon/drawing)", prompt: "Recreate the subject from the reference image as a hyper-realistic photograph of a real human — photorealistic skin with natural texture and true-to-life undertones, real fabric, natural lighting, shot on a cinema camera, 4K detail. Keep the same identity, outfit, pose and framing." },
