@@ -39,7 +39,7 @@ function models(category) {
 /* ---------------- character consistency engine ---------------- */
 function compileCharacterToken(c) {
   const parts = [];
-  parts.push(`${c.name}, a ${c.gender || "person"}${c.age ? " " + c.age : ""}`);
+  parts.push(`${c.name}, a ${c.ethnicity ? c.ethnicity + " " : ""}${c.gender || "person"}${c.age ? " " + c.age : ""}`);
   const tone = RIU_DATA.skinTones.find(t => t.mst === c.mst);
   if (tone) parts.push(`with ${tone.desc} skin (Monk Skin Tone ${tone.mst})${c.undertone ? `, ${c.undertone} undertones` : ""}`);
   if (c.hairTexture || c.hairStyle) {
@@ -238,6 +238,7 @@ const Views = {
         <div class="char-body">
           <div class="char-name">${esc(c.name)}</div>
           <div>
+            ${c.ethnicity ? `<span class="tag">${esc(c.ethnicity)}</span>` : ""}
             <span class="tag gold">MST ${c.mst}${tone ? " · " + esc(tone.desc.split(",")[0]) : ""}</span>
             ${c.hairStyle ? `<span class="tag">${esc(c.hairStyle)}</span>` : ""}
             <span class="tag">seed ${c.seed}</span>
@@ -277,10 +278,12 @@ const Views = {
         <div class="row">
           <div><label class="f-label">Name</label><input type="text" id="c-name" placeholder="e.g. Ms. Ruthy"></div>
           <div><label class="f-label">Age</label><input type="text" id="c-age" placeholder="e.g. in her 30s"></div>
-          <div><label class="f-label">Gender / identity</label><input type="text" id="c-gender" placeholder="e.g. Black woman"></div>
+          <div><label class="f-label">Gender / identity</label><input type="text" id="c-gender" placeholder="e.g. woman"></div>
         </div>
+        <label class="f-label">Ethnicity / ancestry (optional — any race/ethnicity works; this pins it explicitly rather than leaving it to guesswork)</label>
+        <input type="text" id="c-ethnicity" placeholder="e.g. Japanese, Irish, Nigerian, Mexican, Korean-American, mixed Filipino-Italian…">
 
-        <label class="f-label">Skin tone — Monk Skin Tone scale</label>
+        <label class="f-label">Skin tone — Monk Skin Tone scale (full range, fair to deepest — pick whichever matches)</label>
         <div class="tone-row" id="c-tones">
           ${RIU_DATA.skinTones.map(t => `<div class="tone" data-mst="${t.mst}" style="background:${t.hex}" title="${esc(t.desc)}"><span>${t.mst}</span></div>`).join("")}
         </div>
@@ -1060,6 +1063,7 @@ const Bind = {
       State.characters.push({
         id: "c" + Date.now(),
         name, age: $("#c-age").value.trim(), gender: $("#c-gender").value.trim(),
+        ethnicity: $("#c-ethnicity").value.trim(),
         mst: selMst, undertone: $("#c-undertone").value,
         hairTexture: $("#c-hairtex").value, hairStyle: $("#c-hairstyle").value,
         hairColor: $("#c-haircolor").value.trim(),

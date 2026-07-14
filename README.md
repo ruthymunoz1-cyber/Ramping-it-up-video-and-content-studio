@@ -80,8 +80,12 @@ button and totals up full projects (e.g. a 10-scene lesson video).
 
 ## 🧬 Character consistency — how it works
 
-1. Define a character once: skin tone (Monk scale), undertone, hair texture &
-   style, eyes, face, wardrobe, age, vibe — plus optional reference photos.
+1. Define a character once: **any race or ethnicity** (explicit field — Japanese,
+   Irish, Nigerian, Mexican, mixed, etc.), skin tone across the **full Monk
+   scale** (fair to deepest), undertone, hair texture & style, eyes, face,
+   wardrobe, age, vibe — plus optional reference photos. The extra lighting
+   guidance (see below) only ever applies at deeper tones, to fix a real bias
+   most AI tools have there — it never limits or excludes lighter tones.
 2. The Lab compiles this into a rich **consistency token** (a precise reusable
    description block) and pins a **seed**.
 3. Generate the **turnaround sheet** — one image showing the character full-body
