@@ -18,12 +18,23 @@ and Claude calls your studio's tools directly.
 | `lip_sync` | Voice audio + face video → talking clip | ~$0.06/s |
 | `generate_music` | Scores & full songs (lyrics switch to the song model) | ~$0.03–0.10 |
 | `upscale_video` | Topaz clean/sharpen/upscale | ~$0.02/s |
+| `list_voices` | List your ElevenLabs voices (built-in + cloned) with their voice_ids | free |
+| `generate_narration` | Text → speech in a named voice, saved as a local MP3 (ElevenLabs returns audio bytes, not a URL, so this writes to disk and hands back the path) | your ElevenLabs plan |
+| `clone_voice` | Clone a new voice from 1–3 local audio samples | your ElevenLabs plan |
+
+ElevenLabs tools need a plan tier that supports the feature (voice cloning
+requires Starter or above). Generated narration files are saved to
+`~/Documents/Ramping It Up Studio/mcp-audio/` by default — override with the
+`RIU_MCP_OUTPUT_DIR` env var.
 
 ## Setup — Claude Code (one command)
 
 ```bash
-claude mcp add ramping-it-up -e FAL_KEY=YOUR-FAL-KEY -- node /full/path/to/this/repo/mcp/server.mjs
+claude mcp add ramping-it-up -e FAL_KEY=YOUR-FAL-KEY -e ELEVEN_KEY=YOUR-ELEVENLABS-KEY -- node /full/path/to/this/repo/mcp/server.mjs
 ```
+
+(Omit `-e ELEVEN_KEY=...` if you only want the fal.ai tools — the ElevenLabs
+tools will just report they need a key when called.)
 
 ## Setup — Claude Desktop
 
@@ -35,7 +46,7 @@ Add to your `claude_desktop_config.json` (Settings → Developer → Edit Config
     "ramping-it-up": {
       "command": "node",
       "args": ["/full/path/to/this/repo/mcp/server.mjs"],
-      "env": { "FAL_KEY": "YOUR-FAL-KEY" }
+      "env": { "FAL_KEY": "YOUR-FAL-KEY", "ELEVEN_KEY": "YOUR-ELEVENLABS-KEY" }
     }
   }
 }
