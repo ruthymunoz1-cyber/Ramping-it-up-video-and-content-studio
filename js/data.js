@@ -246,6 +246,39 @@ const RIU_DATA = {
   thumbEmotions: ["shocked 😱", "excited 🤩", "curious 🤔", "laughing 😂", "serious 😐", "mind-blown 🤯"],
   thumbSuffix: "YouTube thumbnail style: ultra high contrast, punchy saturated colors, crisp rim lighting on the subject, clean uncluttered background with strong color, sharp focus, composition leaves clear space for the title text, 4K quality",
 
+  /* Ambient / background sound presets — generated via Stable Audio (fal, ~$0.03/track). */
+  ambientPresets: [
+    { name: "Gentle rain",        prompt: "gentle rain falling ambience, soft steady rhythm, seamless loop, no music, no voices, calm background sound" },
+    { name: "Cozy fireplace",     prompt: "crackling wood fireplace ambience, warm cozy room tone, seamless loop, no music, no voices" },
+    { name: "Ocean waves",        prompt: "gentle ocean waves rolling onto a beach, seamless loop, no music, no voices" },
+    { name: "Forest & birds",     prompt: "peaceful forest ambience, birds chirping, light wind in leaves, seamless loop, no music, no voices" },
+    { name: "Classroom hum",      prompt: "soft classroom background room tone, distant quiet chatter, seamless loop, no music" },
+    { name: "Coffee shop",        prompt: "cozy coffee shop ambience, distant murmuring, cup clinks, seamless loop, no music, no voices" },
+    { name: "Wind & open air",    prompt: "soft open-air wind ambience, outdoor natural room tone, seamless loop, no music, no voices" },
+    { name: "City traffic (soft)",prompt: "distant soft city traffic ambience, urban background tone, seamless loop, no music, no voices" },
+    { name: "White noise / focus",prompt: "smooth even white noise, focus and study background, seamless loop, no music, no voices" },
+    { name: "Night crickets",     prompt: "quiet night ambience, crickets chirping, calm and still, seamless loop, no music, no voices" },
+  ],
+
+  /* Genuinely free, no-API royalty-free libraries — for anything the studio
+   * doesn't need to generate (or when $0 truly matters and quality of a
+   * pre-made track beats a generated one). Licenses vary — always read the
+   * specific track's terms; "royalty-free" is not always "attribution-free". */
+  royaltyFreeSources: [
+    { name: "YouTube Audio Library", url: "https://studio.youtube.com — Audio Library tab", note: "Huge, free for YouTube use, filter by 'no attribution required'." },
+    { name: "Pixabay Music & SFX",   url: "https://pixabay.com/music/ and /sound-effects/", note: "Free for commercial use, no attribution required." },
+    { name: "Freesound.org",         url: "https://freesound.org", note: "Huge SFX/nature library — check each clip's license (many need attribution)." },
+    { name: "Free Music Archive",    url: "https://freemusicarchive.org", note: "Curated free music — check each track's specific license." },
+    { name: "Uppbeat",               url: "https://uppbeat.io", note: "Free tier with attribution, or a paid tier for attribution-free." },
+  ],
+
+  /* Whiteboard / faceless-video caption styles. */
+  whiteboardStyles: [
+    { id: "whiteboard", name: "Whiteboard (light)", bg: "#f7f5ef", ink: "#1c1c1c", accent: "#d94f3d" },
+    { id: "blackboard", name: "Blackboard (chalk)", bg: "#1f2a24", ink: "#f2efe4", accent: "#f5c04e" },
+    { id: "slate",      name: "Slate (faceless video)", bg: "#0f1220", ink: "#f2f0ec", accent: "#59e0b5" },
+  ],
+
   /* Storyboard panel shot types. */
   shotTypes: ["WIDE", "ESTABLISHING", "MED", "MED CLOSE-UP", "CLOSE-UP", "EXTREME CU", "OVER-SHOULDER", "LOW ANGLE", "HIGH ANGLE", "POV", "INSERT"],
 

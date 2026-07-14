@@ -152,6 +152,84 @@ const Providers = {
     return JSON.parse(t.slice(a, b + 1));
   },
 
+  /* ---------------- Web Audio engine — mixing, concatenation, WAV export ----
+   * Everything below is pure browser Web Audio API: no server, no deps.
+   * Powers multi-voice dialogue tracks and narration+music+ambient mixdowns.
+   */
+  _decodeCtx: null,
+  async decodeAudio(blobOrFile) {
+    this._decodeCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await blobOrFile.arrayBuffer();
+    return await this._decodeCtx.decodeAudioData(buf);
+  },
+
+  audioBufferToWav(buffer) {
+    const numCh = buffer.numberOfChannels;
+    const len = buffer.length * numCh * 2 + 44;
+    const out = new ArrayBuffer(len);
+    const view = new DataView(out);
+    const ws = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+    ws(0, "RIFF"); view.setUint32(4, 36 + buffer.length * numCh * 2, true); ws(8, "WAVE");
+    ws(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, numCh, true);
+    view.setUint32(24, buffer.sampleRate, true); view.setUint32(28, buffer.sampleRate * numCh * 2, true);
+    view.setUint16(32, numCh * 2, true); view.setUint16(34, 16, true);
+    ws(36, "data"); view.setUint32(40, buffer.length * numCh * 2, true);
+    const channels = []; for (let c = 0; c < numCh; c++) channels.push(buffer.getChannelData(c));
+    let pos = 44;
+    for (let i = 0; i < buffer.length; i++) {
+      for (let c = 0; c < numCh; c++) {
+        let s = Math.max(-1, Math.min(1, channels[c][i]));
+        view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+        pos += 2;
+      }
+    }
+    return new Blob([out], { type: "audio/wav" });
+  },
+
+  /* Mix several tracks (narration + music + ambient) into one file. Each
+   * track: { blob, volume (0-2), loop (bool) — loop stretches/repeats the
+   * track to match the longest track, useful for background music/ambience
+   * shorter or longer than the narration }. */
+  async mixTracks(tracks) {
+    const buffers = await Promise.all(tracks.map(t => this.decodeAudio(t.blob)));
+    const sampleRate = buffers[0].sampleRate;
+    const maxLen = Math.max(...buffers.map(b => b.length));
+    const numCh = 2;
+    const offline = new OfflineAudioContext(numCh, maxLen, sampleRate);
+    buffers.forEach((buf, i) => {
+      const src = offline.createBufferSource();
+      src.buffer = buf;
+      if (tracks[i].loop) src.loop = true;
+      const gain = offline.createGain();
+      gain.gain.value = tracks[i].volume ?? 1;
+      src.connect(gain).connect(offline.destination);
+      src.start(0);
+    });
+    const rendered = await offline.startRendering();
+    return { blob: this.audioBufferToWav(rendered), duration: rendered.duration };
+  },
+
+  /* Concatenate audio blobs back-to-back with a small gap — builds a single
+   * multi-voice dialogue file from separately generated lines. */
+  async concatTracks(blobs, gapSeconds = 0.35) {
+    const buffers = await Promise.all(blobs.map(b => this.decodeAudio(b)));
+    const sampleRate = buffers[0].sampleRate;
+    const gapSamples = Math.round(gapSeconds * sampleRate);
+    const totalLen = buffers.reduce((a, b) => a + b.length + gapSamples, 0);
+    const numCh = Math.max(...buffers.map(b => b.numberOfChannels));
+    const offline = new OfflineAudioContext(numCh, totalLen, sampleRate);
+    let cursor = 0;
+    buffers.forEach(buf => {
+      const src = offline.createBufferSource();
+      src.buffer = buf;
+      src.connect(offline.destination);
+      src.start(cursor / sampleRate);
+      cursor += buf.length + gapSamples;
+    });
+    const rendered = await offline.startRendering();
+    return { blob: this.audioBufferToWav(rendered), duration: rendered.duration };
+  },
+
   /* Duration (seconds) of an audio blob/URL. */
   audioDuration(src) {
     return new Promise((resolve, reject) => {

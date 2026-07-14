@@ -19,12 +19,14 @@ const State = {
   scripts: Store.get("scripts", []),
   storyboards: Store.get("storyboards", []), // { id, title, style, charId, model, panels: [{shot, desc, imgUrl}] }
   locations: Store.get("locations", []),     // { id, name, desc, url }
+  sounds: Store.get("sounds", []),           // { id, name, url }
   activeBoardId: null,
   saveCharacters() { Store.set("characters", this.characters); },
   saveGallery() { Store.set("gallery", this.gallery.slice(0, 200)); },
   saveScripts() { Store.set("scripts", this.scripts); },
   saveStoryboards() { Store.set("storyboards", this.storyboards); },
   saveLocations() { Store.set("locations", this.locations); },
+  saveSounds() { Store.set("sounds", this.sounds); },
   addToGallery(item) { this.gallery.unshift({ ...item, ts: Date.now() }); this.saveGallery(); },
 };
 
@@ -122,29 +124,41 @@ function showMedia(containerId, kind, url) {
   else box.innerHTML = `<audio src="${url}" controls></audio>` + dl;
 }
 
-/* Word-timed SRT built from a script + the measured audio duration. Words are
- * weighted by length so long words get proportionally more screen time. This
- * is the standard estimation approach; for frame-exact captions from raw
- * footage use the perfect-cuts skill (Whisper-based). */
-function buildSrt(text, duration, wordsPerLine = 4) {
+/* Per-word start/end estimated from the measured audio duration, weighted by
+ * word length so long words get proportionally more screen time. This is the
+ * standard estimation approach; for frame-exact timing from raw footage use
+ * the perfect-cuts skill (Whisper-based). Drives both SRT export and the
+ * Whiteboard Studio's word-reveal animation. */
+function buildWordTimings(text, duration) {
   const words = text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
-  if (!words.length || !duration) return "";
+  if (!words.length || !duration) return [];
   const weights = words.map(w => w.length + 2);
   const total = weights.reduce((a, b) => a + b, 0);
-  const fmt = (s) => {
-    const ms = Math.max(0, Math.round(s * 1000));
-    const h = String(Math.floor(ms / 3600000)).padStart(2, "0");
-    const m = String(Math.floor(ms / 60000) % 60).padStart(2, "0");
-    const sec = String(Math.floor(ms / 1000) % 60).padStart(2, "0");
-    return `${h}:${m}:${sec},${String(ms % 1000).padStart(3, "0")}`;
-  };
-  let t = 0, out = [], n = 1;
-  for (let i = 0; i < words.length; i += wordsPerLine) {
-    const chunk = words.slice(i, i + wordsPerLine);
-    const w = weights.slice(i, i + wordsPerLine).reduce((a, b) => a + b, 0);
-    const dur = (w / total) * duration;
-    out.push(`${n++}\n${fmt(t)} --> ${fmt(t + dur)}\n${chunk.join(" ")}\n`);
-    t += dur;
+  let t = 0;
+  return words.map((word, i) => {
+    const dur = (weights[i] / total) * duration;
+    const start = t; t += dur;
+    return { word, start, end: t };
+  });
+}
+
+const srtTime = (s) => {
+  const ms = Math.max(0, Math.round(s * 1000));
+  const h = String(Math.floor(ms / 3600000)).padStart(2, "0");
+  const m = String(Math.floor(ms / 60000) % 60).padStart(2, "0");
+  const sec = String(Math.floor(ms / 1000) % 60).padStart(2, "0");
+  return `${h}:${m}:${sec},${String(ms % 1000).padStart(3, "0")}`;
+};
+
+/* Word-timed SRT — group N words per caption card (1 = strict word-by-word
+ * "appearing words" style for whiteboards/faceless videos; 4-7 = normal captions). */
+function buildSrt(text, duration, wordsPerLine = 4) {
+  const timings = buildWordTimings(text, duration);
+  if (!timings.length) return "";
+  let out = [], n = 1;
+  for (let i = 0; i < timings.length; i += wordsPerLine) {
+    const chunk = timings.slice(i, i + wordsPerLine);
+    out.push(`${n++}\n${srtTime(chunk[0].start)} --> ${srtTime(chunk[chunk.length - 1].end)}\n${chunk.map(c => c.word).join(" ")}\n`);
   }
   return out.join("\n");
 }
@@ -186,6 +200,9 @@ const Views = {
       ["lipsync", "👄", "Lip Sync", "Sync any voice to any face"],
       ["voice", "🗣️", "Voice Studio", "Clone your voice, generate narration"],
       ["music", "🎵", "Music Studio", "Scores, intros, full songs"],
+      ["soundLibrary", "🔊", "Sound Library", "Ambient loops + free-library links"],
+      ["mixer", "🎚️", "Audio Mixer", "Narration + music + ambient → one file"],
+      ["whiteboard", "📋", "Whiteboard & Recap", "Word-reveal captions for faceless videos"],
       ["avatar", "🧑‍🚀", "Avatar Pipeline", "Portrait → narration → talking host"],
       ["script", "✍️", "Script Builder", "Curriculum, shorts & longform beat sheets"],
       ["storyboard", "🎬", "Storyboard Studio", "Script → printable shot-by-shot board + batch animate"],
@@ -505,6 +522,21 @@ const Views = {
         <pre id="cap-preview" class="muted" style="white-space:pre-wrap;font-size:12px;margin-top:10px"></pre>
       </div>
       <div class="card">
+        <h3>🎭 Multi-voice dialogue — one downloadable file</h3>
+        <p class="muted">Write a script with speaker names, assign a voice to each speaker, and generate one combined audio file — perfect for two-host explainer videos, interview-style edutainment, or character conversations.</p>
+        <label class="f-label">Script (format: <code class="k">Speaker: line</code>, one per line)</label>
+        <textarea id="dlg-script" placeholder="Maya: Have you ever wondered where rain comes from?
+Jordan: Actually, yeah — where DOES it go after it falls?
+Maya: Let's find out together."></textarea>
+        <div class="mt"><button class="btn sm" id="dlg-scan">🔍 Detect speakers</button></div>
+        <div id="dlg-speakers" class="mt"></div>
+        <label class="f-label">Gap between lines (seconds)</label>
+        <input type="number" id="dlg-gap" value="0.4" min="0" max="2" step="0.1" style="max-width:120px">
+        <div class="mt"><button class="btn primary" id="dlg-go">🎬 Generate combined dialogue file</button></div>
+        <div class="status" id="dlg-status"></div>
+        <div class="result-media" id="dlg-result"></div>
+      </div>
+      <div class="card">
         <h3>Clone a voice</h3>
         <p class="muted">Upload 1–3 clean voice samples (each 30s–3min, no background noise/music). The clone appears in your voice list above.</p>
         <label class="f-label">Voice name</label><input type="text" id="vc-name" placeholder="e.g. Ruthy Narration Voice">
@@ -764,6 +796,98 @@ const Views = {
           <div class="g-meta"><b>${esc(l.name)}</b><br>${esc(l.desc.slice(0, 50))}…<br>
           <a href="${l.url}" target="_blank" rel="noopener">open ↗</a> · <a href="#" data-del-loc="${l.id}">delete</a></div></div>`).join("")}
         </div></div>` : ""}`;
+  },
+
+  /* ---------------- sound library ---------------- */
+  soundLibrary() {
+    return `
+      <div class="page-head"><div class="page-title">🔊 Sound Library</div>
+      <div class="page-desc">Ambient beds and natural sound loops for backgrounds — generate your own (~$0.03/track, seamless loop) or pull from genuinely free libraries when $0 matters most.</div></div>
+      <div class="card">
+        <h3>Generate an ambient / nature loop</h3>
+        <label class="f-label">Preset (click to load, then tweak)</label>
+        ${chipsHtml("snd-preset", RIU_DATA.ambientPresets)}
+        <label class="f-label">Description</label>
+        <textarea id="snd-prompt" placeholder="e.g. gentle rain on a window, seamless loop, no music, no voices"></textarea>
+        <div class="mt"><button class="btn primary" id="snd-go">🎵 Generate ambient track (~$0.03)</button></div>
+        <div class="status" id="snd-status"></div>
+        <div class="result-media" id="snd-result"></div>
+        <div class="mt"><button class="btn" id="snd-save" disabled>💾 Save to library</button></div>
+      </div>
+      ${State.sounds?.length ? `<div class="card"><h3>Your saved ambient tracks</h3>
+        <table class="plain">${State.sounds.map(s => `<tr><td>${esc(s.name)}</td>
+          <td class="right"><audio src="${s.url}" controls style="height:32px"></audio></td>
+          <td class="right"><a href="#" data-del-sound="${s.id}">delete</a></td></tr>`).join("")}</table></div>` : ""}
+      <div class="card">
+        <h3>Genuinely free libraries (no API, $0)</h3>
+        <p class="muted">For when a hand-picked pre-made track beats a generated one, or you want zero cost with zero limits. Licenses vary by track — always check before commercial use.</p>
+        <table class="plain">${RIU_DATA.royaltyFreeSources.map(s => `<tr><td><b>${esc(s.name)}</b></td><td>${esc(s.url)}</td><td class="muted">${esc(s.note)}</td></tr>`).join("")}</table>
+      </div>`;
+  },
+
+  /* ---------------- audio mixer ---------------- */
+  mixer() {
+    return `
+      <div class="page-head"><div class="page-title">🎚️ Audio Mixer</div>
+      <div class="page-desc">Combine narration + music + ambient sound into one downloadable file — the layered soundtrack every finished video needs. Upload each layer (or use files you've already generated), set the balance, and render.</div></div>
+      <div class="card">
+        <h3>🗣️ Narration (required)</h3>
+        <input type="file" id="mx-voice" accept="audio/*">
+        <label class="f-label">Volume</label>
+        <input type="range" id="mx-voice-vol" min="0" max="150" value="100">
+      </div>
+      <div class="card">
+        <h3>🎵 Music bed (optional)</h3>
+        <input type="file" id="mx-music" accept="audio/*">
+        <label class="f-label">Volume <span class="hint">(keep low — 15–30% under narration is typical)</span></label>
+        <input type="range" id="mx-music-vol" min="0" max="150" value="20">
+        <label class="row" style="align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="mx-music-loop" style="width:auto" checked> Loop to fill the full length</label>
+      </div>
+      <div class="card">
+        <h3>🌿 Ambient / background sound (optional)</h3>
+        <input type="file" id="mx-ambient" accept="audio/*">
+        <label class="f-label">Volume</label>
+        <input type="range" id="mx-ambient-vol" min="0" max="150" value="25">
+        <label class="row" style="align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="mx-ambient-loop" style="width:auto" checked> Loop to fill the full length</label>
+      </div>
+      <div class="card">
+        <div class="mt"><button class="btn primary" id="mx-go">🎚️ Mix down to one file</button></div>
+        <div class="status" id="mx-status"></div>
+        <div class="result-media" id="mx-result"></div>
+      </div>`;
+  },
+
+  /* ---------------- whiteboard studio ---------------- */
+  whiteboard() {
+    return `
+      <div class="page-head"><div class="page-title">📋 Whiteboard & Recap Studio</div>
+      <div class="page-desc">Word-by-word text reveal timed to your narration — for whiteboard-style explainers, faceless videos, and end-of-lesson recaps. Preview it live, then record an actual downloadable video.</div></div>
+      <div class="card">
+        <label class="f-label">Recap / lesson script</label>
+        <textarea id="wb-text" placeholder="Today we learned that water never disappears — it just changes form and location, over and over, forever. That's the water cycle."></textarea>
+        <div class="row">
+          <div><label class="f-label">Background style</label>
+            <select id="wb-style">${RIU_DATA.whiteboardStyles.map(s => `<option value="${s.id}">${s.name}</option>`).join("")}</select></div>
+          <div><label class="f-label">Words per reveal</label>
+            <select id="wb-wpl"><option value="1">1 — strict word-by-word</option><option value="2" selected>2 — snappy</option><option value="4">4 — phrase-by-phrase</option></select></div>
+        </div>
+        <label class="f-label">Narration</label>
+        <div class="row">
+          <input type="file" id="wb-audio" accept="audio/*">
+          <select id="wb-voice">${Providers.freeVoices.map(v => `<option>${v}</option>`).join("")}</select>
+          <button class="btn sm fixed" id="wb-narrate">🎙 Generate free narration from the script</button>
+        </div>
+        <div class="hint" id="wb-audioinfo"></div>
+        <canvas id="wb-canvas" width="1280" height="720" style="width:100%;max-width:640px;border-radius:10px;border:1px solid var(--line);margin-top:14px;display:block"></canvas>
+        <div class="mt row">
+          <button class="btn fixed" id="wb-preview" disabled>▶ Preview</button>
+          <button class="btn primary fixed" id="wb-record" disabled>🎬 Record video (.webm)</button>
+          <button class="btn fixed" id="wb-srt" disabled>⬇ Word-timed captions (.srt)</button>
+        </div>
+        <div class="status" id="wb-status"></div>
+        <div class="result-media" id="wb-result"></div>
+        <p class="hint">Recording uses your browser's built-in camera/screen recording engine (MediaRecorder) — nothing uploads anywhere. Works best in Chrome/Edge. The .webm plays everywhere and most editors (CapCut, Premiere, Resolve) import it directly.</p>
+      </div>`;
   },
 
   /* ---------------- cost planner ---------------- */
@@ -1276,6 +1400,53 @@ const Bind = {
         $("#cap-preview").textContent = srt.split("\n").slice(0, 12).join("\n") + "\n…";
         setStatus("cap-status", "ok", `Captions built for ${dur.toFixed(1)}s of audio — .srt downloaded. Import into CapCut/Premiere/Resolve or upload to YouTube.`);
       } catch (e) { setStatus("cap-status", "err", e.message); }
+    };
+
+    /* multi-voice dialogue: parse "Speaker: line", assign a voice per
+     * speaker, generate each line, stitch into one file */
+    const parseDialogue = () => {
+      const lines = $("#dlg-script").value.split("\n").map(l => l.trim()).filter(Boolean);
+      const parsed = lines.map(l => {
+        const m = l.match(/^([^:]{1,24}):\s*(.+)$/);
+        return m ? { speaker: m[1].trim(), text: m[2].trim() } : { speaker: "Narrator", text: l };
+      });
+      const speakers = [...new Set(parsed.map(p => p.speaker))];
+      return { parsed, speakers };
+    };
+
+    $("#dlg-scan").onclick = () => {
+      const { speakers } = parseDialogue();
+      if (!speakers.length) return setStatus("dlg-status", "err", "Write at least one line first.");
+      $("#dlg-speakers").innerHTML = speakers.map((s, i) => `
+        <div class="row" style="margin-bottom:6px">
+          <span class="fixed" style="min-width:100px;font-weight:600">${esc(s)}</span>
+          <select data-dlg-voice="${esc(s)}">${Providers.freeVoices.map((v, vi) =>
+            `<option${vi === i % Providers.freeVoices.length ? " selected" : ""}>${v}</option>`).join("")}</select>
+        </div>`).join("");
+      clearStatus("dlg-status");
+    };
+
+    $("#dlg-go").onclick = async () => {
+      const { parsed } = parseDialogue();
+      if (!parsed.length) return setStatus("dlg-status", "err", "Write a script first (Speaker: line, one per line).");
+      if (!$("#dlg-speakers").children.length) $("#dlg-scan").click();
+      const voiceFor = (speaker) => $(`[data-dlg-voice="${speaker}"]`)?.value || Providers.freeVoices[0];
+      const gap = +$("#dlg-gap").value || 0.4;
+      const btn = $("#dlg-go"); btn.disabled = true;
+      try {
+        const blobs = [];
+        for (let i = 0; i < parsed.length; i++) {
+          setStatus("dlg-status", "info", `Recording line ${i + 1}/${parsed.length} (${parsed[i].speaker})…`);
+          const { blob } = await Providers.freeSpeak(parsed[i].text, voiceFor(parsed[i].speaker));
+          blobs.push(blob);
+        }
+        setStatus("dlg-status", "info", "Stitching into one file…");
+        const { blob, duration } = await Providers.concatTracks(blobs, gap);
+        const url = URL.createObjectURL(blob);
+        setStatus("dlg-status", "ok", `Combined dialogue ready — ${parsed.length} lines, ${duration.toFixed(1)}s, cost $0.00.`);
+        showMedia("dlg-result", "audio", url);
+      } catch (e) { setStatus("dlg-status", "err", e.message); }
+      btn.disabled = false;
     };
 
     $("#vc-go").onclick = async () => {
@@ -1829,6 +2000,198 @@ const Bind = {
     });
   },
 
+  soundLibrary() {
+    bindChips("snd-preset");
+    $("#snd-preset").addEventListener("click", () => {
+      const on = $$("#snd-preset .chip.on")[0];
+      if (on) $("#snd-prompt").value = RIU_DATA.ambientPresets[+on.dataset.i].prompt;
+    });
+    let lastUrl = null;
+    $("#snd-go").onclick = async () => {
+      const prompt = $("#snd-prompt").value.trim();
+      if (!prompt) return setStatus("snd-status", "err", "Describe the ambient sound first (or click a preset above).");
+      try {
+        setStatus("snd-status", "info", "Generating ambient loop…");
+        const m = models("music")[0];
+        const res = await Providers.falRun(m.id, { prompt }, s => setStatus("snd-status", "info", s));
+        lastUrl = Providers.extractMedia(res);
+        if (!lastUrl) throw new Error("No audio returned.");
+        setStatus("snd-status", "ok", `Ready — ~$${m.cost}.`);
+        showMedia("snd-result", "audio", lastUrl);
+        $("#snd-save").disabled = false;
+      } catch (e) { setStatus("snd-status", "err", e.message); }
+    };
+    $("#snd-save").onclick = () => {
+      if (!lastUrl) return;
+      const on = $$("#snd-preset .chip.on")[0];
+      State.sounds.unshift({ id: "s" + Date.now(), name: on ? RIU_DATA.ambientPresets[+on.dataset.i].name : "Custom ambient", url: lastUrl });
+      State.saveSounds(); render("soundLibrary");
+    };
+    $$("[data-del-sound]").forEach(a => a.onclick = (e) => {
+      e.preventDefault();
+      State.sounds = State.sounds.filter(s => s.id !== a.dataset.delSound);
+      State.saveSounds(); render("soundLibrary");
+    });
+  },
+
+  mixer() {
+    $("#mx-go").onclick = async () => {
+      const vf = $("#mx-voice").files[0];
+      if (!vf) return setStatus("mx-status", "err", "Narration audio is required.");
+      const tracks = [{ blob: vf, volume: +$("#mx-voice-vol").value / 100 }];
+      const mf = $("#mx-music").files[0];
+      if (mf) tracks.push({ blob: mf, volume: +$("#mx-music-vol").value / 100, loop: $("#mx-music-loop").checked });
+      const af = $("#mx-ambient").files[0];
+      if (af) tracks.push({ blob: af, volume: +$("#mx-ambient-vol").value / 100, loop: $("#mx-ambient-loop").checked });
+      try {
+        setStatus("mx-status", "info", `Mixing ${tracks.length} layer(s)…`);
+        const { blob, duration } = await Providers.mixTracks(tracks);
+        const url = URL.createObjectURL(blob);
+        setStatus("mx-status", "ok", `Mixed down — ${duration.toFixed(1)}s, cost $0.00 (runs entirely in your browser).`);
+        showMedia("mx-result", "audio", url);
+      } catch (e) { setStatus("mx-status", "err", "Mix failed: " + e.message); }
+    };
+  },
+
+  whiteboard() {
+    const state = { audioBuffer: null, audioBlob: null, timings: [], script: "" };
+    const canvas = $("#wb-canvas");
+    const ctx2d = canvas.getContext("2d");
+
+    const wrapAndDraw = (text, styleId) => {
+      const st = RIU_DATA.whiteboardStyles.find(s => s.id === styleId) || RIU_DATA.whiteboardStyles[0];
+      ctx2d.fillStyle = st.bg; ctx2d.fillRect(0, 0, canvas.width, canvas.height);
+      ctx2d.fillStyle = st.accent;
+      ctx2d.fillRect(0, canvas.height - 14, canvas.width, 14);
+      ctx2d.fillStyle = st.ink;
+      ctx2d.font = "600 52px 'Segoe UI', Arial, sans-serif";
+      ctx2d.textBaseline = "top";
+      const maxWidth = canvas.width - 140;
+      const words = text.split(" ");
+      let line = "", lines = [], x = 70;
+      for (const w of words) {
+        const test = line ? line + " " + w : w;
+        if (ctx2d.measureText(test).width > maxWidth && line) { lines.push(line); line = w; }
+        else line = test;
+      }
+      if (line) lines.push(line);
+      lines = lines.slice(-8); // keep the most recent lines on screen
+      const lineHeight = 66;
+      const startY = canvas.height / 2 - (lines.length * lineHeight) / 2;
+      lines.forEach((l, i) => ctx2d.fillText(l, x, startY + i * lineHeight));
+    };
+
+    const revealAt = (t) => state.timings.filter(w => w.start <= t).map(w => w.word).join(" ");
+
+    const setupFromDuration = (duration) => {
+      state.timings = buildWordTimings(state.script, duration);
+      $("#wb-audioinfo").textContent = `Narration loaded: ${duration.toFixed(1)}s, ${state.timings.length} words.`;
+      $("#wb-preview").disabled = false; $("#wb-record").disabled = false; $("#wb-srt").disabled = false;
+      wrapAndDraw("", $("#wb-style").value);
+    };
+
+    $("#wb-audio").onchange = async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      state.script = $("#wb-text").value.trim();
+      if (!state.script) return setStatus("wb-status", "err", "Write the script first — timing is matched to these exact words.");
+      try {
+        state.audioBlob = f;
+        state.audioBuffer = await Providers.decodeAudio(f);
+        setupFromDuration(state.audioBuffer.duration);
+        clearStatus("wb-status");
+      } catch (e2) { setStatus("wb-status", "err", e2.message); }
+    };
+
+    $("#wb-narrate").onclick = async () => {
+      state.script = $("#wb-text").value.trim();
+      if (!state.script) return setStatus("wb-status", "err", "Write the script first.");
+      try {
+        setStatus("wb-status", "info", "Generating free narration…");
+        const { blob } = await Providers.freeSpeak(state.script, $("#wb-voice").value);
+        state.audioBlob = blob;
+        state.audioBuffer = await Providers.decodeAudio(blob);
+        setupFromDuration(state.audioBuffer.duration);
+        setStatus("wb-status", "ok", "Narration ready — $0.00.");
+      } catch (e) { setStatus("wb-status", "err", e.message); }
+    };
+
+    $("#wb-style").onchange = () => wrapAndDraw(revealAt(0), $("#wb-style").value);
+
+    $("#wb-srt").onclick = () => {
+      const srt = buildSrt(state.script, state.audioBuffer.duration, +$("#wb-wpl").value);
+      downloadText("whiteboard-captions.srt", srt);
+    };
+
+    /* live preview: play the narration through Web Audio and animate the
+     * canvas in lockstep with the AudioContext clock */
+    $("#wb-preview").onclick = () => {
+      const actx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = actx.createBufferSource();
+      src.buffer = state.audioBuffer;
+      src.connect(actx.destination);
+      const t0 = actx.currentTime;
+      src.start();
+      let raf;
+      const tick = () => {
+        const t = actx.currentTime - t0;
+        if (t > state.audioBuffer.duration + 0.15) { wrapAndDraw(revealAt(state.audioBuffer.duration), $("#wb-style").value); return; }
+        wrapAndDraw(revealAt(t), $("#wb-style").value);
+        raf = requestAnimationFrame(tick);
+      };
+      tick();
+      src.onended = () => cancelAnimationFrame(raf);
+    };
+
+    /* record: canvas video + Web-Audio-rendered narration muxed into one
+     * downloadable .webm via MediaRecorder — entirely client-side */
+    $("#wb-record").onclick = async () => {
+      const btn = $("#wb-record"); btn.disabled = true;
+      try {
+        setStatus("wb-status", "info", "Recording video (real-time — this takes as long as the narration)…");
+        const actx = new (window.AudioContext || window.webkitAudioContext)();
+        const dest = actx.createMediaStreamDestination();
+        const src = actx.createBufferSource();
+        src.buffer = state.audioBuffer;
+        src.connect(dest);
+
+        const videoStream = canvas.captureStream(30);
+        const combined = new MediaStream([...videoStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+        const mimeType = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"]
+          .find(t => window.MediaRecorder?.isTypeSupported?.(t)) || "video/webm";
+        const rec = new MediaRecorder(combined, { mimeType });
+        const chunks = [];
+        rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+        const done = new Promise(resolve => rec.onstop = resolve);
+
+        const t0 = actx.currentTime;
+        rec.start();
+        src.start();
+        const tick = () => {
+          const t = actx.currentTime - t0;
+          if (t > state.audioBuffer.duration + 0.2) return;
+          wrapAndDraw(revealAt(t), $("#wb-style").value);
+          requestAnimationFrame(tick);
+        };
+        tick();
+
+        await new Promise(r => setTimeout(r, (state.audioBuffer.duration + 0.4) * 1000));
+        rec.stop();
+        await done;
+
+        const blob = new Blob(chunks, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+        setStatus("wb-status", "ok", `Video recorded — ${state.audioBuffer.duration.toFixed(1)}s, cost $0.00.`);
+        showMedia("wb-result", "video", url);
+        State.addToGallery({ kind: "video", url, prompt: "Whiteboard recap: " + state.script.slice(0, 50), model: "whiteboard-recorder", cost: 0 });
+      } catch (e) {
+        setStatus("wb-status", "err", "Recording failed: " + e.message + (/isTypeSupported|MediaRecorder/.test(e.message) ? " — try Chrome or Edge." : ""));
+      }
+      btn.disabled = false;
+    };
+
+    wrapAndDraw("", "whiteboard");
+  },
+
   cost() {
     $("#cp-go").onclick = () => {
       const scenes = +$("#cp-scenes").value, secs = +$("#cp-secs").value, takes = +$("#cp-takes").value;
@@ -1998,6 +2361,9 @@ const NAV = [
   ["lipsync", "👄", "Lip Sync", null],
   ["voice", "🗣️", "Voice Studio", null],
   ["music", "🎵", "Music Studio", null],
+  ["soundLibrary", "🔊", "Sound Library", null],
+  ["mixer", "🎚️", "Audio Mixer", null],
+  ["whiteboard", "📋", "Whiteboard & Recap", null],
   ["avatar", "🧑‍🚀", "Avatar Pipeline", null],
   ["script", "✍️", "Script Builder", "Plan"],
   ["storyboard", "🎬", "Storyboard Studio", null],

@@ -20,9 +20,12 @@ one to render **melanin-rich skin tones beautifully and consistently**.
 | 🗄️ **Asset Vault** | Provider URLs expire after a few days — the Gallery's vault downloads everything to your computer in one click, ready to drop into Google Drive / Dropbox for permanent storage. |
 | 🗺️ **Location Scout** | Build a reusable library of establishing shots — world landmarks, cities, museums & exhibitions, classrooms, nature, historical eras, fantasy sets. Saved locations appear as a "Setting" option in the Image Studio. |
 | 👄 **Lip Sync Studio** | Sync any voice track to any face video — the backbone of your talking-avatar pipeline. |
-| 🗣️ **Voice Studio** | **FREE voiceover (6 stock voices, $0)**, plus ElevenLabs voice cloning and narration in 30+ languages — and a free **auto-captions** builder (word-timed .srt for CapCut/Premiere/Resolve/YouTube). |
+| 🗣️ **Voice Studio** | **FREE voiceover (6 stock voices, $0)**, plus ElevenLabs voice cloning and narration in 30+ languages, a **multi-voice dialogue** builder (write `Speaker: line` scripts, assign a voice per speaker, get one combined audio file), and a free **auto-captions** builder (word-timed .srt for CapCut/Premiere/Resolve/YouTube). |
 | 🖼️ **Thumbnail A/B Lab** | Generate 2–4 thumbnail variants from proven high-CTR compositions (big face + emotion, pointing at text, before/after split…), compare side by side, then A/B test in YouTube Studio. |
 | 🎵 **Music Studio** | Generate background scores, intros/outros, and full songs with lyrics. |
+| 🔊 **Sound Library** | Generate seamless ambient/nature loops (rain, fireplace, ocean, classroom hum…) plus links to genuinely free royalty-free libraries (YouTube Audio Library, Pixabay, Freesound). |
+| 🎚️ **Audio Mixer** | Combine narration + music bed + ambient sound into **one downloadable file**, right in the browser (Web Audio API — no upload, no cost). Set each layer's volume and loop shorter/longer tracks to fit. |
+| 📋 **Whiteboard & Recap Studio** | Word-by-word (or phrase-by-phrase) text reveal timed to narration — for whiteboard explainers, faceless videos, and end-of-lesson recaps. Live preview, then **record an actual downloadable video** (.webm) entirely client-side, plus export word-timed .srt captions. |
 | 🧑‍🚀 **Avatar Pipeline** | One flow: character portrait → animate → narration → lip-synced talking avatar. Perfect for lesson presenters and channel hosts. |
 | ✍️ **Script & Scene Builder** | Curriculum lesson templates (hook → teach → recap), viral shorts beat sheets, edutainment and longform cinematic structures. |
 | ✂️ **Editor's Room** | The frame-perfect cutting rules from the `perfect-cuts` skill, plus how to run automatic retake/false-start removal on your raw footage. |
