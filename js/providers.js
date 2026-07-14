@@ -230,6 +230,83 @@ const Providers = {
     return { blob: this.audioBufferToWav(rendered), duration: rendered.duration };
   },
 
+  /* ---------------- ffmpeg.wasm — client-side video stitching ----------------
+   * Loaded lazily from a CDN only when the Clip Sequencer is used (~30MB,
+   * cached by the browser after first load). Runs entirely in the browser —
+   * no upload, no server, no cost. Requires Chrome, Edge, or Firefox.
+   */
+  _ffmpeg: null,
+  async _toBlobURL(url, mimeType) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Could not fetch ${url} (${res.status}) — check your internet connection.`);
+    const buf = await res.arrayBuffer();
+    return URL.createObjectURL(new Blob([buf], { type: mimeType }));
+  },
+
+  async loadFFmpeg(onLog) {
+    if (this._ffmpeg) return this._ffmpeg;
+    let FFmpeg;
+    try {
+      ({ FFmpeg } = await import("https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/+esm"));
+    } catch {
+      throw new Error("Could not load the video engine — check your internet connection and try again (first load needs ~30MB).");
+    }
+    const ff = new FFmpeg();
+    if (onLog) ff.on("log", ({ message }) => onLog(message));
+    const base = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm";
+    await ff.load({
+      coreURL: await this._toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
+      wasmURL: await this._toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
+    });
+    this._ffmpeg = ff;
+    return ff;
+  },
+
+  /* Trim + reorder + concatenate multiple clips into one MP4. Each clip:
+   * { file (File) or url (string), start (sec, optional), end (sec, optional) }.
+   * Normalizes every clip to the same size (letterboxed, never cropped) before
+   * concatenating — mixing differently-sized/encoded clips is why naive
+   * stream-copy concat corrupts; this re-encodes once via a single
+   * filter_complex graph, the same safe approach used by the perfect-cuts skill. */
+  async stitchClips(clips, { width = 1280, height = 720, onProgress } = {}) {
+    const ff = await this.loadFFmpeg();
+    let progressHandler;
+    if (onProgress) {
+      progressHandler = ({ progress }) => onProgress(Math.max(0, Math.min(1, progress)));
+      ff.on("progress", progressHandler);
+    }
+    try {
+      const names = [];
+      for (let i = 0; i < clips.length; i++) {
+        const c = clips[i];
+        const data = c.file
+          ? new Uint8Array(await c.file.arrayBuffer())
+          : new Uint8Array(await (await fetch(c.url)).arrayBuffer());
+        const name = `in${i}.mp4`;
+        await ff.writeFile(name, data);
+        names.push(name);
+      }
+      const filters = [];
+      clips.forEach((c, i) => {
+        const trimArgs = [`start=${c.start || 0}`, ...(c.end ? [`end=${c.end}`] : [])].join(":");
+        filters.push(`[${i}:v]trim=${trimArgs},setpts=PTS-STARTPTS,scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1[v${i}]`);
+        filters.push(`[${i}:a]atrim=${trimArgs},asetpts=PTS-STARTPTS[a${i}]`);
+      });
+      const concatInputs = clips.map((_, i) => `[v${i}][a${i}]`).join("");
+      filters.push(`${concatInputs}concat=n=${clips.length}:v=1:a=1[outv][outa]`);
+
+      const args = [];
+      names.forEach(n => args.push("-i", n));
+      args.push("-filter_complex", filters.join(";"), "-map", "[outv]", "-map", "[outa]",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-c:a", "aac", "out.mp4");
+      await ff.exec(args);
+      const data = await ff.readFile("out.mp4");
+      return new Blob([data.buffer], { type: "video/mp4" });
+    } finally {
+      if (progressHandler) ff.off("progress", progressHandler);
+    }
+  },
+
   /* Duration (seconds) of an audio blob/URL. */
   audioDuration(src) {
     return new Promise((resolve, reject) => {

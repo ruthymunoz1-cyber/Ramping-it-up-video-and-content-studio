@@ -203,6 +203,7 @@ const Views = {
       ["soundLibrary", "🔊", "Sound Library", "Ambient loops + free-library links"],
       ["mixer", "🎚️", "Audio Mixer", "Narration + music + ambient → one file"],
       ["whiteboard", "📋", "Whiteboard & Recap", "Word-reveal captions for faceless videos"],
+      ["sequencer", "📽️", "Clip Sequencer", "Stitch clips into one video, captions optional"],
       ["avatar", "🧑‍🚀", "Avatar Pipeline", "Portrait → narration → talking host"],
       ["script", "✍️", "Script Builder", "Curriculum, shorts & longform beat sheets"],
       ["storyboard", "🎬", "Storyboard Studio", "Script → printable shot-by-shot board + batch animate"],
@@ -887,6 +888,37 @@ Maya: Let's find out together."></textarea>
         <div class="status" id="wb-status"></div>
         <div class="result-media" id="wb-result"></div>
         <p class="hint">Recording uses your browser's built-in camera/screen recording engine (MediaRecorder) — nothing uploads anywhere. Works best in Chrome/Edge. The .webm plays everywhere and most editors (CapCut, Premiere, Resolve) import it directly.</p>
+      </div>`;
+  },
+
+  /* ---------------- clip sequencer ---------------- */
+  sequencer() {
+    return `
+      <div class="page-head"><div class="page-title">📽️ Clip Sequencer</div>
+      <div class="page-desc">Stitch your generated clips into one continuous video, right in your browser (ffmpeg.wasm — no upload, no server, $0). This isn't Shorts-specific: feed it 16:9 clips for a longform video, 9:16 for a Short/Reel, whatever you pick as the output size. Captions are optional — burn them in, or skip burning and just grab the matching .srt for your editor instead.</div></div>
+      <div class="card">
+        <h3>Clips (in order)</h3>
+        <div id="sq-clips"></div>
+        <div class="mt"><button class="btn sm" id="sq-add">＋ Add clip</button></div>
+        <label class="f-label">Output size</label>
+        <select id="sq-size">
+          <option value="1280x720">1280×720 (16:9 — YouTube / cinematic)</option>
+          <option value="720x1280">720×1280 (9:16 — Shorts / Reels / TikTok)</option>
+          <option value="1080x1080">1080×1080 (1:1 — Square)</option>
+        </select>
+        <label class="f-label">Caption script (optional — the whole stitched video's dialogue, in order)</label>
+        <textarea id="sq-caption-text" placeholder="Leave blank for no captions at all."></textarea>
+        <div class="row">
+          <label class="row" style="align-items:center;gap:8px"><input type="checkbox" id="sq-captions" style="width:auto"> 🔥 Burn captions into the video</label>
+          <select id="sq-caption-wpl"><option value="1">1 word per reveal</option><option value="3" selected>3 words per reveal</option><option value="5">5 words per reveal</option></select>
+        </div>
+        <p class="hint">Leave the checkbox OFF and you still get the stitched video with no captions baked in — write a script anyway and you can download a matching .srt afterward for soft captions in CapCut/Premiere/Resolve/YouTube.</p>
+        <div class="mt"><button class="btn primary" id="sq-go">🧵 Stitch clips together</button></div>
+        <div class="status" id="sq-status"></div>
+        <div id="sq-log" class="muted" style="font-size:11.5px;white-space:pre-wrap;margin-top:8px"></div>
+        <div class="result-media" id="sq-result"></div>
+        <div class="mt" id="sq-srtrow" style="display:none"><button class="btn" id="sq-srt-go">⬇ Download matching .srt (soft captions)</button></div>
+        <p class="hint">First use downloads the video engine (~30MB, one-time, cached by your browser afterward). Works in Chrome, Edge, and Firefox; caption burn-in additionally needs your browser's video capture (best in Chrome/Edge). All clips need an audio track — silent is fine, missing is not.</p>
       </div>`;
   },
 
@@ -2192,6 +2224,147 @@ const Bind = {
     wrapAndDraw("", "whiteboard");
   },
 
+  sequencer() {
+    const state = { clips: [{ file: null, url: "", start: "", end: "" }] };
+
+    const renderClips = () => {
+      $("#sq-clips").innerHTML = state.clips.map((c, i) => `
+        <div class="row" style="align-items:center;margin-bottom:8px">
+          <span class="fixed" style="width:20px;font-weight:600">${i + 1}</span>
+          <input type="file" data-clip-file="${i}" accept="video/*" class="fixed" style="width:150px">
+          <input type="text" data-clip-url="${i}" placeholder="…or paste a video URL" value="${esc(c.url)}">
+          <input type="number" data-clip-start="${i}" placeholder="start s" value="${esc(c.start)}" class="fixed" style="width:80px">
+          <input type="number" data-clip-end="${i}" placeholder="end s" value="${esc(c.end)}" class="fixed" style="width:80px">
+          <button class="btn sm fixed" data-clip-up="${i}" ${i === 0 ? "disabled" : ""}>↑</button>
+          <button class="btn sm fixed" data-clip-down="${i}" ${i === state.clips.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="btn sm danger fixed" data-clip-del="${i}">✕</button>
+        </div>`).join("");
+
+      $$("[data-clip-file]").forEach(el => el.onchange = () => { state.clips[+el.dataset.clipFile].file = el.files[0] || null; });
+      $$("[data-clip-url]").forEach(el => el.oninput = () => { state.clips[+el.dataset.clipUrl].url = el.value; });
+      $$("[data-clip-start]").forEach(el => el.oninput = () => { state.clips[+el.dataset.clipStart].start = el.value; });
+      $$("[data-clip-end]").forEach(el => el.oninput = () => { state.clips[+el.dataset.clipEnd].end = el.value; });
+      $$("[data-clip-up]").forEach(el => el.onclick = () => {
+        const i = +el.dataset.clipUp;
+        [state.clips[i - 1], state.clips[i]] = [state.clips[i], state.clips[i - 1]];
+        renderClips();
+      });
+      $$("[data-clip-down]").forEach(el => el.onclick = () => {
+        const i = +el.dataset.clipDown;
+        [state.clips[i + 1], state.clips[i]] = [state.clips[i], state.clips[i + 1]];
+        renderClips();
+      });
+      $$("[data-clip-del]").forEach(el => el.onclick = () => {
+        state.clips.splice(+el.dataset.clipDel, 1);
+        if (!state.clips.length) state.clips.push({ file: null, url: "", start: "", end: "" });
+        renderClips();
+      });
+    };
+    renderClips();
+
+    $("#sq-add").onclick = () => { state.clips.push({ file: null, url: "", start: "", end: "" }); renderClips(); };
+    $("#sq-captions").onchange = () => {}; // checkbox just read at submit time
+
+    const getVideoDuration = (blob) => new Promise((resolve, reject) => {
+      const v = document.createElement("video");
+      v.preload = "metadata"; v.src = URL.createObjectURL(blob);
+      v.onloadedmetadata = () => resolve(v.duration);
+      v.onerror = () => reject(new Error("Could not read the stitched video's duration."));
+    });
+
+    const burnCaptions = (videoBlob, text, wpl) => new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.src = URL.createObjectURL(videoBlob);
+      video.muted = false; video.playsInline = true;
+      video.onerror = () => reject(new Error("Could not read the stitched video for caption burn-in."));
+      video.onloadedmetadata = async () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        const cx = canvas.getContext("2d");
+        const timings = buildWordTimings(text, video.duration);
+        const groups = [];
+        for (let i = 0; i < timings.length; i += wpl) groups.push(timings.slice(i, i + wpl));
+        const captionAt = (t) => {
+          const g = groups.find(g => t >= g[0].start && t <= g[g.length - 1].end + 0.15);
+          return g ? g.map(w => w.word).join(" ") : "";
+        };
+        let stream;
+        try { stream = video.captureStream(); }
+        catch { return reject(new Error("This browser can't capture video for caption burn-in (try Chrome/Edge), or just skip burn-in and use the .srt instead.")); }
+        const canvasStream = canvas.captureStream(30);
+        const combined = new MediaStream([...canvasStream.getVideoTracks(), ...stream.getAudioTracks()]);
+        const mimeType = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"]
+          .find(t => window.MediaRecorder?.isTypeSupported?.(t)) || "video/webm";
+        const rec = new MediaRecorder(combined, { mimeType });
+        const chunks = [];
+        rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+        rec.onstop = () => resolve(new Blob(chunks, { type: "video/webm" }));
+        rec.onerror = reject;
+        let raf;
+        const draw = () => {
+          cx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const cap = captionAt(video.currentTime);
+          if (cap) {
+            cx.font = "700 " + Math.round(canvas.height * 0.06) + "px 'Segoe UI', Arial, sans-serif";
+            cx.textAlign = "center";
+            cx.lineWidth = Math.round(canvas.height * 0.012);
+            cx.strokeStyle = "rgba(0,0,0,.85)"; cx.fillStyle = "#fff";
+            const x = canvas.width / 2, y = canvas.height * 0.86;
+            cx.strokeText(cap, x, y); cx.fillText(cap, x, y);
+          }
+          if (!video.ended) raf = requestAnimationFrame(draw);
+        };
+        video.onended = () => { cancelAnimationFrame(raf); setTimeout(() => rec.stop(), 200); };
+        rec.start();
+        await video.play();
+        draw();
+      };
+    });
+
+    $("#sq-go").onclick = async () => {
+      const validClips = state.clips.filter(c => c.file || c.url.trim());
+      if (!validClips.length) return setStatus("sq-status", "err", "Add at least one clip (upload a file or paste a URL).");
+      const [w, h] = $("#sq-size").value.split("x").map(Number);
+      const capText = $("#sq-caption-text").value.trim();
+      const burnIn = $("#sq-captions").checked;
+      const btn = $("#sq-go"); btn.disabled = true;
+      $("#sq-log").textContent = ""; $("#sq-srtrow").style.display = "none";
+
+      try {
+        setStatus("sq-status", "info", "Loading the video engine (first time only, ~30MB)…");
+        const clipsForFf = validClips.map(c => ({
+          file: c.file, url: c.url.trim(),
+          start: c.start !== "" ? +c.start : 0,
+          end: c.end !== "" ? +c.end : undefined,
+        }));
+        const blob = await Providers.stitchClips(clipsForFf, {
+          width: w, height: h,
+          onProgress: (p) => setStatus("sq-status", "info", `Stitching ${validClips.length} clip(s)… ${Math.round(p * 100)}%`),
+        });
+
+        let finalBlob = blob, duration = null;
+        if (burnIn && capText) {
+          setStatus("sq-status", "info", "Burning in captions…");
+          finalBlob = await burnCaptions(blob, capText, +$("#sq-caption-wpl").value);
+        }
+        duration = await getVideoDuration(blob).catch(() => null);
+
+        const url = URL.createObjectURL(finalBlob);
+        setStatus("sq-status", "ok", `Done — ${validClips.length} clips stitched${burnIn && capText ? " with captions burned in" : ""}, cost $0.00.`);
+        showMedia("sq-result", "video", url);
+        State.addToGallery({ kind: "video", url, prompt: "Sequenced clip" + (burnIn && capText ? " (captions burned in)" : ""), model: "clip-sequencer", cost: 0 });
+
+        if (capText && duration) {
+          $("#sq-srtrow").style.display = "";
+          $("#sq-srt-go").onclick = () => downloadText("sequenced-clip-captions.srt", buildSrt(capText, duration, +$("#sq-caption-wpl").value));
+        }
+      } catch (e) {
+        setStatus("sq-status", "err", e.message);
+      }
+      btn.disabled = false;
+    };
+  },
+
   cost() {
     $("#cp-go").onclick = () => {
       const scenes = +$("#cp-scenes").value, secs = +$("#cp-secs").value, takes = +$("#cp-takes").value;
@@ -2364,6 +2537,7 @@ const NAV = [
   ["soundLibrary", "🔊", "Sound Library", null],
   ["mixer", "🎚️", "Audio Mixer", null],
   ["whiteboard", "📋", "Whiteboard & Recap", null],
+  ["sequencer", "📽️", "Clip Sequencer", null],
   ["avatar", "🧑‍🚀", "Avatar Pipeline", null],
   ["script", "✍️", "Script Builder", "Plan"],
   ["storyboard", "🎬", "Storyboard Studio", null],
