@@ -669,7 +669,7 @@ Maya: Let's find out together."></textarea>
   thumbs() {
     return `
       <div class="page-head"><div class="page-title">🖼️ Thumbnail A/B Lab</div>
-      <div class="page-desc">The thumbnail decides whether anyone sees the video. Generate 2–4 variants using proven high-CTR compositions, compare side by side, upload your favorites to YouTube's own Test & Compare. Tip: GPT Image 2 renders title text best; free models are fine for exploring compositions.</div></div>
+      <div class="page-desc">The thumbnail (or cover) decides whether anyone sees the video. Generate 2–4 variants using proven high-CTR compositions, in whichever shape the platform needs — a YouTube video and its Short/Reel cut need different-shaped covers. Compare side by side, then upload your favorites to YouTube's own Test & Compare.</div></div>
       <div class="card">
         ${charSelectHtml("th-char")}
         ${modelSelectHtml("th-model", "image", "imageEdit")}
@@ -679,6 +679,13 @@ Maya: Let's find out together."></textarea>
           <div><label class="f-label">Emotion</label>
             <select id="th-emotion">${RIU_DATA.thumbEmotions.map(e => `<option>${e}</option>`).join("")}</select></div>
         </div>
+        <label class="f-label">Platform / shape</label>
+        <div class="chips" id="th-shape">
+          <button type="button" class="chip on" data-shape="16:9">YouTube video (16:9)</button>
+          <button type="button" class="chip" data-shape="9:16">Shorts / Reels / TikTok cover (9:16)</button>
+          <button type="button" class="chip" data-shape="1:1">Instagram feed (1:1)</button>
+          <button type="button" class="chip" data-shape="4:5">Instagram portrait (4:5)</button>
+        </div>
         <label class="f-label">Compositions to test (each selected = one variant)</label>
         ${chipsHtml("th-comp", RIU_DATA.thumbCompositions)}
         <label class="f-label">Extra context (optional)</label>
@@ -686,6 +693,7 @@ Maya: Let's find out together."></textarea>
         <div class="mt"><button class="btn primary" id="th-go">🧪 Generate variants</button></div>
         <div class="status" id="th-status"></div>
         <div class="gallery mt" id="th-grid"></div>
+        <p class="hint mt">Tip: GPT Image 2 renders title text most accurately; free models are fine for exploring compositions before you spend anything.</p>
       </div>`;
   },
 
@@ -1777,6 +1785,10 @@ const Bind = {
 
   thumbs() {
     bindChips("th-comp", false); // multi-select: each chip = one variant
+    bindChips("th-shape", true); // single-select: one shape per batch
+
+    const shapeDims = { "16:9": [1280, 720], "9:16": [720, 1280], "1:1": [1080, 1080], "4:5": [864, 1080] };
+
     $("#th-go").onclick = async () => {
       const headline = $("#th-headline").value.trim();
       if (!headline) return setStatus("th-status", "err", "Write the title text first (3–5 punchy words).");
@@ -1787,6 +1799,8 @@ const Bind = {
       const emotion = $("#th-emotion").value.replace(/\s*\S+$/, ""); // strip emoji
       const notes = $("#th-notes").value.trim();
       const refs = characterRefs(charId);
+      const shape = $("#th-shape .chip.on")?.dataset.shape || "16:9";
+      const [w, h] = shapeDims[shape];
       const grid = $("#th-grid"); grid.innerHTML = "";
       const btn = $("#th-go"); btn.disabled = true;
 
@@ -1798,11 +1812,11 @@ const Bind = {
         try {
           let url;
           if (modelId.startsWith("pollinations:")) {
-            url = Providers.freeImageUrl(prompt, { width: 1280, height: 720, seed: 500 + i, model: modelId.split(":")[1] });
+            url = Providers.freeImageUrl(prompt, { width: w, height: h, seed: 500 + i, model: modelId.split(":")[1] });
           } else {
             const input = /edit/.test(modelId) && refs.length
               ? { prompt, image_urls: refs, num_images: 1 }
-              : { prompt, aspect_ratio: "16:9", seed: 500 + i };
+              : { prompt, aspect_ratio: shape, seed: 500 + i };
             const res = await Providers.falRun(modelId, input);
             url = Providers.extractMedia(res);
           }
