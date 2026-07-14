@@ -88,12 +88,14 @@ const Providers = {
     return (await res.json()).voices || [];
   },
 
-  /* Text-to-speech → returns a blob URL you can play/download or feed to lip sync. */
-  async elSpeak(voiceId, text, modelId = "eleven_multilingual_v2") {
+  /* Text-to-speech → returns a blob URL you can play/download or feed to lip sync.
+   * voiceSettings lets the Delivery style picker (Voice Studio) shape expressiveness
+   * (stability/style) without changing the words themselves. */
+  async elSpeak(voiceId, text, modelId = "eleven_multilingual_v2", voiceSettings = {}) {
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: "POST",
       headers: this.elHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ text, model_id: modelId, voice_settings: { stability: 0.5, similarity_boost: 0.8 } }),
+      body: JSON.stringify({ text, model_id: modelId, voice_settings: { stability: 0.5, similarity_boost: 0.8, ...voiceSettings } }),
     });
     if (!res.ok) throw new Error(`ElevenLabs TTS failed (${res.status}): ${await res.text()}`);
     const blob = await res.blob();
@@ -318,8 +320,8 @@ const Providers = {
     });
   },
 
-  async freeSpeak(text, voice = "nova") {
-    const p = encodeURIComponent(`Read the following text exactly as written, verbatim, with natural delivery: ${text}`);
+  async freeSpeak(text, voice = "nova", deliveryDesc = "natural delivery") {
+    const p = encodeURIComponent(`Read the following text exactly as written, verbatim, in a ${deliveryDesc}: ${text}`);
     const res = await fetch(`https://text.pollinations.ai/${p}?model=openai-audio&voice=${voice}`);
     if (!res.ok) throw new Error(`Free TTS failed (${res.status}). Try again — the free tier can be busy — or use ElevenLabs.`);
     const blob = await res.blob();

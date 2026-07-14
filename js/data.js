@@ -295,6 +295,119 @@ const RIU_DATA = {
     { id: "slate",      name: "Slate (faceless video)", bg: "#0f1220", ink: "#f2f0ec", accent: "#59e0b5" },
   ],
 
+  /* Narration delivery styles — shape expressiveness (not the words) via
+   * ElevenLabs voice_settings, or via a spoken instruction for the free
+   * LLM-based voice (which can genuinely follow delivery direction). */
+  deliveryStyles: [
+    { name: "Neutral / default", desc: "natural, neutral delivery", stability: 0.5, style: 0 },
+    { name: "Warm & encouraging (teacher)", desc: "warm, encouraging, patient teacher's delivery", stability: 0.65, style: 0.15 },
+    { name: "Dramatic & authoritative (documentary)", desc: "steady, authoritative documentary-narrator delivery, slowing down on dramatic lines", stability: 0.35, style: 0.4 },
+    { name: "Playful & energetic (kids/edutainment)", desc: "playful, high-energy, fun delivery for kids", stability: 0.25, style: 0.5 },
+    { name: "Calm & soothing (bedtime/meditation)", desc: "calm, slow, soothing bedtime-story delivery", stability: 0.75, style: 0.1 },
+  ],
+
+  /* Language/culture variant suggestions for the Character Lab — SUGGESTIONS
+   * only, always shown as editable text the user confirms before generating.
+   * Language does not determine ethnicity; these are common-sense starting
+   * points for language-learning hosts, not a rule. */
+  languageVariants: [
+    { lang: "Spanish", suggestion: "Mexican or Latin American" },
+    { lang: "Mandarin Chinese", suggestion: "Chinese" },
+    { lang: "Hindi", suggestion: "Indian" },
+    { lang: "Arabic", suggestion: "Middle Eastern or North African" },
+    { lang: "French", suggestion: "French, or West/Central African Francophone" },
+    { lang: "Portuguese", suggestion: "Brazilian or Portuguese" },
+    { lang: "Japanese", suggestion: "Japanese" },
+    { lang: "Korean", suggestion: "Korean" },
+    { lang: "Swahili", suggestion: "East African" },
+    { lang: "Yoruba", suggestion: "Nigerian (Yoruba)" },
+    { lang: "German", suggestion: "German" },
+    { lang: "Italian", suggestion: "Italian" },
+    { lang: "Vietnamese", suggestion: "Vietnamese" },
+    { lang: "Tagalog / Filipino", suggestion: "Filipino" },
+    { lang: "Haitian Creole", suggestion: "Haitian" },
+  ],
+
+  /* Book outline templates — chapter/beat structures for common bestseller
+   * shapes, including representation-forward guidance for the diverse
+   * picture-book template given the underserved-communities mission. */
+  bookTemplates: [
+    {
+      id: "diverse-picture-book",
+      name: "🌈 Diverse Picture Book (32-page classic structure)",
+      desc: "The standard picture-book page-count structure, with prompts at each beat to keep representation authentic and specific rather than tokenistic.",
+      chapters: [
+        { title: "Title page & dedication", tip: "Establish the character's name and world in one warm image." },
+        { title: "Opening spread — meet the character", tip: "Show their everyday life with specific, authentic cultural detail (food, home, family structure, neighborhood) — specificity reads as respect, generic 'diversity' reads as tokenism." },
+        { title: "The problem / want", tip: "A relatable want or problem any child understands, seen through this character's particular lens." },
+        { title: "First attempt", tip: "They try something and it doesn't fully work. Keep the stakes kid-sized." },
+        { title: "Turning point", tip: "Often where community, family, or cultural wisdom (not a generic 'magic fix') helps them see differently." },
+        { title: "Climax", tip: "The character solves it themselves, using what they learned." },
+        { title: "Resolution & warm ending", tip: "Return to the opening image, changed. End on warmth, not a moral lecture." },
+        { title: "Back matter (optional)", tip: "A short author's note on the culture/tradition shown, for parents/teachers — adds authenticity and classroom use value." },
+      ],
+    },
+    {
+      id: "middle-grade-adventure",
+      name: "📗 Middle-Grade Adventure (3-act, ~20 chapters)",
+      desc: "Classic 8-12yo adventure/quest structure.",
+      chapters: [
+        { title: "Ordinary world", tip: "Establish the hero's normal life and a clear flaw or longing." },
+        { title: "Inciting incident", tip: "The event that can't be undone — end of chapter 1 or 2." },
+        { title: "Refusal & commitment", tip: "Hero hesitates, then commits by chapter 3-4." },
+        { title: "Rising action / allies & obstacles", tip: "A string of escalating challenges, roughly 8-10 chapters, each raising stakes." },
+        { title: "Midpoint twist", tip: "New information flips the hero's understanding of the quest." },
+        { title: "Low point / all is lost", tip: "The hero's darkest moment, near the 3/4 mark." },
+        { title: "Climax", tip: "Hero uses what they've learned (not a new power) to win." },
+        { title: "Resolution", tip: "Show the changed ordinary world — 1-2 short chapters." },
+      ],
+    },
+    {
+      id: "romance-beats",
+      name: "💕 Romance Beat Sheet (bestseller structure)",
+      desc: "The reader-expected romance genre beats — deviate from these at your own risk with genre readers.",
+      chapters: [
+        { title: "Meet cute / first sight", tip: "Establish both leads' goals and what makes them wrong for each other on paper." },
+        { title: "The spark", tip: "First real charged interaction — banter, tension, or both." },
+        { title: "Deepening attraction", tip: "Vulnerability shared; stakes for the relationship rise." },
+        { title: "Midpoint — first kiss / commitment", tip: "The relationship becomes real, raising the cost of losing it." },
+        { title: "The complication", tip: "External or internal conflict threatens the relationship — often the goal-vs-love-interest tension pays off here." },
+        { title: "Black moment / breakup", tip: "It falls apart, believably, near the 80% mark." },
+        { title: "Grand gesture", tip: "One partner proves they've changed — show, don't just declare." },
+        { title: "Happily ever after / for now", tip: "Genre readers expect this ending — deliver it fully." },
+      ],
+    },
+    {
+      id: "ya-coming-of-age",
+      name: "🔍 YA Coming-of-Age",
+      desc: "Identity-driven structure for teen readers.",
+      chapters: [
+        { title: "Who they think they are", tip: "Establish identity/role as others see it." },
+        { title: "The crack", tip: "Something challenges that self-image." },
+        { title: "Trying on new identities", tip: "Experimentation, mistakes, new relationships." },
+        { title: "The cost", tip: "Consequences of the experimentation land." },
+        { title: "The reckoning", tip: "A forced confrontation with who they actually are." },
+        { title: "Choosing", tip: "The character chooses their real self, even if it's costly." },
+        { title: "New equilibrium", tip: "Show who they are now — different from page one, believably earned." },
+      ],
+    },
+    {
+      id: "nonfiction-selfhelp",
+      name: "📘 Nonfiction / Self-Help (problem–solution)",
+      desc: "Structure for teaching or self-help nonfiction.",
+      chapters: [
+        { title: "The problem, made personal", tip: "Open with a specific story that embodies the reader's problem." },
+        { title: "Why it persists", tip: "The real (often counterintuitive) reason common solutions fail." },
+        { title: "The framework", tip: "Your core method, named and structured — this is what readers will quote." },
+        { title: "Pillar 1", tip: "First component, with a case study or exercise." },
+        { title: "Pillar 2", tip: "Second component, building on the first." },
+        { title: "Pillar 3", tip: "Third component, completing the framework." },
+        { title: "Putting it together", tip: "A combined walkthrough/worksheet chapter." },
+        { title: "Sustaining it", tip: "How to keep the change after the book ends." },
+      ],
+    },
+  ],
+
   /* Book Cover Studio — common cover shapes. Full print wraps (spine width
    * depends on exact page count + paper stock) are best finished in Amazon
    * KDP's free Cover Creator using this front art as the input image. */

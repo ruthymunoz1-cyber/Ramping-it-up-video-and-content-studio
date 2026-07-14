@@ -20,6 +20,8 @@ const State = {
   storyboards: Store.get("storyboards", []), // { id, title, style, charId, model, panels: [{shot, desc, imgUrl}] }
   locations: Store.get("locations", []),     // { id, name, desc, url }
   sounds: Store.get("sounds", []),           // { id, name, url }
+  bookOutlines: Store.get("bookOutlines", []),
+  marketScouts: Store.get("marketScouts", []),
   activeBoardId: null,
   saveCharacters() { Store.set("characters", this.characters); },
   saveGallery() { Store.set("gallery", this.gallery.slice(0, 200)); },
@@ -27,6 +29,8 @@ const State = {
   saveStoryboards() { Store.set("storyboards", this.storyboards); },
   saveLocations() { Store.set("locations", this.locations); },
   saveSounds() { Store.set("sounds", this.sounds); },
+  saveBookOutlines() { Store.set("bookOutlines", this.bookOutlines); },
+  saveMarketScouts() { Store.set("marketScouts", this.marketScouts.slice(0, 100)); },
   addToGallery(item) { this.gallery.unshift({ ...item, ts: Date.now() }); this.saveGallery(); },
 };
 
@@ -244,6 +248,8 @@ const Views = {
       ["storyboard", "🎬", "Storyboard Studio", "Script → printable shot-by-shot board + batch animate"],
       ["thumbs", "🖼️", "Thumbnail Lab", "A/B test high-CTR thumbnail variants"],
       ["locations", "🗺️", "Location Scout", "Landmarks, museums, sets — a reusable library"],
+      ["bookOutline", "📚", "Book Outline", "Bestseller chapter structures, incl. diverse picture books"],
+      ["marketScout", "📊", "Market Scout", "Free directional gut-check before you spend a cent"],
       ["cost", "💰", "Cost Planner", "Budget a whole project before spending"],
     ];
     return `
@@ -279,6 +285,15 @@ const Views = {
             <span class="tag">seed ${c.seed}</span>
           </div>
           <div class="char-token">${esc(compileCharacterToken(c))}</div>
+          ${c.variantOf ? `<div class="mt"><span class="tag gold">🌍 ${esc(c.language || "")} variant of ${esc(State.characters.find(x => x.id === c.variantOf)?.name || "a character")}</span></div>` : ""}
+          <div class="mt">
+            <label class="f-label">🌍 Create a language/culture variant <span class="hint">(editable suggestion — never automatic)</span></label>
+            <div class="row">
+              <select data-lang-sel="${c.id}">${RIU_DATA.languageVariants.map((l, i) => `<option value="${i}">${l.lang}</option>`).join("")}</select>
+              <input type="text" data-lang-suggestion="${c.id}" value="${esc(RIU_DATA.languageVariants[0].suggestion)}">
+              <button class="btn sm fixed" data-gen-variant="${c.id}">🌍 Create variant</button>
+            </div>
+          </div>
           ${c.sheetUrl ? `
           <div class="mt"><span class="tag gold">✓ Turnaround sheet on file — used as the master reference in every generation</span></div>
           <div class="result-media"><img src="${c.sheetUrl}" alt="character sheet" style="max-height:220px"></div>
@@ -524,6 +539,8 @@ const Views = {
         <div class="row">
           <div><label class="f-label">Voice</label>
             <select id="fv-voice">${Providers.freeVoices.map(v => `<option>${v}</option>`).join("")}</select></div>
+          <div><label class="f-label">Delivery style</label>
+            <select id="fv-delivery">${RIU_DATA.deliveryStyles.map((d, i) => `<option value="${i}">${d.name}</option>`).join("")}</select></div>
         </div>
         <label class="f-label">Script</label>
         <textarea id="fv-text" placeholder="Paste your narration…"></textarea>
@@ -537,10 +554,11 @@ const Views = {
         <div class="row">
           <select id="vo-voice"><option value="">Load voices first…</option></select>
           <button class="btn sm fixed" id="vo-load">↻ Load my voices</button>
+          <select id="vo-delivery">${RIU_DATA.deliveryStyles.map((d, i) => `<option value="${i}">${d.name}</option>`).join("")}</select>
         </div>
         <label class="f-label">Script</label>
         <textarea id="vo-text" placeholder="Paste your narration script here…"></textarea>
-        <div class="hint">~$0.10–0.30 per 1,000 characters depending on plan. This box: <span id="vo-chars">0</span> characters.</div>
+        <div class="hint">~$0.10–0.30 per 1,000 characters depending on plan. This box: <span id="vo-chars">0</span> characters. Delivery style shapes tone/expressiveness — the words are unaffected.</div>
         <div class="mt"><button class="btn primary" id="vo-go">🎙 Generate narration</button></div>
         <div class="status" id="vo-status"></div>
         <div class="result-media" id="vo-result"></div>
@@ -1018,6 +1036,57 @@ Maya: Let's find out together."></textarea>
       </div>`;
   },
 
+  /* ---------------- market scout ---------------- */
+  marketScout() {
+    const saved = State.marketScouts.map((s, i) => `<tr>
+      <td><b>${esc(s.topic)}</b></td><td>${esc(s.platform)}</td><td>${esc(s.verdict || "")}</td>
+      <td class="right"><button class="btn sm" data-view-scout="${i}">View</button> <button class="btn sm danger" data-del-scout="${i}">Delete</button></td>
+      </tr>`).join("");
+    return `
+      <div class="page-head"><div class="page-title">📊 Market Scout</div>
+      <div class="page-desc">A fast, free directional gut-check on a topic before you spend production budget on it — audience appeal, competition, a differentiation angle, and a rough CPM tier. <b>This runs on a free general-knowledge AI model, not live search/trend data</b> — treat it as a first-pass filter, not a guarantee. For real live competitor/search numbers, ask Claude directly in a session connected to vidIQ.</div></div>
+      <div class="card">
+        <div class="row">
+          <div><label class="f-label">Topic / niche idea</label><input type="text" id="ms-topic" placeholder="e.g. AI tools for homeschool moms"></div>
+          <div><label class="f-label">Platform / product</label>
+            <select id="ms-platform"><option>YouTube channel</option><option>Book</option><option>Language-learning content</option><option>Short-form (Shorts/Reels/TikTok)</option></select></div>
+        </div>
+        <div class="mt"><button class="btn primary" id="ms-go">📊 Scout this idea (free)</button></div>
+        <div class="status" id="ms-status"></div>
+        <div id="ms-out" class="mt"></div>
+      </div>
+      ${saved ? `<div class="card"><h3>Past scouts</h3><table class="plain">${saved}</table></div>` : ""}`;
+  },
+
+  /* ---------------- book outline ---------------- */
+  bookOutline() {
+    const saved = State.bookOutlines.map((o, i) => `
+      <div class="card scene-card">
+        <div class="row"><b class="fixed">${esc(o.title)}</b><span class="muted fixed">${esc(o.template)}</span>
+        <span class="fixed right" style="margin-left:auto"><button class="btn sm danger" data-del-outline="${i}">Delete</button></span></div>
+        <table class="plain mt"><tr><th>Chapter / beat</th><th>Your notes</th></tr>
+        ${o.chapters.map(c => `<tr><td><b>${esc(c.title)}</b><div class="hint">${esc(c.tip)}</div></td><td>${esc(c.content || "—")}</td></tr>`).join("")}
+        </table>
+      </div>`).join("");
+
+    return `
+      <div class="page-head"><div class="page-title">📚 Book Outline</div>
+      <div class="page-desc">Bestseller-shaped chapter structures — including a diverse-representation picture-book template — to plan your manuscript before writing it in Scrivener/Atticus/Word. Feeds straight into the 🎧 Audiobook Studio (chapter text) and 📖 Book Cover Studio (title/concept) once written.</div></div>
+      <div class="card">
+        <label class="f-label">Template</label>
+        <select id="bo-template">${RIU_DATA.bookTemplates.map(t => `<option value="${t.id}">${t.name}</option>`).join("")}</select>
+        <p class="muted mt" id="bo-desc"></p>
+        <label class="f-label">Book title</label>
+        <input type="text" id="bo-title" placeholder="e.g. The Girl Who Counted Stars">
+        <div id="bo-chapters"></div>
+        <div class="mt row">
+          <button class="btn primary fixed" id="bo-save">💾 Save outline</button>
+          <button class="btn fixed" id="bo-export">⬇ Export as text</button>
+        </div>
+      </div>
+      ${saved}`;
+  },
+
   /* ---------------- cost planner ---------------- */
   cost() {
     const img = models("image"), vid = models("video"), mus = models("music"), lip = models("lipsync");
@@ -1173,6 +1242,29 @@ const Bind = {
     $$("[data-del-char]").forEach(b => b.onclick = () => {
       State.characters = State.characters.filter(c => c.id !== b.dataset.delChar);
       State.saveCharacters(); render("characters");
+    });
+
+    $$("[data-lang-sel]").forEach(sel => sel.onchange = () => {
+      const l = RIU_DATA.languageVariants[+sel.value];
+      $(`[data-lang-suggestion="${sel.dataset.langSel}"]`).value = l.suggestion;
+    });
+    $$("[data-gen-variant]").forEach(b => b.onclick = () => {
+      const parent = State.characters.find(x => x.id === b.dataset.genVariant);
+      const lang = RIU_DATA.languageVariants[+$(`[data-lang-sel="${parent.id}"]`).value].lang;
+      const suggestion = $(`[data-lang-suggestion="${parent.id}"]`).value.trim();
+      State.characters.push({
+        ...parent,
+        id: "c" + Date.now(),
+        name: `${parent.name} (${lang})`,
+        ethnicity: suggestion,
+        variantOf: parent.id,
+        language: lang,
+        seed: Math.floor(Math.random() * 999999),
+        sheetUrl: null,
+        refImage: null,
+      });
+      State.saveCharacters();
+      render("characters");
     });
 
     const charSay = (id, kind, msg) => {
@@ -1495,9 +1587,10 @@ const Bind = {
     $("#fv-go").onclick = async () => {
       const text = $("#fv-text").value.trim();
       if (!text) return setStatus("fv-status", "err", "Write a script first.");
+      const delivery = RIU_DATA.deliveryStyles[+$("#fv-delivery").value];
       try {
         setStatus("fv-status", "info", "Generating free narration…");
-        const { blobUrl } = await Providers.freeSpeak(text, $("#fv-voice").value);
+        const { blobUrl } = await Providers.freeSpeak(text, $("#fv-voice").value, delivery.desc);
         setStatus("fv-status", "ok", "Done — cost: $0.00. Download it for lip sync or your editor.");
         showMedia("fv-result", "audio", blobUrl);
       } catch (e) { setStatus("fv-status", "err", e.message); }
@@ -1510,9 +1603,10 @@ const Bind = {
       const voiceId = $("#vo-voice").value, text = $("#vo-text").value.trim();
       if (!voiceId) return setStatus("vo-status", "err", "Load and pick a voice first.");
       if (!text) return setStatus("vo-status", "err", "Write a script first.");
+      const delivery = RIU_DATA.deliveryStyles[+$("#vo-delivery").value];
       try {
         setStatus("vo-status", "info", "Generating narration…");
-        const { blobUrl } = await Providers.elSpeak(voiceId, text);
+        const { blobUrl } = await Providers.elSpeak(voiceId, text, "eleven_multilingual_v2", { stability: delivery.stability, style: delivery.style });
         setStatus("vo-status", "ok", "Narration ready — play below or download for lip sync.");
         showMedia("vo-result", "audio", blobUrl);
       } catch (e) { setStatus("vo-status", "err", e.message); }
@@ -2635,6 +2729,81 @@ const Bind = {
     };
   },
 
+  marketScout() {
+    const renderScoutResult = (rec) => {
+      $("#ms-out").innerHTML = `
+        <div class="card scene-card">
+          <h3>${esc(rec.topic)} — <span class="tag gold">${esc(rec.verdict || "")}</span></h3>
+          <p><b>Appeal:</b> ${esc(rec.appeal || "")}</p>
+          <p><b>Competition:</b> ${esc(rec.competition || "")}</p>
+          <p><b>Differentiation angle:</b> ${esc(rec.angle || "")}</p>
+          <p><b>CPM tier:</b> ${esc(rec.cpmTier || "")} — ${esc(rec.cpmReason || "")}</p>
+          <p><b>Verdict reasoning:</b> ${esc(rec.verdictReason || "")}</p>
+        </div>`;
+    };
+
+    $("#ms-go").onclick = async () => {
+      const topic = $("#ms-topic").value.trim();
+      if (!topic) return setStatus("ms-status", "err", "What's the topic/niche?");
+      const platform = $("#ms-platform").value;
+      const btn = $("#ms-go"); btn.disabled = true;
+      try {
+        setStatus("ms-status", "info", "Scouting (free AI estimate, not live data)…");
+        const result = await Providers.freeJson(
+          `You are a blunt content-strategy analyst. Evaluate this idea for a ${platform}: "${topic}". ` +
+          `Return ONLY valid JSON, no markdown: {"appeal": "1-2 sentences on audience appeal", ` +
+          `"competition": "1-2 sentences on how crowded this space is", ` +
+          `"angle": "a specific differentiation angle to stand out", ` +
+          `"cpmTier": "Low or Medium or High", "cpmReason": "1 sentence why", ` +
+          `"verdict": "Go or Maybe or Skip", "verdictReason": "1-2 sentences"}`);
+        const rec = { topic, platform, ...result, ts: Date.now() };
+        State.marketScouts.unshift(rec);
+        State.saveMarketScouts();
+        setStatus("ms-status", "ok", "Scouted — see below. Directional estimate, not live search data.");
+        renderScoutResult(rec);
+      } catch (e) { setStatus("ms-status", "err", e.message); }
+      btn.disabled = false;
+    };
+
+    $$("[data-view-scout]").forEach(b => b.onclick = () => renderScoutResult(State.marketScouts[+b.dataset.viewScout]));
+    $$("[data-del-scout]").forEach(b => b.onclick = () => {
+      State.marketScouts.splice(+b.dataset.delScout, 1);
+      State.saveMarketScouts(); render("marketScout");
+    });
+  },
+
+  bookOutline() {
+    const renderChapters = () => {
+      const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
+      $("#bo-desc").textContent = t.desc;
+      $("#bo-chapters").innerHTML = t.chapters.map((c, i) => `
+        <label class="f-label">${esc(c.title)}</label>
+        <div class="hint" style="margin:0 0 5px">${esc(c.tip)}</div>
+        <textarea data-bo-chapter="${i}" style="min-height:70px" placeholder="Write this chapter's notes/draft beats…"></textarea>`).join("");
+    };
+    $("#bo-template").onchange = renderChapters; renderChapters();
+
+    $("#bo-save").onclick = () => {
+      const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
+      const title = $("#bo-title").value.trim() || "Untitled";
+      const chapters = t.chapters.map((c, i) => ({ ...c, content: $(`[data-bo-chapter="${i}"]`).value.trim() }));
+      State.bookOutlines.unshift({ title, template: t.name, chapters });
+      State.saveBookOutlines();
+      render("bookOutline");
+    };
+    $("#bo-export").onclick = () => {
+      const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
+      const title = $("#bo-title").value.trim() || "Untitled";
+      const lines = [title, "=".repeat(title.length), ""];
+      t.chapters.forEach((c, i) => { lines.push(`## ${c.title}`, $(`[data-bo-chapter="${i}"]`).value.trim(), ""); });
+      downloadText(title.replace(/\W+/g, "-") + "-outline.txt", lines.join("\n"));
+    };
+    $$("[data-del-outline]").forEach(b => b.onclick = () => {
+      State.bookOutlines.splice(+b.dataset.delOutline, 1);
+      State.saveBookOutlines(); render("bookOutline");
+    });
+  },
+
   cost() {
     $("#cp-go").onclick = () => {
       const scenes = +$("#cp-scenes").value, secs = +$("#cp-secs").value, takes = +$("#cp-takes").value;
@@ -2815,6 +2984,8 @@ const NAV = [
   ["storyboard", "🎬", "Storyboard Studio", null],
   ["thumbs", "🖼️", "Thumbnail Lab", null],
   ["locations", "🗺️", "Location Scout", null],
+  ["bookOutline", "📚", "Book Outline", null],
+  ["marketScout", "📊", "Market Scout", null],
   ["editor", "✂️", "Editor's Room", null],
   ["cost", "💰", "Cost Planner", null],
   ["galleryView", "🗂", "Gallery", "Library"],
