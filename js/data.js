@@ -204,7 +204,7 @@ const RIU_DATA = {
     {
       id: "longform",
       name: "🎬 Longform cinematic (15–40 min)",
-      desc: "Documentary / video-essay structure with chapters, tension arcs and re-hooks every 2–3 minutes.",
+      desc: "Video-essay structure with chapters, tension arcs and re-hooks every 2–3 minutes.",
       beats: [
         { beat: "Cold open montage", secs: 60, tip: "Best 4–6 shots of the whole video, cut to music. End on the central question." },
         { beat: "Chapter 1 — setup", secs: 240, tip: "Context and characters. End the chapter on a mini-cliffhanger." },
@@ -212,6 +212,21 @@ const RIU_DATA = {
         { beat: "Chapter 3 — turning point", secs: 300, tip: "The big reveal or shift. Your most cinematic sequence." },
         { beat: "Chapter 4 — resolution", secs: 240, tip: "Resolve the arcs. Slower pacing, emotional grade." },
         { beat: "Epilogue + CTA", secs: 60, tip: "Zoom out to the bigger meaning. Invite to the next video." },
+      ],
+    },
+    {
+      id: "documentary",
+      name: "🎥 Documentary (10–30 min)",
+      desc: "Narrator + interview-style soundbites over b-roll, evidence-driven chapters. Pairs well with Location Scout for cutaways and Voice Studio's multi-voice dialogue for 'interview' segments.",
+      beats: [
+        { beat: "Cold open — the hook image", secs: 30, tip: "One arresting image/moment that embodies the whole story, no context yet. Narrator poses the central question." },
+        { beat: "Meet the subject", secs: 60, tip: "Introduce who or what this is about. Establishing shots from Location Scout work well here." },
+        { beat: "Why it matters", secs: 45, tip: "Narrator explains the stakes — why this story matters now, to this audience." },
+        { beat: "Chapter 1 — the evidence", secs: 180, tip: "First part of the case: narration over b-roll, one 'interview' soundbite backing it up." },
+        { beat: "Chapter 2 — complication", secs: 180, tip: "A wrinkle, counter-argument, or deepening of the story. A second interview voice for contrast." },
+        { beat: "Chapter 3 — turning point", secs: 150, tip: "The pivotal moment or discovery. Your most cinematic b-roll sequence." },
+        { beat: "Resolution", secs: 90, tip: "Tie the evidence together. Return to the image or subject from the opening." },
+        { beat: "Closing reflection + CTA", secs: 45, tip: "Zoom out to the larger meaning. Point toward the next piece or a call to action." },
       ],
     },
   ],
@@ -234,6 +249,7 @@ const RIU_DATA = {
     { id: "curriculum",  name: "📚 Curriculum lesson (3–8 min, 16:9)", scenes: 7,  ar: "16:9" },
     { id: "edutainment", name: "🎪 Edutainment (8–15 min, 16:9)",      scenes: 9,  ar: "16:9" },
     { id: "longform",    name: "🎬 Longform cinematic (15+ min, 16:9)",scenes: 12, ar: "16:9" },
+    { id: "documentary", name: "🎥 Documentary (10-30 min, 16:9)",     scenes: 8,  ar: "16:9" },
   ],
 
   /* Thumbnail A/B Lab — proven high-CTR composition patterns. */
@@ -277,6 +293,19 @@ const RIU_DATA = {
     { id: "whiteboard", name: "Whiteboard (light)", bg: "#f7f5ef", ink: "#1c1c1c", accent: "#d94f3d" },
     { id: "blackboard", name: "Blackboard (chalk)", bg: "#1f2a24", ink: "#f2efe4", accent: "#f5c04e" },
     { id: "slate",      name: "Slate (faceless video)", bg: "#0f1220", ink: "#f2f0ec", accent: "#59e0b5" },
+  ],
+
+  /* Book Cover Studio — common cover shapes. Full print wraps (spine width
+   * depends on exact page count + paper stock) are best finished in Amazon
+   * KDP's free Cover Creator using this front art as the input image. */
+  coverFormats: [
+    { name: "Ebook / Kindle (1600×2560)", w: 1600, h: 2560 },
+    { name: "Print front cover only (1600×2400)", w: 1600, h: 2400 },
+    { name: "Square promo (1200×1200)", w: 1200, h: 1200 },
+  ],
+  coverStyles: [
+    "Photoreal cinematic", "3D animated / Pixar-style", "Children's picture-book illustration",
+    "Watercolor storybook", "Bold graphic-novel / comic", "Minimalist typographic", "Fantasy painted",
   ],
 
   /* Storyboard panel shot types. */

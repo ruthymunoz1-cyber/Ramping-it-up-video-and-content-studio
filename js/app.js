@@ -163,6 +163,39 @@ function buildSrt(text, duration, wordsPerLine = 4) {
   return out.join("\n");
 }
 
+/* Splits long manuscript text into TTS-safe chunks (voice APIs cap request
+ * length). Prefers paragraph breaks, falls back to sentence boundaries for
+ * any paragraph that's still too long on its own. */
+function chunkText(text, maxChars = 1800) {
+  const paras = text.replace(/\r\n/g, "\n").split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  // Flatten into atomic units (whole paragraphs, or sentences for any paragraph
+  // too long to fit a chunk on its own), then pack units into chunks uniformly —
+  // always joined by a single space, so no unit boundary can ever glue two
+  // words together regardless of whether it was a paragraph or sentence break.
+  const units = [];
+  for (const para of paras) {
+    if (para.length > maxChars) {
+      const sentences = (para.match(/[^.!?]+[.!?]+(\s+|$)/g) || [para]).map(s => s.trim()).filter(Boolean);
+      units.push(...sentences);
+    } else {
+      units.push(para);
+    }
+  }
+  const chunks = [];
+  let current = "";
+  for (const unit of units) {
+    const candidate = current ? current + " " + unit : unit;
+    if (candidate.length > maxChars && current) {
+      chunks.push(current);
+      current = unit;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
 function downloadText(name, content, type = "text/plain") {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([content], { type }));
@@ -204,6 +237,8 @@ const Views = {
       ["mixer", "🎚️", "Audio Mixer", "Narration + music + ambient → one file"],
       ["whiteboard", "📋", "Whiteboard & Recap", "Word-reveal captions for faceless videos"],
       ["sequencer", "📽️", "Clip Sequencer", "Stitch clips into one video, captions optional"],
+      ["bookCover", "📖", "Book Cover Studio", "Front cover art for ebooks & print"],
+      ["audiobook", "🎧", "Audiobook Studio", "Manuscript in, narrated chapters + full audiobook out"],
       ["avatar", "🧑‍🚀", "Avatar Pipeline", "Portrait → narration → talking host"],
       ["script", "✍️", "Script Builder", "Curriculum, shorts & longform beat sheets"],
       ["storyboard", "🎬", "Storyboard Studio", "Script → printable shot-by-shot board + batch animate"],
@@ -899,6 +934,56 @@ Maya: Let's find out together."></textarea>
         <div class="status" id="wb-status"></div>
         <div class="result-media" id="wb-result"></div>
         <p class="hint">Recording uses your browser's built-in camera/screen recording engine (MediaRecorder) — nothing uploads anywhere. Works best in Chrome/Edge. The .webm plays everywhere and most editors (CapCut, Premiere, Resolve) import it directly.</p>
+      </div>`;
+  },
+
+  /* ---------------- book cover studio ---------------- */
+  bookCover() {
+    return `
+      <div class="page-head"><div class="page-title">📖 Book Cover Studio</div>
+      <div class="page-desc">Front cover art for ebooks and print, with your title and author name baked in. For a full print wrap (spine + back cover), take the generated front art into Amazon KDP's free Cover Creator — spine width depends on your exact page count and paper stock, which only KDP's tool calculates correctly.</div></div>
+      <div class="card">
+        ${charSelectHtml("bc-char", "Character on the cover (optional — uses their turnaround sheet for a consistent look)")}
+        <div class="row">
+          <div><label class="f-label">Book title</label><input type="text" id="bc-title" placeholder="e.g. The Girl Who Counted Stars"></div>
+          <div><label class="f-label">Author name</label><input type="text" id="bc-author" placeholder="e.g. by Ruthy Munoz"></div>
+        </div>
+        <label class="f-label">Cover scene / concept</label>
+        <textarea id="bc-scene" placeholder="e.g. a girl looking up at a swirling night sky full of glowing constellations, warm and wondrous mood"></textarea>
+        <div class="row">
+          <div><label class="f-label">Style</label>
+            <select id="bc-style">${RIU_DATA.coverStyles.map(s => `<option>${s}</option>`).join("")}</select></div>
+          <div><label class="f-label">Format</label>
+            <select id="bc-format">${RIU_DATA.coverFormats.map((f, i) => `<option value="${i}">${f.name}</option>`).join("")}</select></div>
+          <div>${modelSelectHtml("bc-model", "image", "imageEdit")}</div>
+        </div>
+        <div class="mt"><button class="btn primary" id="bc-go">📖 Generate cover</button></div>
+        <div class="status" id="bc-status"></div>
+        <div class="result-media" id="bc-result"></div>
+      </div>`;
+  },
+
+  /* ---------------- audiobook studio ---------------- */
+  audiobook() {
+    return `
+      <div class="page-head"><div class="page-title">🎧 Audiobook Studio</div>
+      <div class="page-desc">Turn a manuscript into narrated audio. Add your book chapter by chapter, generate each chapter's narration (long text is automatically split into voice-safe chunks and stitched back into one seamless file), then combine every chapter into one finished audiobook.</div></div>
+      <div class="card">
+        <label class="f-label">Narration voice</label>
+        <div class="row">
+          <select id="ab-voice-type"><option value="free">Free voice (6 options, $0)</option><option value="eleven">ElevenLabs (your voices, incl. cloned)</option></select>
+          <select id="ab-voice"></select>
+          <button class="btn sm fixed" id="ab-load-voices" style="display:none">↻ Load ElevenLabs voices</button>
+        </div>
+        <div id="ab-chapters"></div>
+        <div class="mt"><button class="btn sm" id="ab-add">＋ Add chapter</button></div>
+        <div class="divider"></div>
+        <h3>📚 Combine into one audiobook file</h3>
+        <p class="muted">Available once at least 2 chapters have generated narration.</p>
+        <div class="mt"><button class="btn primary" id="ab-combine" disabled>📚 Combine all chapters</button></div>
+        <div class="status" id="ab-combine-status"></div>
+        <div class="result-media" id="ab-combine-result"></div>
+        <p class="hint">Runs entirely in your browser (client-side audio stitching) — the only cost is your narration voice (free voices are $0; ElevenLabs uses your plan's credits).</p>
       </div>`;
   },
 
@@ -2242,6 +2327,173 @@ const Bind = {
     wrapAndDraw("", "whiteboard");
   },
 
+  bookCover() {
+    $("#bc-go").onclick = async () => {
+      const charId = $("#bc-char").value;
+      const title = $("#bc-title").value.trim();
+      const author = $("#bc-author").value.trim();
+      const scene = $("#bc-scene").value.trim();
+      if (!title) return setStatus("bc-status", "err", "Give the book a title.");
+      if (!scene) return setStatus("bc-status", "err", "Describe the cover scene.");
+      const style = $("#bc-style").value;
+      const fmt = RIU_DATA.coverFormats[+$("#bc-format").value];
+      const modelId = $("#bc-model").value;
+      const refs = characterRefs(charId);
+      const prompt = characterPrefix(charId) + scene + `. Book cover art, ${style} style. ` +
+        `Large bold readable title text prominently placed: "${title}"` + (author ? ` — author name "${author}" in smaller text` : "") +
+        `. Professional book cover composition, clear focal point, print-quality, high detail.`;
+      const btn = $("#bc-go"); btn.disabled = true;
+      try {
+        let url, cost = 0;
+        if (modelId.startsWith("pollinations:")) {
+          setStatus("bc-status", "info", "Generating cover (FREE, 20–60s)…");
+          const out = await Providers.freeImage(prompt, { width: fmt.w, height: fmt.h, model: modelId.split(":")[1] });
+          url = out.sourceUrl;
+        } else {
+          const shapeAr = fmt.w === fmt.h ? "1:1" : "9:16"; // closest supported ratio for paid models
+          setStatus("bc-status", "info", "Generating cover…");
+          const input = /edit/.test(modelId) && refs.length
+            ? { prompt, image_urls: refs, num_images: 1 }
+            : { prompt, aspect_ratio: shapeAr };
+          const res = await Providers.falRun(modelId, input, s => setStatus("bc-status", "info", s));
+          url = Providers.extractMedia(res);
+          cost = modelsIn("image", "imageEdit").find(x => x.id === modelId)?.cost || 0;
+        }
+        if (!url) throw new Error("No cover image returned.");
+        setStatus("bc-status", "ok",
+          `Cover ready${cost ? ` — ~$${cost}` : " — $0.00"}. For the exact ${fmt.name} pixel size: the FREE provider renders it precisely; paid models render at the closest supported shape — fine-tune the crop in KDP's Cover Creator or any image editor before publishing.`);
+        showMedia("bc-result", "image", url);
+        State.addToGallery({ kind: "image", url, prompt: `Book cover: ${title}`, model: modelId, cost });
+      } catch (e) { setStatus("bc-status", "err", e.message); }
+      btn.disabled = false;
+    };
+  },
+
+  audiobook() {
+    const state = { chapters: [{ title: "", text: "", audioUrl: null, audioBlob: null }] };
+    const chSay = (i, kind, msg) => {
+      const el = $(`[data-ch-status="${i}"]`);
+      el.className = `status show ${kind}`;
+      el.innerHTML = kind === "info" ? `<span class="spinner"></span>${esc(msg)}` : esc(msg);
+    };
+    const updateCombineButton = () => { $("#ab-combine").disabled = state.chapters.filter(c => c.audioBlob).length < 2; };
+
+    const renderChapters = () => {
+      $("#ab-chapters").innerHTML = state.chapters.map((c, i) => `
+        <div class="card" style="margin-top:14px">
+          <div class="row">
+            <span class="fixed" style="font-weight:700">Chapter ${i + 1}</span>
+            <input type="text" data-ch-title="${i}" placeholder="Chapter title (optional)" value="${esc(c.title)}">
+            <button class="btn sm fixed" data-ch-up="${i}" ${i === 0 ? "disabled" : ""}>↑</button>
+            <button class="btn sm fixed" data-ch-down="${i}" ${i === state.chapters.length - 1 ? "disabled" : ""}>↓</button>
+            <button class="btn sm danger fixed" data-ch-del="${i}">✕</button>
+          </div>
+          <textarea data-ch-text="${i}" style="min-height:130px" placeholder="Paste this chapter's text here…">${esc(c.text)}</textarea>
+          <div class="hint" data-ch-count="${i}">${c.text ? `${c.text.length.toLocaleString()} characters — will narrate as ${chunkText(c.text.trim(), 1800).length} chunk(s)` : ""}</div>
+          <div class="mt"><button class="btn sm primary" data-ch-gen="${i}">🎧 Generate chapter narration</button></div>
+          <div class="status" data-ch-status="${i}"></div>
+          <div class="result-media" data-ch-result="${i}">${c.audioUrl ? `<audio src="${c.audioUrl}" controls style="width:100%"></audio>` : ""}</div>
+        </div>`).join("");
+
+      $$("[data-ch-title]").forEach(el => el.oninput = () => { state.chapters[+el.dataset.chTitle].title = el.value; });
+      $$("[data-ch-text]").forEach(el => el.oninput = () => {
+        const i = +el.dataset.chText;
+        state.chapters[i].text = el.value;
+        const n = el.value.trim() ? chunkText(el.value.trim(), 1800).length : 0;
+        $(`[data-ch-count="${i}"]`).textContent = el.value ? `${el.value.length.toLocaleString()} characters — will narrate as ${n} chunk(s)` : "";
+      });
+      $$("[data-ch-up]").forEach(el => el.onclick = () => {
+        const i = +el.dataset.chUp;
+        [state.chapters[i - 1], state.chapters[i]] = [state.chapters[i], state.chapters[i - 1]];
+        renderChapters();
+      });
+      $$("[data-ch-down]").forEach(el => el.onclick = () => {
+        const i = +el.dataset.chDown;
+        [state.chapters[i + 1], state.chapters[i]] = [state.chapters[i], state.chapters[i + 1]];
+        renderChapters();
+      });
+      $$("[data-ch-del]").forEach(el => el.onclick = () => {
+        state.chapters.splice(+el.dataset.chDel, 1);
+        if (!state.chapters.length) state.chapters.push({ title: "", text: "", audioUrl: null, audioBlob: null });
+        renderChapters(); updateCombineButton();
+      });
+      $$("[data-ch-gen]").forEach(btn => btn.onclick = async () => {
+        btn.disabled = true;
+        try { await generateChapter(+btn.dataset.chGen); } catch (e) { chSay(+btn.dataset.chGen, "err", e.message); }
+        btn.disabled = false;
+      });
+    };
+
+    const speakChunk = async (text) => {
+      const vtype = $("#ab-voice-type").value;
+      const voiceId = $("#ab-voice").value;
+      if (!voiceId) throw new Error(vtype === "eleven" ? "Load and pick an ElevenLabs voice first." : "Pick a voice.");
+      return vtype === "eleven" ? Providers.elSpeak(voiceId, text) : Providers.freeSpeak(text, voiceId);
+    };
+
+    const generateChapter = async (i) => {
+      const c = state.chapters[i];
+      const text = c.text.trim();
+      if (!text) throw new Error(`Chapter ${i + 1} has no text yet.`);
+      const chunks = chunkText(text, 1800);
+      const blobs = [];
+      for (let j = 0; j < chunks.length; j++) {
+        chSay(i, "info", `Narrating chunk ${j + 1}/${chunks.length}…`);
+        const { blob } = await speakChunk(chunks[j]);
+        blobs.push(blob);
+      }
+      let blob, duration;
+      if (blobs.length > 1) {
+        chSay(i, "info", `Stitching ${blobs.length} chunks into one chapter file…`);
+        ({ blob, duration } = await Providers.concatTracks(blobs, 0.3));
+      } else {
+        blob = blobs[0];
+        duration = (await Providers.decodeAudio(blob)).duration;
+      }
+      c.audioBlob = blob; c.audioUrl = URL.createObjectURL(blob);
+      chSay(i, "ok", `Chapter ready — ${duration.toFixed(0)}s across ${chunks.length} chunk(s).`);
+      $(`[data-ch-result="${i}"]`).innerHTML = `<audio src="${c.audioUrl}" controls style="width:100%"></audio>`;
+      State.addToGallery({ kind: "audio", url: c.audioUrl, prompt: `Audiobook chapter: ${c.title || "Chapter " + (i + 1)}`, model: "audiobook-studio", cost: 0 });
+      updateCombineButton();
+    };
+
+    const freeOpts = () => Providers.freeVoices.map(v => `<option>${v}</option>`).join("");
+    $("#ab-voice").innerHTML = freeOpts();
+    $("#ab-voice-type").onchange = () => {
+      if ($("#ab-voice-type").value === "free") {
+        $("#ab-voice").innerHTML = freeOpts();
+        $("#ab-load-voices").style.display = "none";
+      } else {
+        $("#ab-voice").innerHTML = `<option value="">Load voices first…</option>`;
+        $("#ab-load-voices").style.display = "";
+      }
+    };
+    $("#ab-load-voices").onclick = async () => {
+      try {
+        const voices = await Providers.elVoices();
+        $("#ab-voice").innerHTML = voices.map(v => `<option value="${v.voice_id}">${esc(v.name)}</option>`).join("");
+      } catch (e) { alert(e.message); }
+    };
+
+    $("#ab-add").onclick = () => { state.chapters.push({ title: "", text: "", audioUrl: null, audioBlob: null }); renderChapters(); };
+    $("#ab-combine").onclick = async () => {
+      const ready = state.chapters.filter(c => c.audioBlob);
+      if (ready.length < 2) return;
+      const btn = $("#ab-combine"); btn.disabled = true;
+      try {
+        setStatus("ab-combine-status", "info", `Combining ${ready.length} chapters…`);
+        const { blob, duration } = await Providers.concatTracks(ready.map(c => c.audioBlob), 1.5);
+        const url = URL.createObjectURL(blob);
+        setStatus("ab-combine-status", "ok", `Audiobook ready — ${ready.length} chapters, ${(duration / 60).toFixed(1)} min total, cost $0.00.`);
+        showMedia("ab-combine-result", "audio", url);
+        State.addToGallery({ kind: "audio", url, prompt: "Audiobook (all chapters combined)", model: "audiobook-studio", cost: 0 });
+      } catch (e) { setStatus("ab-combine-status", "err", e.message); }
+      updateCombineButton();
+    };
+
+    renderChapters();
+  },
+
   sequencer() {
     const state = { clips: [{ file: null, url: "", start: "", end: "" }] };
 
@@ -2556,6 +2808,8 @@ const NAV = [
   ["mixer", "🎚️", "Audio Mixer", null],
   ["whiteboard", "📋", "Whiteboard & Recap", null],
   ["sequencer", "📽️", "Clip Sequencer", null],
+  ["bookCover", "📖", "Book Cover Studio", null],
+  ["audiobook", "🎧", "Audiobook Studio", null],
   ["avatar", "🧑‍🚀", "Avatar Pipeline", null],
   ["script", "✍️", "Script Builder", "Plan"],
   ["storyboard", "🎬", "Storyboard Studio", null],
