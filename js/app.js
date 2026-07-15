@@ -381,6 +381,7 @@ const Views = {
         <label class="f-label">Aspect ratio</label>
         ${chipsHtml("img-ar", RIU_DATA.aspectRatios, x => x.label)}
         <label class="row" style="align-items:center;gap:8px;margin-top:10px"><input type="checkbox" id="img-textspace" style="width:auto"> 📖 Reserve blank space for text overlay (book pages, comics — keeps the illustration free of baked-in text)</label>
+        <label class="row" style="align-items:center;gap:8px;margin-top:6px"><input type="checkbox" id="img-antiai" style="width:auto"> 🕵️ Reduce AI-look artifacts (asymmetry, hands, skin texture, background text)</label>
         <div class="mt"><button class="btn primary" id="img-go">✨ Generate image <span class="cost" id="img-cost"></span></button></div>
         <div class="status" id="img-status"></div>
         <div class="result-media" id="img-result"></div>
@@ -1074,6 +1075,11 @@ Maya: Let's find out together."></textarea>
       <div class="page-head"><div class="page-title">📚 Book Outline</div>
       <div class="page-desc">Bestseller-shaped chapter structures — including a diverse-representation picture-book template — to plan your manuscript before writing it in Scrivener/Atticus/Word. Feeds straight into the 🎧 Audiobook Studio (chapter text) and 📖 Book Cover Studio (title/concept) once written.</div></div>
       <div class="card">
+        <h3>🕵️ Self-editing check — avoiding AI tells</h3>
+        <p class="muted">Run your manuscript against this before you call it done. Full reference with sourcing: <code class="k">docs/avoiding-ai-tells.md</code> in the repo.</p>
+        <table class="plain">${RIU_DATA.aiTellsChecklist.map(c => `<tr><td>☐ ${esc(c.check)}</td><td class="muted">${esc(c.why)}</td></tr>`).join("")}</table>
+      </div>
+      <div class="card">
         <label class="f-label">Template</label>
         <select id="bo-template">${RIU_DATA.bookTemplates.map(t => `<option value="${t.id}">${t.name}</option>`).join("")}</select>
         <p class="muted mt" id="bo-desc"></p>
@@ -1384,7 +1390,8 @@ const Bind = {
       const loc = State.locations.find(l => l.id === $("#img-loc").value);
       const prompt = characterPrefix(charId) + $("#img-prompt").value.trim() +
         (loc ? `. Setting: ${loc.desc}` : "") + (style ? ". Style: " + style : "") +
-        ($("#img-textspace").checked ? ". " + RIU_DATA.textSpaceSuffix : "");
+        ($("#img-textspace").checked ? ". " + RIU_DATA.textSpaceSuffix : "") +
+        ($("#img-antiai").checked ? ". " + RIU_DATA.antiAiImageSuffix : "");
       if (!$("#img-prompt").value.trim()) return setStatus("img-status", "err", "Describe the scene first.");
       const seed = characterSeed(charId);
 
@@ -1825,7 +1832,8 @@ const Bind = {
             `"narration": "1-3 sentences of spoken voiceover", "visual": "detailed visual description of the shot for an image generator", ` +
             `"shot": "WIDE" | "MED" | "CLOSE-UP", "emotion": "the ONE emotional job this scene does for the audience (e.g. curiosity, tension, awe, relief, joy)", ` +
             `"seconds": integer 3-10 — this scene's target length; pace it by its job (hooks punchy 3-4s, explanations 6-8s, payoffs 8-10s)}]} ` +
-            `with exactly ${fmt.scenes} scenes. Strong hook in scene 1, payoff in the last scene, continuous action from scene to scene.`);
+            `with exactly ${fmt.scenes} scenes. Strong hook in scene 1, payoff in the last scene, continuous action from scene to scene. ` +
+            `The "narration" text specifically: ${RIU_DATA.antiAiWritingInstruction}`);
           if (!plan.scenes?.length) throw new Error("empty plan");
         } catch {
           // offline/busy fallback: deterministic plan from the format template

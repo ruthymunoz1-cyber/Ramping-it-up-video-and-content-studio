@@ -12,14 +12,14 @@ one to render **melanin-rich skin tones beautifully and consistently**.
 |---|---|
 | 🎥 **Director** | The one-click pipeline: type a topic → it drafts the script (free writing model), builds the storyboard with your character, generates every panel, records narration, and produces word-timed captions. Script + images can run 100% free; animation is quoted before it runs. |
 | 🎭 **Character Lab** | Create reusable characters — any race or ethnicity, full Monk Skin Tone scale (1–10), undertones, hair textures (1A–4C), reference photos — then generate a **multi-angle turnaround sheet** that anchors their likeness from any camera angle. Every studio auto-injects the consistency token and uses the sheet as the master reference. Single **angle shots** pull off the sheet on demand, and a **language/culture variant** generator spins up localized hosts for your language-learning content (editable suggestion, never automatic). |
-| 🖼️ **Image Studio** | **FREE Pollinations models (no key, $0)** plus Nano Banana Pro / GPT Image 2 — cinematic stills, thumbnails, curriculum illustrations. Seed-locking for repeatable results, plus a **reserve blank text area** toggle for book pages/comics that need illustrations free of baked-in text. |
+| 🖼️ **Image Studio** | **FREE Pollinations models (no key, $0)** plus Nano Banana Pro / GPT Image 2 — cinematic stills, thumbnails, curriculum illustrations. Seed-locking for repeatable results, a **reserve blank text area** toggle for book pages/comics, and a **reduce AI-look artifacts** toggle (asymmetry, hands, skin texture, background text). |
 | 🎥 **Video Studio** | Image-to-video and text-to-video (Kling v3 Pro/4K, Seedance 2.0, Hailuo) with shorts (9:16) and cinematic (16:9) presets, plus a Topaz 4K upscale pass. |
 | 💡 **Relight Studio** | Higgsfield's signature "change the light in any video," done directly on the models: relight one frame (~$0.10), approve it, then push the look onto the whole 3–10s clip with the **original audio preserved**. |
 | 🎞️ **Restyle & Animate** | Turn anything into anything, identity preserved: photo → 3D animated (Pixar-class) / anime / claymation, or a drawing → **realistic human** — plus **children's-book illustration** and **coloring-book line art (no color, printable)** for your books — then animate the result into video. |
 | 🎬 **Storyboard Studio** | Import a saved script (each beat becomes a panel) or start blank; generate consistent panel art with your character; print the board as a PDF — then **📦 batch-animate** every approved panel into video clips with one quoted, confirmed run. |
 | 🗄️ **Asset Vault** | Provider URLs expire after a few days — the Gallery's vault downloads everything to your computer in one click, ready to drop into Google Drive / Dropbox for permanent storage. |
 | 🗺️ **Location Scout** | Build a reusable library of establishing shots — world landmarks, cities, museums & exhibitions, classrooms, nature, historical eras, fantasy sets. Saved locations appear as a "Setting" option in the Image Studio. |
-| 📚 **Book Outline** | Bestseller-shaped chapter structures — diverse picture book, middle-grade adventure, romance beat sheet, YA coming-of-age, nonfiction/self-help, and a **personalized keepsake book** template (the proven Letterfest-style structure behind a real $8M+ Etsy business) — with representation-forward guidance baked into the picture-book template. Feeds into Audiobook Studio and Book Cover Studio. |
+| 📚 **Book Outline** | Bestseller-shaped chapter structures — diverse picture book, middle-grade adventure, romance beat sheet, YA coming-of-age, nonfiction/self-help, and a **personalized keepsake book** template (the proven Letterfest-style structure behind a real $8M+ Etsy business) — with representation-forward guidance baked into the picture-book template, plus a built-in **self-editing checklist for avoiding AI writing tells**. Feeds into Audiobook Studio and Book Cover Studio. |
 | 📊 **Market Scout** | A fast, free directional gut-check on a topic before you spend production budget — audience appeal, competition, a differentiation angle, and a rough CPM tier. Runs on a free general-knowledge model, clearly labeled as an estimate, not live search/trend data. |
 | 👄 **Lip Sync Studio** | Sync any voice track to any face video — the backbone of your talking-avatar pipeline. |
 | 🗣️ **Voice Studio** | **FREE voiceover (6 stock voices, $0)**, plus ElevenLabs voice cloning and narration in 30+ languages, a **Delivery style** picker (warm teacher / dramatic documentary / playful kids' / calm soothing — shapes tone without changing the words), a **multi-voice dialogue** builder (write `Speaker: line` scripts, assign a voice per speaker, get one combined audio file), and a free **auto-captions** builder (word-timed .srt). |
@@ -44,6 +44,17 @@ there is currently no truly free API for *video* generation — video is the one
 thing that costs money everywhere (it's heavy compute). The cheapest quality path
 here is Kling v3 Pro at ~$0.17/second (a 5-second clip ≈ $0.85), which is far
 below credit-platform pricing. Everything else can be run entirely free.
+
+## 🕵️ Avoiding AI tells
+
+`docs/avoiding-ai-tells.md` is a working reference on making generated and
+AI-assisted content read and look human — specific writing tics to avoid
+(overused vocabulary, rule-of-three, paragraph-summary endings, low
+"burstiness"), image artifacts to watch for (hands, skin texture, facial
+symmetry, background text), and what's fixable via prompting vs. what needs
+a manual pass. The Director pipeline and Image Studio apply the fixable
+parts automatically (opt-in for images); Book Outline shows the
+self-editing checklist in-app.
 
 ## 🧰 Bundled Claude Code skills (`skills/`)
 

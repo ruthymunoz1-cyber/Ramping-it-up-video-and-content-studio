@@ -243,11 +243,41 @@ const RIU_DATA = {
   ],
   locationSuffix: "Cinematic wide establishing shot, no people in frame, photorealistic, rich natural light, high detail, room for a subject to be composited into the scene",
 
+  /* Anti-AI-tell writing instruction, injected into script/story drafting
+   * prompts (Director, etc). See docs/avoiding-ai-tells.md for the full
+   * reference and sourcing. */
+  antiAiWritingInstruction:
+    "Write in a natural, human voice. Avoid AI-writing tells: don't use the words 'delve', 'tapestry', " +
+    "'testament to', 'realm', 'landscape' (as a metaphor), 'underscore', 'pivotal', 'robust', or 'leverage'. " +
+    "Don't use 'not X, it's Y' contrast constructions more than once. Avoid rule-of-three lists (groups of exactly " +
+    "three adjectives/items) — use two, or four with an odd one out. Don't stack more than one metaphor per " +
+    "paragraph. Don't end paragraphs by restating the point just made. Vary sentence length to match the emotional " +
+    "temperature of the moment — short and fragmented under tension, longer and flowing when calm. Use concrete, " +
+    "specific details (real-sounding names, numbers, sensory specifics) instead of generic description.",
+
+  /* Condensed self-editing checklist shown in-app (Book Outline). Full
+   * reference with sourcing: docs/avoiding-ai-tells.md */
+  aiTellsChecklist: [
+    { check: "Read 3 sentences in a row aloud in one breath", why: "If it's easy, the rhythm is too smooth and uniform — vary sentence length." },
+    { check: "Search for: delve, tapestry, testament to, realm, landscape, underscore, pivotal, robust, leverage", why: "Statistically overrepresented in AI writing — swap for plain, specific words." },
+    { check: "Count rule-of-three lists (exactly 3 adjectives/items in a row)", why: "AI can't resist symmetry. Cut one item or add an odd fourth." },
+    { check: "Check paragraph endings for a restated summary sentence", why: "Delete it — the paragraph almost always works without it." },
+    { check: "Look for 'not X, it's Y' constructions — more than one per page?", why: "Sounds profound once, a tic after that." },
+    { check: "Is every description generic, or does at least one detail feel invented/specific?", why: "'The vehicle moved swiftly' vs. a real brand, smell, or number." },
+    { check: "Zoom into hands, eyes, and any background text on generated images", why: "Still the most common AI-image tells — no prompt fixes this 100%, needs a manual look." },
+  ],
+
   /* Reserves clean negative space for later text overlay — the technique
    * that makes book-page illustrations (personalized keepsake books,
    * picture books, comics) actually usable once text is added per-page or
    * per-order. Illustrations must NOT contain baked-in text. */
   textSpaceSuffix: "Leave a clean, empty area on the page for text — no objects, patterns or details in that space. Do not include any text, letters, or words in the illustration itself.",
+
+  /* General-knowledge prompt additions against common AI-image artifacts —
+   * not sourced from the researched videos (they didn't cover this), see
+   * docs/avoiding-ai-tells.md. Reduces, does not eliminate; always spot-check
+   * hands/eyes/text on the actual result before publishing. */
+  antiAiImageSuffix: "Naturally asymmetric human face (not perfectly symmetric), correct anatomy with exactly five fingers per hand, natural skin texture with subtle imperfections (not waxy or overly smooth), no garbled or nonsensical text or patterns anywhere in the frame, natural directional lighting with consistent shadows.",
 
   /* Director one-click pipeline formats. */
   directorFormats: [
