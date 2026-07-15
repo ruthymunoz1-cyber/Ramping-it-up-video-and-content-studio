@@ -200,6 +200,105 @@ function chunkText(text, maxChars = 1800) {
   return chunks;
 }
 
+/* Crossword generator — pure layout algorithm, no dependencies. Places the
+ * longest word first, then greedily finds the best-overlap intersection for
+ * each subsequent word; falls back to a fresh row if a word genuinely can't
+ * cross anything already placed (vocab lists don't always interlock fully —
+ * still usable as an activity even then). */
+function generateCrossword(entries) {
+  const words = entries
+    .map(e => ({ ...e, word: e.word.toUpperCase().replace(/[^A-Z]/g, "") }))
+    .filter(e => e.word.length >= 2);
+  if (!words.length) return { width: 0, height: 0, grid: {}, placed: [] };
+  words.sort((a, b) => b.word.length - a.word.length);
+
+  const grid = new Map();
+  const placed = [];
+
+  const canPlace = (word, row, col, dir) => {
+    const dr = dir === "D" ? 1 : 0, dc = dir === "A" ? 1 : 0;
+    if (grid.has(`${row - dr},${col - dc}`)) return false;
+    for (let i = 0; i < word.length; i++) {
+      const r = row + dr * i, c = col + dc * i, key = `${r},${c}`;
+      if (grid.has(key)) {
+        if (grid.get(key) !== word[i]) return false;
+      } else {
+        const pr1 = dir === "A" ? r - 1 : r, pc1 = dir === "A" ? c : c - 1;
+        const pr2 = dir === "A" ? r + 1 : r, pc2 = dir === "A" ? c : c + 1;
+        if (grid.has(`${pr1},${pc1}`) || grid.has(`${pr2},${pc2}`)) return false;
+      }
+    }
+    const er = row + dr * word.length, ec = col + dc * word.length;
+    return !grid.has(`${er},${ec}`);
+  };
+
+  const place = (word, row, col, dir) => {
+    const dr = dir === "D" ? 1 : 0, dc = dir === "A" ? 1 : 0;
+    for (let i = 0; i < word.length; i++) grid.set(`${row + dr * i},${col + dc * i}`, word[i]);
+  };
+
+  place(words[0].word, 0, 0, "A");
+  placed.push({ ...words[0], row: 0, col: 0, dir: "A" });
+
+  for (let wi = 1; wi < words.length; wi++) {
+    const w = words[wi];
+    let best = null, bestScore = -1;
+    for (const p of placed) {
+      for (let i = 0; i < w.word.length; i++) {
+        for (let j = 0; j < p.word.length; j++) {
+          if (w.word[i] !== p.word[j]) continue;
+          const crossDir = p.dir === "A" ? "D" : "A";
+          const pr = p.dir === "D" ? p.row + j : p.row;
+          const pc = p.dir === "A" ? p.col + j : p.col;
+          const wr = crossDir === "D" ? pr - i : pr;
+          const wc = crossDir === "A" ? pc - i : pc;
+          if (canPlace(w.word, wr, wc, crossDir)) {
+            let score = 0;
+            const dr = crossDir === "D" ? 1 : 0, dc = crossDir === "A" ? 1 : 0;
+            for (let k = 0; k < w.word.length; k++) if (grid.has(`${wr + dr * k},${wc + dc * k}`)) score++;
+            if (score > bestScore) { bestScore = score; best = { row: wr, col: wc, dir: crossDir }; }
+          }
+        }
+      }
+    }
+    if (best) {
+      place(w.word, best.row, best.col, best.dir);
+      placed.push({ ...w, ...best });
+    } else {
+      const rows = [...grid.keys()].map(k => +k.split(",")[0]);
+      const row = (rows.length ? Math.max(...rows) : 0) + 2;
+      place(w.word, row, 0, "A");
+      placed.push({ ...w, row, col: 0, dir: "A" });
+    }
+  }
+
+  const coords = [...grid.keys()].map(k => k.split(",").map(Number));
+  const minR = Math.min(...coords.map(c => c[0])), minC = Math.min(...coords.map(c => c[1]));
+  const maxR = Math.max(...coords.map(c => c[0])), maxC = Math.max(...coords.map(c => c[1]));
+  const width = maxC - minC + 1, height = maxR - minR + 1;
+
+  const normGrid = {};
+  for (const [k, v] of grid.entries()) {
+    const [r, c] = k.split(",").map(Number);
+    normGrid[`${r - minR},${c - minC}`] = v;
+  }
+  const normPlaced = placed.map(p => ({ ...p, row: p.row - minR, col: p.col - minC }));
+
+  let num = 1;
+  const numbering = {};
+  for (let r = 0; r < height; r++) {
+    for (let c = 0; c < width; c++) {
+      const key = `${r},${c}`;
+      if (!normGrid[key]) continue;
+      const startsAcross = !normGrid[`${r},${c - 1}`] && !!normGrid[`${r},${c + 1}`];
+      const startsDown = !normGrid[`${r - 1},${c}`] && !!normGrid[`${r + 1},${c}`];
+      if (startsAcross || startsDown) numbering[key] = num++;
+    }
+  }
+  const finalPlaced = normPlaced.map(p => ({ ...p, number: numbering[`${p.row},${p.col}`] }));
+  return { width, height, grid: normGrid, placed: finalPlaced, numbering };
+}
+
 function downloadText(name, content, type = "text/plain") {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([content], { type }));
@@ -249,6 +348,7 @@ const Views = {
       ["thumbs", "🖼️", "Thumbnail Lab", "A/B test high-CTR thumbnail variants"],
       ["locations", "🗺️", "Location Scout", "Landmarks, museums, sets — a reusable library"],
       ["bookOutline", "📚", "Book Outline", "Bestseller chapter structures, incl. diverse picture books"],
+      ["crossword", "🧩", "Crossword Studio", "Vocabulary/lesson lists → real printable crosswords"],
       ["marketScout", "📊", "Market Scout", "Free directional gut-check before you spend a cent"],
       ["cost", "💰", "Cost Planner", "Budget a whole project before spending"],
     ];
@@ -1092,6 +1192,36 @@ Maya: Let's find out together."></textarea>
         </div>
       </div>
       ${saved}`;
+  },
+
+  /* ---------------- crossword studio ---------------- */
+  crossword() {
+    return `
+      <div class="page-head"><div class="page-title">🧩 Crossword Studio</div>
+      <div class="page-desc">Turn any vocabulary or lesson word list into a real crossword puzzle — great for language-learning cohorts, curriculum workbooks, or brain-health/cognitive activity content. Runs entirely in your browser, $0.</div></div>
+      <div class="card">
+        <label class="f-label">Title</label>
+        <input type="text" id="cw-title" placeholder="e.g. Unit 3 — Family Words">
+        <label class="f-label">Words & clues — one per line, format: <code class="k">WORD | Clue</code></label>
+        <textarea id="cw-words" style="min-height:220px" placeholder="AMIGO | Spanish word for friend
+LIBRO | Spanish word for book
+GATO | Spanish word for cat
+CASA | Spanish word for house
+AGUA | Spanish word for water
+MESA | Spanish word for table"></textarea>
+        <div class="hint">Words don't all need to share letters — any that can't cross another word are still placed, just on their own row.</div>
+        <div class="mt row">
+          <button class="btn primary fixed" id="cw-go">🧩 Generate crossword</button>
+          <label class="row fixed" style="align-items:center;gap:8px"><input type="checkbox" id="cw-answers" style="width:auto"> Show answer key</label>
+        </div>
+        <div class="status" id="cw-status"></div>
+        <div class="mt" style="overflow-x:auto"><canvas id="cw-canvas" style="border-radius:8px"></canvas></div>
+        <div id="cw-clues" class="mt"></div>
+        <div class="mt row" id="cw-actions" style="display:none">
+          <button class="btn sm fixed" id="cw-download">⬇ Download PNG</button>
+          <button class="btn sm fixed" id="cw-print">🖨 Print puzzle + clues</button>
+        </div>
+      </div>`;
   },
 
   /* ---------------- cost planner ---------------- */
@@ -2816,6 +2946,96 @@ const Bind = {
     });
   },
 
+  crossword() {
+    let current = null;
+    const CELL = 40;
+
+    const parseEntries = () => $("#cw-words").value.split("\n")
+      .map(l => l.trim()).filter(Boolean)
+      .map(l => {
+        const [word, ...rest] = l.split("|");
+        return { word: (word || "").trim(), clue: rest.join("|").trim() || "(no clue given)" };
+      })
+      .filter(e => e.word);
+
+    const drawGrid = (result, showAnswers) => {
+      const canvas = $("#cw-canvas");
+      canvas.width = result.width * CELL + 2;
+      canvas.height = result.height * CELL + 2;
+      const cx = canvas.getContext("2d");
+      cx.fillStyle = "#fff"; cx.fillRect(0, 0, canvas.width, canvas.height);
+      for (let r = 0; r < result.height; r++) {
+        for (let c = 0; c < result.width; c++) {
+          const key = `${r},${c}`;
+          if (!result.grid[key]) continue;
+          const x = c * CELL + 1, y = r * CELL + 1;
+          cx.fillStyle = "#fff"; cx.fillRect(x, y, CELL, CELL);
+          cx.strokeStyle = "#222"; cx.lineWidth = 1.5; cx.strokeRect(x, y, CELL, CELL);
+          if (result.numbering[key]) {
+            cx.fillStyle = "#222"; cx.font = "600 11px Arial";
+            cx.fillText(result.numbering[key], x + 3, y + 13);
+          }
+          if (showAnswers) {
+            cx.fillStyle = "#1c1503"; cx.font = "700 20px Arial";
+            cx.textAlign = "center"; cx.textBaseline = "middle";
+            cx.fillText(result.grid[key], x + CELL / 2, y + CELL / 2 + 4);
+            cx.textAlign = "left"; cx.textBaseline = "alphabetic";
+          }
+        }
+      }
+    };
+
+    const renderClues = (result) => {
+      const across = result.placed.filter(p => p.dir === "A").sort((a, b) => a.number - b.number);
+      const down = result.placed.filter(p => p.dir === "D").sort((a, b) => a.number - b.number);
+      const list = (arr) => arr.map(p => `<div><b>${p.number}.</b> ${esc(p.clue)} <span class="muted">(${p.word.length})</span></div>`).join("");
+      $("#cw-clues").innerHTML = `
+        <div class="grid cols-2">
+          <div><h3>Across</h3>${list(across)}</div>
+          <div><h3>Down</h3>${list(down)}</div>
+        </div>`;
+    };
+
+    $("#cw-go").onclick = () => {
+      const entries = parseEntries();
+      if (!entries.length) return setStatus("cw-status", "err", "Add at least one WORD | Clue line.");
+      current = generateCrossword(entries);
+      if (!current.placed.length) return setStatus("cw-status", "err", "No valid words found — check your format (WORD | Clue).");
+      drawGrid(current, $("#cw-answers").checked);
+      renderClues(current);
+      setStatus("cw-status", "ok", `${current.placed.length} words placed — ${current.width}×${current.height} grid. Cost: $0.00.`);
+      $("#cw-actions").style.display = "";
+    };
+
+    $("#cw-answers").onchange = () => { if (current) drawGrid(current, $("#cw-answers").checked); };
+
+    $("#cw-download").onclick = () => {
+      if (!current) return;
+      const a = document.createElement("a");
+      a.href = $("#cw-canvas").toDataURL("image/png");
+      a.download = (($("#cw-title").value.trim() || "crossword").replace(/\W+/g, "-")) + ".png";
+      a.click();
+    };
+
+    $("#cw-print").onclick = () => {
+      if (!current) return;
+      const title = $("#cw-title").value.trim() || "Crossword Puzzle";
+      const across = current.placed.filter(p => p.dir === "A").sort((a, b) => a.number - b.number);
+      const down = current.placed.filter(p => p.dir === "D").sort((a, b) => a.number - b.number);
+      const imgData = $("#cw-canvas").toDataURL("image/png");
+      const w = window.open("", "_blank");
+      w.document.write(`<!DOCTYPE html><html><head><title>${esc(title)}</title><style>
+        body{font-family:Georgia,serif;padding:24px;color:#222} h1{font-size:20px}
+        img{max-width:100%;margin:14px 0} .cols{display:flex;gap:40px} .cols>div{flex:1}
+        h3{margin-top:0}</style></head><body>
+        <h1>${esc(title)}</h1><img src="${imgData}">
+        <div class="cols"><div><h3>Across</h3>${across.map(p => `<div><b>${p.number}.</b> ${esc(p.clue)}</div>`).join("")}</div>
+        <div><h3>Down</h3>${down.map(p => `<div><b>${p.number}.</b> ${esc(p.clue)}</div>`).join("")}</div></div>
+        <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`);
+      w.document.close();
+    };
+  },
+
   cost() {
     $("#cp-go").onclick = () => {
       const scenes = +$("#cp-scenes").value, secs = +$("#cp-secs").value, takes = +$("#cp-takes").value;
@@ -2997,6 +3217,7 @@ const NAV = [
   ["thumbs", "🖼️", "Thumbnail Lab", null],
   ["locations", "🗺️", "Location Scout", null],
   ["bookOutline", "📚", "Book Outline", null],
+  ["crossword", "🧩", "Crossword Studio", null],
   ["marketScout", "📊", "Market Scout", null],
   ["editor", "✂️", "Editor's Room", null],
   ["cost", "💰", "Cost Planner", null],
