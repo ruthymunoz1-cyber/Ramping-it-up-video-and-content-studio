@@ -243,6 +243,12 @@ const RIU_DATA = {
   ],
   locationSuffix: "Cinematic wide establishing shot, no people in frame, photorealistic, rich natural light, high detail, room for a subject to be composited into the scene",
 
+  /* Reserves clean negative space for later text overlay — the technique
+   * that makes book-page illustrations (personalized keepsake books,
+   * picture books, comics) actually usable once text is added per-page or
+   * per-order. Illustrations must NOT contain baked-in text. */
+  textSpaceSuffix: "Leave a clean, empty area on the page for text — no objects, patterns or details in that space. Do not include any text, letters, or words in the illustration itself.",
+
   /* Director one-click pipeline formats. */
   directorFormats: [
     { id: "short",       name: "⚡ Viral Short (30–60s, 9:16)",        scenes: 5,  ar: "9:16" },
@@ -406,6 +412,21 @@ const RIU_DATA = {
         { title: "Sustaining it", tip: "How to keep the change after the book ends." },
       ],
     },
+    {
+      id: "personalized-keepsake",
+      name: "🎁 Personalized Keepsake Book (28-page, name-woven)",
+      desc: "The proven personalized-gift-book structure (the model behind Letterfest's $8M+ Etsy business): short, warm, one occasion, the child's name woven throughout, built for print-on-demand photo-book platforms (Gelato, etc). Swap the occasion — birthday, first day of school, new sibling, adoption day, holiday letter — the shape stays the same.",
+      chapters: [
+        { title: "Dedication page (blank)", tip: "Leave this page as a pretty illustration with NO text — the parent writes their own note here at checkout. Do not generate story text for this page." },
+        { title: "Opening — the invitation", tip: "2-3 warm lines that pull [CHILD NAME] into the story. Say the name here." },
+        { title: "Setting the scene", tip: "Establish the magical world/occasion in 2-3 whimsical lines." },
+        { title: "[CHILD NAME] appears", tip: "The child becomes part of the story directly — use the name again." },
+        { title: "Rising warmth (beats 1-3)", tip: "3-5 short pages of gentle, cozy moments. Keep each page to 2-3 lines only — this is a picture book, not a novel." },
+        { title: "The heartfelt turn", tip: "The emotional peak — why this child specifically is special. Name used again here." },
+        { title: "Closing — the promise", tip: "A warm, reassuring close that the child will treasure. End on the name one more time." },
+        { title: "Keepsake / signature page (blank)", tip: "Another blank illustrated page — for a photo, a signature, or a final personalized line at checkout." },
+      ],
+    },
   ],
 
   /* Book Cover Studio — common cover shapes. Full print wraps (spine width
@@ -415,6 +436,7 @@ const RIU_DATA = {
     { name: "Ebook / Kindle (1600×2560)", w: 1600, h: 2560 },
     { name: "Print front cover only (1600×2400)", w: 1600, h: 2400 },
     { name: "Square promo (1200×1200)", w: 1200, h: 1200 },
+    { name: "Wraparound front+back (3200×2400 — POD single-image cover)", w: 3200, h: 2400, wraparound: true },
   ],
   coverStyles: [
     "Photoreal cinematic", "3D animated / Pixar-style", "Children's picture-book illustration",

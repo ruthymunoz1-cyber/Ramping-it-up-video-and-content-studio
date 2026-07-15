@@ -380,6 +380,7 @@ const Views = {
         ${chipsHtml("img-style", RIU_DATA.stylePresets)}
         <label class="f-label">Aspect ratio</label>
         ${chipsHtml("img-ar", RIU_DATA.aspectRatios, x => x.label)}
+        <label class="row" style="align-items:center;gap:8px;margin-top:10px"><input type="checkbox" id="img-textspace" style="width:auto"> 📖 Reserve blank space for text overlay (book pages, comics — keeps the illustration free of baked-in text)</label>
         <div class="mt"><button class="btn primary" id="img-go">✨ Generate image <span class="cost" id="img-cost"></span></button></div>
         <div class="status" id="img-status"></div>
         <div class="result-media" id="img-result"></div>
@@ -1382,7 +1383,8 @@ const Bind = {
       const ar = arSel ? RIU_DATA.aspectRatios[+arSel.dataset.i].value : "16:9";
       const loc = State.locations.find(l => l.id === $("#img-loc").value);
       const prompt = characterPrefix(charId) + $("#img-prompt").value.trim() +
-        (loc ? `. Setting: ${loc.desc}` : "") + (style ? ". Style: " + style : "");
+        (loc ? `. Setting: ${loc.desc}` : "") + (style ? ". Style: " + style : "") +
+        ($("#img-textspace").checked ? ". " + RIU_DATA.textSpaceSuffix : "");
       if (!$("#img-prompt").value.trim()) return setStatus("img-status", "err", "Describe the scene first.");
       const seed = characterSeed(charId);
 
@@ -2434,7 +2436,9 @@ const Bind = {
       const modelId = $("#bc-model").value;
       const refs = characterRefs(charId);
       const prompt = characterPrefix(charId) + scene + `. Book cover art, ${style} style. ` +
-        `Large bold readable title text prominently placed: "${title}"` + (author ? ` — author name "${author}" in smaller text` : "") +
+        (fmt.wraparound
+          ? `This is a DUAL front+back cover spread on one image: place the main character, title, and focal artwork on the RIGHT HALF (that's the front cover) — large bold readable title text there: "${title}"${author ? ` — author name "${author}" in smaller text` : ""}. The LEFT HALF is the back cover: complementary artwork, no text needed there. Leave a thin blank vertical strip exactly at the center for the spine.`
+          : `Large bold readable title text prominently placed: "${title}"` + (author ? ` — author name "${author}" in smaller text` : "")) +
         `. Professional book cover composition, clear focal point, print-quality, high detail.`;
       const btn = $("#bc-go"); btn.disabled = true;
       try {
@@ -2444,7 +2448,7 @@ const Bind = {
           const out = await Providers.freeImage(prompt, { width: fmt.w, height: fmt.h, model: modelId.split(":")[1] });
           url = out.sourceUrl;
         } else {
-          const shapeAr = fmt.w === fmt.h ? "1:1" : "9:16"; // closest supported ratio for paid models
+          const shapeAr = fmt.w === fmt.h ? "1:1" : fmt.w > fmt.h ? "16:9" : "9:16"; // closest supported ratio for paid models
           setStatus("bc-status", "info", "Generating cover…");
           const input = /edit/.test(modelId) && refs.length
             ? { prompt, image_urls: refs, num_images: 1 }
