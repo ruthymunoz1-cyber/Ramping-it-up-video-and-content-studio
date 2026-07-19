@@ -322,11 +322,21 @@ const Providers = {
 
   async freeSpeak(text, voice = "nova", deliveryDesc = "natural delivery") {
     const p = encodeURIComponent(`Read the following text exactly as written, verbatim, in a ${deliveryDesc}: ${text}`);
-    const res = await fetch(`https://text.pollinations.ai/${p}?model=openai-audio&voice=${voice}`);
-    if (!res.ok) throw new Error(`Free TTS failed (${res.status}). Try again — the free tier can be busy — or use ElevenLabs.`);
-    const blob = await res.blob();
-    if (!/audio/.test(blob.type)) throw new Error("Free TTS returned no audio (service busy). Try again or use ElevenLabs.");
-    return { blobUrl: URL.createObjectURL(blob), blob };
+    const url = `https://text.pollinations.ai/${p}?model=openai-audio&voice=${voice}`;
+    let lastErr;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Free TTS failed (${res.status}). Try again — the free tier can be busy — or use ElevenLabs.`);
+        const blob = await res.blob();
+        if (!/audio/.test(blob.type)) throw new Error("Free TTS returned no audio (service busy). Try again or use ElevenLabs.");
+        return { blobUrl: URL.createObjectURL(blob), blob };
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 2) await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+    throw lastErr;
   },
 
   /* Grab a frame from a local video file as a data URI (for Relight). */

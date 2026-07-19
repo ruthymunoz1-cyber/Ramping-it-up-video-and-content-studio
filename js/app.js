@@ -492,9 +492,17 @@ const Views = {
   video() {
     return `
       <div class="page-head"><div class="page-title">🎥 Video Studio</div>
-      <div class="page-desc">Text→video or image→video. For character consistency, generate a still of your host in the Image Studio first, then animate it here (image→video). Finish with a 4K upscale pass for hero shots.</div></div>
+      <div class="page-desc">Text→video or image→video. For character consistency, generate a still of your host in the Image Studio first, then animate it here (image→video). For a <b>two-character scene</b>, pick both characters below and compose a two-shot start frame first. Finish with a 4K upscale pass for hero shots.</div></div>
       <div class="card">
-        ${charSelectHtml("vid-char")}
+        <div class="row">
+          <div>${charSelectHtml("vid-char", "Character A (optional)")}</div>
+          <div>${charSelectHtml("vid-char2", "Character B (optional — two-character scene)")}</div>
+        </div>
+        <div id="vid-twoshot" style="display:none">
+          <div class="hint">Two characters selected. Video models animate ONE start image — so first compose a two-shot frame anchored on BOTH characters' turnaround sheets, check it (hands, faces, both identities), re-roll for pennies until it's right, then generate the video from it.</div>
+          <div class="mt"><button class="btn" id="vid-twoshot-go">🖼 Compose two-shot start frame <span class="cost" id="vid-twoshot-cost"></span></button></div>
+          <div class="result-media" id="vid-twoshot-result"></div>
+        </div>
         ${modelSelectHtml("vid-model", "video")}
         <label class="f-label">Start image (required for image→video models) — upload or paste a URL from your gallery</label>
         <div class="row">
@@ -682,7 +690,7 @@ const Views = {
       </div>
       <div class="card">
         <h3>🎭 Multi-voice dialogue — one downloadable file</h3>
-        <p class="muted">Write a script with speaker names, assign a voice to each speaker, and generate one combined audio file — perfect for two-host explainer videos, interview-style edutainment, or character conversations.</p>
+        <p class="muted">Write a script with speaker names, assign a voice to each speaker, and generate one combined audio file — perfect for two-host explainer videos, interview-style edutainment, or character conversations. With an ElevenLabs key saved in ⚙️ Settings, your ElevenLabs voices (including clones) appear in each speaker's picker and are used by default — the free tier is only a fallback.</p>
         <label class="f-label">Script (format: <code class="k">Speaker: line</code>, one per line)</label>
         <textarea id="dlg-script" placeholder="Maya: Have you ever wondered where rain comes from?
 Jordan: Actually, yeah — where DOES it go after it falls?
@@ -1559,13 +1567,50 @@ const Bind = {
     };
     $("#vid-model").onchange = updateCost; $("#vid-secs").oninput = updateCost; updateCost();
 
+    /* Two-character scenes: show the two-shot composer only when two
+     * DIFFERENT characters are picked. */
+    const twoShotModel = () =>
+      models("imageEdit").find(x => /nano-banana-pro/.test(x.id)) || models("imageEdit")[0];
+    const twoShotUI = () => {
+      const a = $("#vid-char").value, b = $("#vid-char2").value;
+      const two = a && b && a !== b;
+      $("#vid-twoshot").style.display = two ? "" : "none";
+      if (two) $("#vid-twoshot-cost").textContent = `~$${twoShotModel().cost}/try`;
+    };
+    $("#vid-char").onchange = twoShotUI; $("#vid-char2").onchange = twoShotUI; twoShotUI();
+
+    $("#vid-twoshot-go").onclick = async () => {
+      const aId = $("#vid-char").value, bId = $("#vid-char2").value;
+      const a = State.characters.find(x => x.id === aId), b = State.characters.find(x => x.id === bId);
+      const scene = $("#vid-prompt").value.trim();
+      if (!scene) return setStatus("vid-status", "err", "Describe the scene in the Motion / scene prompt first — the two-shot frame is composed from it.");
+      const refs = [...characterRefs(aId).slice(0, 1), ...characterRefs(bId).slice(0, 1)];
+      if (refs.length < 2) return setStatus("vid-status", "err", "Both characters need a turnaround sheet or reference photo (Character Lab) to anchor their likeness.");
+      const m = twoShotModel();
+      const prompt = `Using the exact people from the reference images — first reference: ${a.name}; second reference: ${b.name}. Compose one photographic still of both together: ${scene}. ${characterPrefix(aId)}${characterPrefix(bId)}Both people fully in frame, correct complete anatomy (five fingers per hand, both faces and ears fully formed), natural believable interaction, no merged or duplicated limbs.`;
+      const btn = $("#vid-twoshot-go"); btn.disabled = true;
+      try {
+        setStatus("vid-status", "info", "Composing two-shot start frame…");
+        const res = await Providers.falRun(m.id, { prompt, image_urls: refs, aspect_ratio: $("#vid-ar").value, num_images: 1 },
+          s => setStatus("vid-status", "info", s));
+        const url = Providers.extractMedia(res);
+        if (!url) throw new Error("No image returned.");
+        $("#vid-image-url").value = url;
+        showMedia("vid-twoshot-result", "image", url);
+        State.addToGallery({ kind: "image", url, prompt: `Two-shot start frame (${a.name} + ${b.name}): ` + scene.slice(0, 60), model: m.id, cost: m.cost });
+        setStatus("vid-status", "ok", `Two-shot frame ready and set as the start image below. QA it — hands, faces, both identities — re-roll until right (~$${m.cost}/try), THEN generate the video.`);
+      } catch (e) { setStatus("vid-status", "err", e.message); }
+      btn.disabled = false;
+    };
+
     $("#vid-go").onclick = async () => {
       const modelId = $("#vid-model").value;
       const m = models("video").find(x => x.id === modelId);
       const secs = +$("#vid-secs").value || 5;
       const cam = chipValue("vid-cam", RIU_DATA.cameraMoves);
       const style = chipValue("vid-style", RIU_DATA.stylePresets);
-      const prompt = characterPrefix($("#vid-char").value) + $("#vid-prompt").value.trim()
+      const charA = $("#vid-char").value, charB = $("#vid-char2").value;
+      const prompt = characterPrefix(charA) + (charB && charB !== charA ? characterPrefix(charB) : "") + $("#vid-prompt").value.trim()
         + (cam ? ". Camera: " + cam : "") + (style ? ". Style: " + style : "");
       const input = { prompt, duration: secs, aspect_ratio: $("#vid-ar").value };
       const f = $("#vid-image").files[0];
@@ -1573,7 +1618,7 @@ const Bind = {
       if (f) input.image_url = await Providers.fileToDataUri(f);
       else if (urlIn) input.image_url = urlIn;
       if (/image-to-video/.test(modelId) && !input.image_url)
-        return setStatus("vid-status", "err", "This model needs a start image — upload one or paste a URL (tip: generate your character in the Image Studio first).");
+        return setStatus("vid-status", "err", "This model needs a start image — upload one or paste a URL (tip: generate your character in the Image Studio first, or use the two-shot composer above for two-character scenes).");
       runFalJob({ statusId: "vid-status", resultId: "vid-result", kind: "video", modelId, input, prompt, cost: m.cost * secs });
     };
 
@@ -1776,36 +1821,82 @@ const Bind = {
       return { parsed, speakers };
     };
 
-    $("#dlg-scan").onclick = () => {
+    /* ElevenLabs voices are loaded once and cached; each speaker's picker
+     * then offers them (default when a key is saved) ahead of the flaky free
+     * tier. Option values are "el:<voice_id>" or "free:<name>". */
+    let dlgElVoices = null;
+    const dlgLoadElVoices = async () => {
+      if (dlgElVoices) return dlgElVoices;
+      if (!Providers.keys().eleven) return (dlgElVoices = []);
+      try { dlgElVoices = await Providers.elVoices(); }
+      catch { dlgElVoices = []; }
+      return dlgElVoices;
+    };
+
+    const scanSpeakers = async () => {
       const { speakers } = parseDialogue();
-      if (!speakers.length) return setStatus("dlg-status", "err", "Write at least one line first.");
+      if (!speakers.length) { setStatus("dlg-status", "err", "Write at least one line first."); return false; }
+      if (Providers.keys().eleven && !dlgElVoices) setStatus("dlg-status", "info", "Loading your ElevenLabs voices…");
+      const el = await dlgLoadElVoices();
+      const optionsFor = (i) => {
+        const elGroup = el.length ? `<optgroup label="ElevenLabs — your account (reliable)">${el.map((v, vi) =>
+          `<option value="el:${v.voice_id}"${vi === i % el.length ? " selected" : ""}>${esc(v.name)}${v.category === "cloned" ? " 🧬" : ""}</option>`).join("")}</optgroup>` : "";
+        const freeGroup = `<optgroup label="Free (Pollinations — can be busy)">${Providers.freeVoices.map((v, vi) =>
+          `<option value="free:${v}"${!el.length && vi === i % Providers.freeVoices.length ? " selected" : ""}>${v}</option>`).join("")}</optgroup>`;
+        return elGroup + freeGroup;
+      };
       $("#dlg-speakers").innerHTML = speakers.map((s, i) => `
         <div class="row" style="margin-bottom:6px">
           <span class="fixed" style="min-width:100px;font-weight:600">${esc(s)}</span>
-          <select data-dlg-voice="${esc(s)}">${Providers.freeVoices.map((v, vi) =>
-            `<option${vi === i % Providers.freeVoices.length ? " selected" : ""}>${v}</option>`).join("")}</select>
+          <select data-dlg-voice="${esc(s)}">${optionsFor(i)}</select>
         </div>`).join("");
       clearStatus("dlg-status");
+      if (Providers.keys().eleven && !el.length)
+        setStatus("dlg-status", "err", "Could not reach ElevenLabs with your saved key — free voices offered instead. Check the key in ⚙️ Settings.");
+      return true;
     };
+    $("#dlg-scan").onclick = scanSpeakers;
 
     $("#dlg-go").onclick = async () => {
       const { parsed } = parseDialogue();
       if (!parsed.length) return setStatus("dlg-status", "err", "Write a script first (Speaker: line, one per line).");
-      if (!$("#dlg-speakers").children.length) $("#dlg-scan").click();
-      const voiceFor = (speaker) => $(`[data-dlg-voice="${speaker}"]`)?.value || Providers.freeVoices[0];
+      if (!$("#dlg-speakers").children.length && !(await scanSpeakers())) return;
+      const voiceFor = (speaker) => $(`[data-dlg-voice="${speaker}"]`)?.value || "free:" + Providers.freeVoices[0];
       const gap = +$("#dlg-gap").value || 0.4;
       const btn = $("#dlg-go"); btn.disabled = true;
+      let usedEleven = false, elChars = 0;
+      const speakLine = async (line) => {
+        const v = voiceFor(line.speaker);
+        if (v.startsWith("el:")) {
+          usedEleven = true; elChars += line.text.length;
+          return Providers.elSpeak(v.slice(3), line.text);
+        }
+        const name = v.replace(/^free:/, "");
+        try { return await Providers.freeSpeak(line.text, name); }
+        catch (e) {
+          /* Free tier down mid-run — fall back to ElevenLabs automatically
+           * rather than losing the whole dialogue. */
+          const el = await dlgLoadElVoices();
+          if (!el.length) throw e;
+          setStatus("dlg-status", "info", `Free TTS is down — falling back to ElevenLabs (${el[0].name}) for "${line.speaker}"…`);
+          usedEleven = true; elChars += line.text.length;
+          return Providers.elSpeak(el[0].voice_id, line.text);
+        }
+      };
       try {
         const blobs = [];
         for (let i = 0; i < parsed.length; i++) {
           setStatus("dlg-status", "info", `Recording line ${i + 1}/${parsed.length} (${parsed[i].speaker})…`);
-          const { blob } = await Providers.freeSpeak(parsed[i].text, voiceFor(parsed[i].speaker));
+          const { blob } = await speakLine(parsed[i]);
           blobs.push(blob);
         }
         setStatus("dlg-status", "info", "Stitching into one file…");
         const { blob, duration } = await Providers.concatTracks(blobs, gap);
         const url = URL.createObjectURL(blob);
-        setStatus("dlg-status", "ok", `Combined dialogue ready — ${parsed.length} lines, ${duration.toFixed(1)}s, cost $0.00.`);
+        const costNote = usedEleven
+          ? `${elChars} ElevenLabs characters used (deducted from your plan's quota)`
+          : "cost $0.00";
+        setStatus("dlg-status", "ok", `Combined dialogue ready — ${parsed.length} lines, ${duration.toFixed(1)}s, ${costNote}.`);
         showMedia("dlg-result", "audio", url);
       } catch (e) { setStatus("dlg-status", "err", e.message); }
       btn.disabled = false;
