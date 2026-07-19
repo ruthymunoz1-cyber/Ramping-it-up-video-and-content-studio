@@ -305,6 +305,25 @@ function downloadText(name, content, type = "text/plain") {
   a.download = name; a.click();
 }
 
+/* fal.ai validation errors arrive as a JSON body embedded in the thrown
+ * message, e.g. {"detail":[{"loc":["body","duration"],"msg":"Input should
+ * be '3'...'15'", ...}]}. Pull out the human-readable msg(s) so the user
+ * sees "duration: Input should be '3'...'15'" instead of raw JSON. */
+function friendlyFalError(message) {
+  const brace = message.indexOf("{");
+  if (brace === -1) return message;
+  try {
+    const body = JSON.parse(message.slice(brace));
+    const details = Array.isArray(body.detail) ? body.detail : [body.detail].filter(Boolean);
+    if (!details.length) return message;
+    const parts = details.map(d => {
+      const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : null;
+      return field ? `${field}: ${d.msg}` : d.msg;
+    }).filter(Boolean);
+    return parts.length ? `${message.slice(0, brace).trim()} ${parts.join("; ")}` : message;
+  } catch { return message; }
+}
+
 async function runFalJob({ statusId, resultId, kind, modelId, input, prompt, cost }) {
   try {
     setStatus(statusId, "info", "Submitting job…");
@@ -315,7 +334,7 @@ async function runFalJob({ statusId, resultId, kind, modelId, input, prompt, cos
     showMedia(resultId, kind, url);
     State.addToGallery({ kind, url, prompt: prompt || "", model: modelId, cost });
   } catch (err) {
-    setStatus(statusId, "err", err.message);
+    setStatus(statusId, "err", friendlyFalError(err.message));
   }
 }
 
@@ -516,7 +535,8 @@ const Views = {
         <label class="f-label">Style</label>
         ${chipsHtml("vid-style", RIU_DATA.stylePresets)}
         <div class="row mt">
-          <div><label class="f-label">Duration (seconds)</label><input type="number" id="vid-secs" value="5" min="3" max="10"></div>
+          <div><label class="f-label">Duration (seconds)</label><input type="number" id="vid-secs" value="5" min="3" max="15">
+            <div class="hint">Most fal.ai video models only accept whole-number durations in a fixed range (commonly 3–15s) — check the model's status message if a generation is rejected.</div></div>
           <div><label class="f-label">Aspect ratio</label>
             <select id="vid-ar">${RIU_DATA.aspectRatios.map(a => `<option value="${a.value}">${a.label}</option>`).join("")}</select></div>
         </div>
@@ -1566,6 +1586,13 @@ const Bind = {
       $("#vid-cost").textContent = `~$${((+opt.dataset.cost) * secs).toFixed(2)}`;
     };
     $("#vid-model").onchange = updateCost; $("#vid-secs").oninput = updateCost; updateCost();
+    $("#vid-secs").onchange = () => {
+      const el = $("#vid-secs");
+      const lo = +el.min || 3, hi = +el.max || 15;
+      const v = Math.round(+el.value);
+      if (!v || v < lo) el.value = lo; else if (v > hi) el.value = hi; else el.value = v;
+      updateCost();
+    };
 
     /* Two-character scenes: show the two-shot composer only when two
      * DIFFERENT characters are picked. */
