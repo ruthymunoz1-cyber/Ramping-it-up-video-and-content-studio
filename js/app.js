@@ -518,7 +518,7 @@ const Views = {
           <div>${charSelectHtml("vid-char2", "Character B (optional — two-character scene)")}</div>
         </div>
         <div id="vid-twoshot" style="display:none">
-          <div class="hint">Two characters selected. Video models animate ONE start image — so first compose a two-shot frame anchored on BOTH characters' turnaround sheets, check it (hands, faces, both identities), re-roll for pennies until it's right, then generate the video from it.</div>
+          <div class="hint">Two characters selected. Video models animate ONE start image — so first compose a two-shot frame anchored on BOTH characters' turnaround sheets, check it (hands, faces, both identities), re-roll for pennies until it's right, then generate the video from it. <b>Set the Aspect ratio dropdown below to your target shape BEFORE composing</b> — the still bakes in whatever ratio is selected right now, and the video will inherit that ratio regardless of what the dropdown says later.</div>
           <div class="mt"><button class="btn" id="vid-twoshot-go">🖼 Compose two-shot start frame <span class="cost" id="vid-twoshot-cost"></span></button></div>
           <div class="result-media" id="vid-twoshot-result"></div>
         </div>
@@ -528,6 +528,7 @@ const Views = {
           <input type="file" id="vid-image" accept="image/*">
           <input type="text" id="vid-image-url" placeholder="…or https:// image URL">
         </div>
+        <div class="hint">⚠️ For image→video models, the video's aspect ratio comes from THIS image's own dimensions, not the Aspect ratio dropdown below — that dropdown mainly affects text→video and the two-shot composer's OWN output. Set the Aspect ratio dropdown to what you want FIRST, then compose/generate the start image, so the still is already the right shape before you animate it.</div>
         <label class="f-label">Motion / scene prompt</label>
         <textarea id="vid-prompt" placeholder="e.g. she gestures enthusiastically while explaining, classroom in background, natural motion"></textarea>
         <label class="f-label">Camera move</label>
