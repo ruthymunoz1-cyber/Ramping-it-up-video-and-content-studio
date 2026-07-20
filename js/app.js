@@ -718,10 +718,13 @@ Maya: Let's find out together."></textarea>
       <div class="page-desc">Background scores, intro/outro stingers and full songs with lyrics — royalty questions disappear when you generate your own.</div></div>
       <div class="card">
         ${modelSelectHtml("mu-model", "music")}
-        <label class="f-label">Describe the music</label>
-        <textarea id="mu-prompt" placeholder="e.g. upbeat playful educational background music, light percussion, marimba and claps, 100 BPM, loopable, no vocals"></textarea>
+        <label class="f-label">Describe the music <span id="mu-count" class="muted"></span></label>
+        <textarea id="mu-prompt" maxlength="600" placeholder="e.g. upbeat playful educational background music, light percussion, marimba and claps, 100 BPM, loopable, no vocals"></textarea>
         <label class="f-label">Lyrics (MiniMax Music only — leave blank for instrumental)</label>
         <textarea id="mu-lyrics" placeholder="[Verse]…"></textarea>
+        <label class="f-label" id="mu-ref-label" style="display:none">Reference audio URL <span class="muted">(required by MiniMax Music — a short clip whose style/melody it anchors to; a link to any short royalty-free audio file works)</span></label>
+        <input type="text" id="mu-ref" style="display:none" placeholder="https://…/reference-clip.mp3">
+        <p class="hint" id="mu-minimax-hint" style="display:none">MiniMax Music generates by matching a reference clip's style, not from text alone — for a pure instrumental with no reference, use Stable Audio instead.</p>
         <div class="mt"><button class="btn primary" id="mu-go">🎶 Generate track</button></div>
         <div class="status" id="mu-status"></div>
         <div class="result-media" id="mu-result"></div>
@@ -1823,14 +1826,37 @@ const Bind = {
   },
 
   music() {
+    const isMiniMax = (id) => /minimax/i.test(id);
+    const syncModelUi = () => {
+      const minimax = isMiniMax($("#mu-model").value);
+      $("#mu-ref-label").style.display = minimax ? "" : "none";
+      $("#mu-ref").style.display = minimax ? "" : "none";
+      $("#mu-minimax-hint").style.display = minimax ? "" : "none";
+    };
+    $("#mu-model").onchange = syncModelUi;
+    syncModelUi();
+
+    const syncCount = () => {
+      const n = $("#mu-prompt").value.length;
+      const el = $("#mu-count"); el.textContent = `${n}/600`; el.style.color = n > 600 ? "#e05555" : "";
+    };
+    $("#mu-prompt").oninput = syncCount;
+    syncCount();
+
     $("#mu-go").onclick = () => {
       const modelId = $("#mu-model").value;
       const m = models("music").find(x => x.id === modelId);
       const prompt = $("#mu-prompt").value.trim();
       if (!prompt) return setStatus("mu-status", "err", "Describe the music first.");
+      if (prompt.length > 600) return setStatus("mu-status", "err", `Prompt is ${prompt.length} characters — this model caps prompts at 600. Trim it and try again.`);
       const input = { prompt };
       const lyrics = $("#mu-lyrics").value.trim();
       if (lyrics) input.lyrics = lyrics;
+      if (isMiniMax(modelId)) {
+        const ref = $("#mu-ref").value.trim();
+        if (!ref) return setStatus("mu-status", "err", "MiniMax Music requires a reference audio URL (see the field above) — or switch to Stable Audio for a pure instrumental with no reference.");
+        input.reference_audio_url = ref;
+      }
       runFalJob({ statusId: "mu-status", resultId: "mu-result", kind: "audio", modelId, input, prompt, cost: m.cost });
     };
   },
