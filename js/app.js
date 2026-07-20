@@ -305,6 +305,25 @@ function downloadText(name, content, type = "text/plain") {
   a.download = name; a.click();
 }
 
+/* fal.ai validation errors arrive as a JSON body embedded in the thrown
+ * message, e.g. {"detail":[{"loc":["body","duration"],"msg":"Input should
+ * be '3'...'15'", ...}]}. Pull out the human-readable msg(s) so the user
+ * sees "duration: Input should be '3'...'15'" instead of raw JSON. */
+function friendlyFalError(message) {
+  const brace = message.indexOf("{");
+  if (brace === -1) return message;
+  try {
+    const body = JSON.parse(message.slice(brace));
+    const details = Array.isArray(body.detail) ? body.detail : [body.detail].filter(Boolean);
+    if (!details.length) return message;
+    const parts = details.map(d => {
+      const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : null;
+      return field ? `${field}: ${d.msg}` : d.msg;
+    }).filter(Boolean);
+    return parts.length ? `${message.slice(0, brace).trim()} ${parts.join("; ")}` : message;
+  } catch { return message; }
+}
+
 async function runFalJob({ statusId, resultId, kind, modelId, input, prompt, cost }) {
   try {
     setStatus(statusId, "info", "Submitting job…");
@@ -315,7 +334,7 @@ async function runFalJob({ statusId, resultId, kind, modelId, input, prompt, cos
     showMedia(resultId, kind, url);
     State.addToGallery({ kind, url, prompt: prompt || "", model: modelId, cost });
   } catch (err) {
-    setStatus(statusId, "err", err.message);
+    setStatus(statusId, "err", friendlyFalError(err.message));
   }
 }
 
@@ -492,15 +511,24 @@ const Views = {
   video() {
     return `
       <div class="page-head"><div class="page-title">🎥 Video Studio</div>
-      <div class="page-desc">Text→video or image→video. For character consistency, generate a still of your host in the Image Studio first, then animate it here (image→video). Finish with a 4K upscale pass for hero shots.</div></div>
+      <div class="page-desc">Text→video or image→video. For character consistency, generate a still of your host in the Image Studio first, then animate it here (image→video). For a <b>two-character scene</b>, pick both characters below and compose a two-shot start frame first. Finish with a 4K upscale pass for hero shots.</div></div>
       <div class="card">
-        ${charSelectHtml("vid-char")}
+        <div class="row">
+          <div>${charSelectHtml("vid-char", "Character A (optional)")}</div>
+          <div>${charSelectHtml("vid-char2", "Character B (optional — two-character scene)")}</div>
+        </div>
+        <div id="vid-twoshot" style="display:none">
+          <div class="hint">Two characters selected. Video models animate ONE start image — so first compose a two-shot frame anchored on BOTH characters' turnaround sheets, check it (hands, faces, both identities), re-roll for pennies until it's right, then generate the video from it. <b>Set the Aspect ratio dropdown below to your target shape BEFORE composing</b> — the still bakes in whatever ratio is selected right now, and the video will inherit that ratio regardless of what the dropdown says later.</div>
+          <div class="mt"><button class="btn" id="vid-twoshot-go">🖼 Compose two-shot start frame <span class="cost" id="vid-twoshot-cost"></span></button></div>
+          <div class="result-media" id="vid-twoshot-result"></div>
+        </div>
         ${modelSelectHtml("vid-model", "video")}
         <label class="f-label">Start image (required for image→video models) — upload or paste a URL from your gallery</label>
         <div class="row">
           <input type="file" id="vid-image" accept="image/*">
           <input type="text" id="vid-image-url" placeholder="…or https:// image URL">
         </div>
+        <div class="hint">⚠️ For image→video models, the video's aspect ratio comes from THIS image's own dimensions, not the Aspect ratio dropdown below — that dropdown mainly affects text→video and the two-shot composer's OWN output. Set the Aspect ratio dropdown to what you want FIRST, then compose/generate the start image, so the still is already the right shape before you animate it.</div>
         <label class="f-label">Motion / scene prompt</label>
         <textarea id="vid-prompt" placeholder="e.g. she gestures enthusiastically while explaining, classroom in background, natural motion"></textarea>
         <label class="f-label">Camera move</label>
@@ -508,7 +536,8 @@ const Views = {
         <label class="f-label">Style</label>
         ${chipsHtml("vid-style", RIU_DATA.stylePresets)}
         <div class="row mt">
-          <div><label class="f-label">Duration (seconds)</label><input type="number" id="vid-secs" value="5" min="3" max="10"></div>
+          <div><label class="f-label">Duration (seconds)</label><input type="number" id="vid-secs" value="5" min="3" max="15">
+            <div class="hint">Most fal.ai video models only accept whole-number durations in a fixed range (commonly 3–15s) — check the model's status message if a generation is rejected.</div></div>
           <div><label class="f-label">Aspect ratio</label>
             <select id="vid-ar">${RIU_DATA.aspectRatios.map(a => `<option value="${a.value}">${a.label}</option>`).join("")}</select></div>
         </div>
@@ -654,10 +683,13 @@ const Views = {
         <h3>Narrate (ElevenLabs — your cloned voice)</h3>
         <label class="f-label">Voice</label>
         <div class="row">
+          <input type="text" id="vo-search" placeholder="🔍 Search voices by name…" style="max-width:220px">
           <select id="vo-voice"><option value="">Load voices first…</option></select>
+          <button class="btn sm fixed" id="vo-preview" disabled title="Hear a short sample of the selected voice — no generation cost">▶ Preview</button>
           <button class="btn sm fixed" id="vo-load">↻ Load my voices</button>
           <select id="vo-delivery">${RIU_DATA.deliveryStyles.map((d, i) => `<option value="${i}">${d.name}</option>`).join("")}</select>
         </div>
+        <audio id="vo-preview-player" style="display:none"></audio>
         <label class="f-label">Script</label>
         <textarea id="vo-text" placeholder="Paste your narration script here…"></textarea>
         <div class="hint">~$0.10–0.30 per 1,000 characters depending on plan. This box: <span id="vo-chars">0</span> characters. Delivery style shapes tone/expressiveness — the words are unaffected.</div>
@@ -682,13 +714,14 @@ const Views = {
       </div>
       <div class="card">
         <h3>🎭 Multi-voice dialogue — one downloadable file</h3>
-        <p class="muted">Write a script with speaker names, assign a voice to each speaker, and generate one combined audio file — perfect for two-host explainer videos, interview-style edutainment, or character conversations.</p>
+        <p class="muted">Write a script with speaker names, assign a voice to each speaker, and generate one combined audio file — perfect for two-host explainer videos, interview-style edutainment, or character conversations. With an ElevenLabs key saved in ⚙️ Settings, your ElevenLabs voices (including clones) appear in each speaker's picker and are used by default — the free tier is only a fallback.</p>
         <label class="f-label">Script (format: <code class="k">Speaker: line</code>, one per line)</label>
         <textarea id="dlg-script" placeholder="Maya: Have you ever wondered where rain comes from?
 Jordan: Actually, yeah — where DOES it go after it falls?
 Maya: Let's find out together."></textarea>
         <div class="mt"><button class="btn sm" id="dlg-scan">🔍 Detect speakers</button></div>
         <div id="dlg-speakers" class="mt"></div>
+        <audio id="dlg-preview-player" style="display:none"></audio>
         <label class="f-label">Gap between lines (seconds)</label>
         <input type="number" id="dlg-gap" value="0.4" min="0" max="2" step="0.1" style="max-width:120px">
         <div class="mt"><button class="btn primary" id="dlg-go">🎬 Generate combined dialogue file</button></div>
@@ -1361,7 +1394,7 @@ const Bind = {
       if (!name) return setStatus("c-status", "err", "Give your character a name.");
       let refImage = null;
       const f = $("#c-ref").files[0];
-      if (f) refImage = await Providers.fileToDataUri(f);
+      if (f) refImage = await Providers.fileForFal(f, s => setStatus("c-status", "info", s));
       State.characters.push({
         id: "c" + Date.now(),
         name, age: $("#c-age").value.trim(), gender: $("#c-gender").value.trim(),
@@ -1561,6 +1594,49 @@ const Bind = {
       $("#vid-cost").textContent = `~$${((+opt.dataset.cost) * secs).toFixed(2)}`;
     };
     $("#vid-model").onchange = updateCost; $("#vid-secs").oninput = updateCost; updateCost();
+    $("#vid-secs").onchange = () => {
+      const el = $("#vid-secs");
+      const lo = +el.min || 3, hi = +el.max || 15;
+      const v = Math.round(+el.value);
+      if (!v || v < lo) el.value = lo; else if (v > hi) el.value = hi; else el.value = v;
+      updateCost();
+    };
+
+    /* Two-character scenes: show the two-shot composer only when two
+     * DIFFERENT characters are picked. */
+    const twoShotModel = () =>
+      models("imageEdit").find(x => /nano-banana-pro/.test(x.id)) || models("imageEdit")[0];
+    const twoShotUI = () => {
+      const a = $("#vid-char").value, b = $("#vid-char2").value;
+      const two = a && b && a !== b;
+      $("#vid-twoshot").style.display = two ? "" : "none";
+      if (two) $("#vid-twoshot-cost").textContent = `~$${twoShotModel().cost}/try`;
+    };
+    $("#vid-char").onchange = twoShotUI; $("#vid-char2").onchange = twoShotUI; twoShotUI();
+
+    $("#vid-twoshot-go").onclick = async () => {
+      const aId = $("#vid-char").value, bId = $("#vid-char2").value;
+      const a = State.characters.find(x => x.id === aId), b = State.characters.find(x => x.id === bId);
+      const scene = $("#vid-prompt").value.trim();
+      if (!scene) return setStatus("vid-status", "err", "Describe the scene in the Motion / scene prompt first — the two-shot frame is composed from it.");
+      const refs = [...characterRefs(aId).slice(0, 1), ...characterRefs(bId).slice(0, 1)];
+      if (refs.length < 2) return setStatus("vid-status", "err", "Both characters need a turnaround sheet or reference photo (Character Lab) to anchor their likeness.");
+      const m = twoShotModel();
+      const prompt = `Using the exact people from the reference images — first reference: ${a.name}; second reference: ${b.name}. Compose one photographic still of both together: ${scene}. ${characterPrefix(aId)}${characterPrefix(bId)}Both people fully in frame, correct complete anatomy (five fingers per hand, both faces and ears fully formed), natural believable interaction, no merged or duplicated limbs.`;
+      const btn = $("#vid-twoshot-go"); btn.disabled = true;
+      try {
+        setStatus("vid-status", "info", "Composing two-shot start frame…");
+        const res = await Providers.falRun(m.id, { prompt, image_urls: refs, aspect_ratio: $("#vid-ar").value, num_images: 1 },
+          s => setStatus("vid-status", "info", s));
+        const url = Providers.extractMedia(res);
+        if (!url) throw new Error("No image returned.");
+        $("#vid-image-url").value = url;
+        showMedia("vid-twoshot-result", "image", url);
+        State.addToGallery({ kind: "image", url, prompt: `Two-shot start frame (${a.name} + ${b.name}): ` + scene.slice(0, 60), model: m.id, cost: m.cost });
+        setStatus("vid-status", "ok", `Two-shot frame ready and set as the start image below. QA it — hands, faces, both identities — re-roll until right (~$${m.cost}/try), THEN generate the video.`);
+      } catch (e) { setStatus("vid-status", "err", e.message); }
+      btn.disabled = false;
+    };
 
     $("#vid-go").onclick = async () => {
       const modelId = $("#vid-model").value;
@@ -1568,15 +1644,16 @@ const Bind = {
       const secs = +$("#vid-secs").value || 5;
       const cam = chipValue("vid-cam", RIU_DATA.cameraMoves);
       const style = chipValue("vid-style", RIU_DATA.stylePresets);
-      const prompt = characterPrefix($("#vid-char").value) + $("#vid-prompt").value.trim()
+      const charA = $("#vid-char").value, charB = $("#vid-char2").value;
+      const prompt = characterPrefix(charA) + (charB && charB !== charA ? characterPrefix(charB) : "") + $("#vid-prompt").value.trim()
         + (cam ? ". Camera: " + cam : "") + (style ? ". Style: " + style : "");
       const input = { prompt, duration: secs, aspect_ratio: $("#vid-ar").value };
       const f = $("#vid-image").files[0];
       const urlIn = $("#vid-image-url").value.trim();
-      if (f) input.image_url = await Providers.fileToDataUri(f);
+      if (f) input.image_url = await Providers.fileForFal(f, s => setStatus("vid-status", "info", s));
       else if (urlIn) input.image_url = urlIn;
       if (/image-to-video/.test(modelId) && !input.image_url)
-        return setStatus("vid-status", "err", "This model needs a start image — upload one or paste a URL (tip: generate your character in the Image Studio first).");
+        return setStatus("vid-status", "err", "This model needs a start image — upload one or paste a URL (tip: generate your character in the Image Studio first, or use the two-shot composer above for two-character scenes).");
       runFalJob({ statusId: "vid-status", resultId: "vid-result", kind: "video", modelId, input, prompt, cost: m.cost * secs });
     };
 
@@ -1605,14 +1682,14 @@ const Bind = {
         if (fr.duration < 3 || fr.duration > 10.5)
           return setStatus("rl-status", "err", `Clip is ${fr.duration.toFixed(1)}s — it must be 3–10 seconds. Trim it first.`);
         st.frameUri = fr.dataUri; st.duration = fr.duration;
-        st.videoUri = await Providers.fileToDataUri(f);
+        st.videoUri = await Providers.fileForFal(f, s => setStatus("rl-status", "info", s));
         $("#rl-clipinfo").textContent = `Clip loaded: ${fr.duration.toFixed(1)}s, ${fr.width}×${fr.height}. Reference frame extracted.`;
         clearStatus("rl-status"); updateCost();
       } catch (err) { setStatus("rl-status", "err", err.message); }
     };
     $("#rl-image").onchange = async (e) => {
       const f = e.target.files[0]; if (!f) return;
-      st.frameUri = await Providers.fileToDataUri(f); st.videoUri = null; st.duration = 0;
+      st.frameUri = await Providers.fileForFal(f, s => setStatus("rl-status", "info", s)); st.videoUri = null; st.duration = 0;
       $("#rl-clipinfo").textContent = "Photo loaded — step ① will relight it (step ② needs a clip).";
     };
 
@@ -1670,7 +1747,7 @@ const Bind = {
       const preset = RIU_DATA.restylePresets[+sel.dataset.i];
       let ref = null;
       const f = $("#an-image").files[0];
-      if (f) ref = await Providers.fileToDataUri(f);
+      if (f) ref = await Providers.fileForFal(f, s => setStatus("an-status", "info", s));
       else ref = characterRef($("#an-char").value);
       if (!ref) return setStatus("an-status", "err", "Upload an image, or pick a character that has a reference photo.");
       const notes = $("#an-notes").value.trim();
@@ -1710,21 +1787,39 @@ const Bind = {
       const modelId = $("#ls-model").value;
       const m = models("lipsync").find(x => x.id === modelId);
       const vf = $("#ls-video").files[0], af = $("#ls-audio").files[0];
-      const video_url = vf ? await Providers.fileToDataUri(vf) : $("#ls-video-url").value.trim();
-      const audio_url = af ? await Providers.fileToDataUri(af) : $("#ls-audio-url").value.trim();
-      if (!video_url || !audio_url) return setStatus("ls-status", "err", "Both a face video and a voice audio are required.");
-      runFalJob({ statusId: "ls-status", resultId: "ls-result", kind: "video", modelId, input: { video_url, audio_url }, prompt: "lip sync", cost: m.cost * 10 });
+      try {
+        const video_url = vf ? await Providers.fileForFal(vf, s => setStatus("ls-status", "info", s)) : $("#ls-video-url").value.trim();
+        const audio_url = af ? await Providers.fileForFal(af, s => setStatus("ls-status", "info", s)) : $("#ls-audio-url").value.trim();
+        if (!video_url || !audio_url) return setStatus("ls-status", "err", "Both a face video and a voice audio are required.");
+        runFalJob({ statusId: "ls-status", resultId: "ls-result", kind: "video", modelId, input: { video_url, audio_url }, prompt: "lip sync", cost: m.cost * 10 });
+      } catch (e) { setStatus("ls-status", "err", e.message); }
     };
   },
 
   voice() {
+    let voVoices = [];
     const loadVoices = async (selectId, statusId) => {
       try {
         setStatus(statusId, "info", "Loading voices…");
         const voices = await Providers.elVoices();
-        $("#" + selectId).innerHTML = voices.map(v => `<option value="${v.voice_id}">${esc(v.name)}${v.category === "cloned" ? " 🧬" : ""}</option>`).join("");
-        setStatus(statusId, "ok", `${voices.length} voices loaded.`);
+        if (selectId === "vo-voice") voVoices = voices;
+        $("#" + selectId).innerHTML = voices.map(v => `<option value="${v.voice_id}" data-preview="${esc(v.preview_url || "")}">${esc(v.name)}${v.category === "cloned" ? " 🧬" : ""}</option>`).join("");
+        setStatus(statusId, "ok", `${voices.length} voices loaded.${selectId === "vo-voice" ? " Use 🔍 Search to filter, or ▶ Preview to hear the selected voice before generating." : ""}`);
+        if (selectId === "vo-voice") $("#vo-preview").disabled = !voices.length;
       } catch (e) { setStatus(statusId, "err", e.message); }
+    };
+    $("#vo-search").oninput = () => {
+      const q = $("#vo-search").value.trim().toLowerCase();
+      $$("#vo-voice option").forEach(opt => { opt.hidden = q && !opt.textContent.toLowerCase().includes(q); });
+    };
+    $("#vo-preview").onclick = () => {
+      const opt = $("#vo-voice").selectedOptions[0];
+      const url = opt && opt.dataset.preview;
+      if (!url) return setStatus("vo-status", "err", "No preview available for this voice.");
+      const player = $("#vo-preview-player");
+      player.src = url; player.play().catch(() => {});
+      const btn = $("#vo-preview"); const orig = btn.textContent;
+      btn.textContent = "🔊 Playing…"; player.onended = () => { btn.textContent = orig; };
     };
     $("#fv-go").onclick = async () => {
       const text = $("#fv-text").value.trim();
@@ -1779,36 +1874,120 @@ const Bind = {
       return { parsed, speakers };
     };
 
-    $("#dlg-scan").onclick = () => {
+    /* ElevenLabs voices are loaded once and cached; each speaker's picker
+     * then offers them (default when a key is saved) ahead of the flaky free
+     * tier. Option values are "el:<voice_id>" or "free:<name>". */
+    let dlgElVoices = null;
+    const dlgLoadElVoices = async () => {
+      if (dlgElVoices) return dlgElVoices;
+      if (!Providers.keys().eleven) return (dlgElVoices = []);
+      try { dlgElVoices = await Providers.elVoices(); }
+      catch { dlgElVoices = []; }
+      return dlgElVoices;
+    };
+
+    /* Preview lookup keyed by "el:<voice_id>" so the play button can find
+     * the right sample clip regardless of which row/search state it's in. */
+    let dlgPreviewByValue = {};
+    const playPreview = (audioElId, url, btn) => {
+      if (!url) return;
+      const player = $("#" + audioElId);
+      player.src = url;
+      player.play().catch(() => {});
+      if (btn) { const orig = btn.textContent; btn.textContent = "🔊 Playing…"; player.onended = () => { btn.textContent = orig; }; }
+    };
+
+    const scanSpeakers = async () => {
       const { speakers } = parseDialogue();
-      if (!speakers.length) return setStatus("dlg-status", "err", "Write at least one line first.");
-      $("#dlg-speakers").innerHTML = speakers.map((s, i) => `
+      if (!speakers.length) { setStatus("dlg-status", "err", "Write at least one line first."); return false; }
+      if (Providers.keys().eleven && !dlgElVoices) setStatus("dlg-status", "info", "Loading your ElevenLabs voices…");
+      const el = await dlgLoadElVoices();
+      dlgPreviewByValue = {};
+      el.forEach(v => { if (v.preview_url) dlgPreviewByValue["el:" + v.voice_id] = v.preview_url; });
+      const optionsFor = (i) => {
+        const elGroup = el.length ? `<optgroup label="ElevenLabs — your account (reliable)">${el.map((v, vi) =>
+          `<option value="el:${v.voice_id}"${vi === i % el.length ? " selected" : ""}>${esc(v.name)}${v.category === "cloned" ? " 🧬" : ""}</option>`).join("")}</optgroup>` : "";
+        const freeGroup = `<optgroup label="Free (Pollinations — can be busy)">${Providers.freeVoices.map((v, vi) =>
+          `<option value="free:${v}"${!el.length && vi === i % Providers.freeVoices.length ? " selected" : ""}>${v}</option>`).join("")}</optgroup>`;
+        return elGroup + freeGroup;
+      };
+      const searchHtml = el.length ? `
+        <div class="row" style="margin-bottom:6px">
+          <input type="text" id="dlg-voice-search" placeholder="🔍 Search voice names to filter every speaker's list…" style="max-width:280px">
+        </div>` : "";
+      $("#dlg-speakers").innerHTML = searchHtml + speakers.map((s, i) => `
         <div class="row" style="margin-bottom:6px">
           <span class="fixed" style="min-width:100px;font-weight:600">${esc(s)}</span>
-          <select data-dlg-voice="${esc(s)}">${Providers.freeVoices.map((v, vi) =>
-            `<option${vi === i % Providers.freeVoices.length ? " selected" : ""}>${v}</option>`).join("")}</select>
+          <select data-dlg-voice="${esc(s)}">${optionsFor(i)}</select>
+          <button type="button" class="btn sm fixed" data-dlg-preview="${esc(s)}" title="Hear a short sample of the selected voice — no generation cost">▶ Preview</button>
         </div>`).join("");
       clearStatus("dlg-status");
+
+      $$("[data-dlg-preview]").forEach(btn => {
+        btn.onclick = () => {
+          const speaker = btn.dataset.dlgPreview;
+          const sel = $(`[data-dlg-voice="${speaker}"]`);
+          const url = dlgPreviewByValue[sel.value];
+          if (!url) return setStatus("dlg-status", "err", "No preview available for this voice (free-tier voices don't have samples — generate a short line to hear them).");
+          playPreview("dlg-preview-player", url, btn);
+        };
+      });
+      const dlgSearch = $("#dlg-voice-search");
+      if (dlgSearch) dlgSearch.oninput = () => {
+        const q = dlgSearch.value.trim().toLowerCase();
+        $$("[data-dlg-voice]").forEach(sel => {
+          $$("option", sel).forEach(opt => {
+            const isFree = opt.value.startsWith("free:");
+            opt.hidden = !isFree && q && !opt.textContent.toLowerCase().includes(q);
+          });
+        });
+      };
+      if (Providers.keys().eleven && !el.length)
+        setStatus("dlg-status", "err", "Could not reach ElevenLabs with your saved key — free voices offered instead. Check the key in ⚙️ Settings.");
+      return true;
     };
+    $("#dlg-scan").onclick = scanSpeakers;
 
     $("#dlg-go").onclick = async () => {
       const { parsed } = parseDialogue();
       if (!parsed.length) return setStatus("dlg-status", "err", "Write a script first (Speaker: line, one per line).");
-      if (!$("#dlg-speakers").children.length) $("#dlg-scan").click();
-      const voiceFor = (speaker) => $(`[data-dlg-voice="${speaker}"]`)?.value || Providers.freeVoices[0];
+      if (!$("#dlg-speakers").children.length && !(await scanSpeakers())) return;
+      const voiceFor = (speaker) => $(`[data-dlg-voice="${speaker}"]`)?.value || "free:" + Providers.freeVoices[0];
       const gap = +$("#dlg-gap").value || 0.4;
       const btn = $("#dlg-go"); btn.disabled = true;
+      let usedEleven = false, elChars = 0;
+      const speakLine = async (line) => {
+        const v = voiceFor(line.speaker);
+        if (v.startsWith("el:")) {
+          usedEleven = true; elChars += line.text.length;
+          return Providers.elSpeak(v.slice(3), line.text);
+        }
+        const name = v.replace(/^free:/, "");
+        try { return await Providers.freeSpeak(line.text, name); }
+        catch (e) {
+          /* Free tier down mid-run — fall back to ElevenLabs automatically
+           * rather than losing the whole dialogue. */
+          const el = await dlgLoadElVoices();
+          if (!el.length) throw e;
+          setStatus("dlg-status", "info", `Free TTS is down — falling back to ElevenLabs (${el[0].name}) for "${line.speaker}"…`);
+          usedEleven = true; elChars += line.text.length;
+          return Providers.elSpeak(el[0].voice_id, line.text);
+        }
+      };
       try {
         const blobs = [];
         for (let i = 0; i < parsed.length; i++) {
           setStatus("dlg-status", "info", `Recording line ${i + 1}/${parsed.length} (${parsed[i].speaker})…`);
-          const { blob } = await Providers.freeSpeak(parsed[i].text, voiceFor(parsed[i].speaker));
+          const { blob } = await speakLine(parsed[i]);
           blobs.push(blob);
         }
         setStatus("dlg-status", "info", "Stitching into one file…");
         const { blob, duration } = await Providers.concatTracks(blobs, gap);
         const url = URL.createObjectURL(blob);
-        setStatus("dlg-status", "ok", `Combined dialogue ready — ${parsed.length} lines, ${duration.toFixed(1)}s, cost $0.00.`);
+        const costNote = usedEleven
+          ? `${elChars} ElevenLabs characters used (deducted from your plan's quota)`
+          : "cost $0.00";
+        setStatus("dlg-status", "ok", `Combined dialogue ready — ${parsed.length} lines, ${duration.toFixed(1)}s, ${costNote}.`);
         showMedia("dlg-result", "audio", url);
       } catch (e) { setStatus("dlg-status", "err", e.message); }
       btn.disabled = false;

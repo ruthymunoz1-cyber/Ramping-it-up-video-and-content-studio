@@ -7,8 +7,10 @@
 const RIU_DATA = {
 
   /* ---------- generative models (fal.ai queue API) ----------
-   * Registry refreshed 2026-07 from the media-gen / re-light skill packs.
-   * "FREE:" entries run on Pollinations.ai — no API key, no cost. */
+   * Registry refreshed 2026-07-18 (Kling v3 Pro prices re-verified; Hailuo
+   * bumped 02→2.3 same price class; Seedance 2.0 Mini added for drafts).
+   * Watchlist: Seedance 2.5 public since early Jul 2026 — endpoint/pricing
+   * unverified, not yet listed. "FREE:" entries run on Pollinations.ai. */
   models: {
     image: [
       { id: "pollinations:flux",            name: "FREE — Pollinations Flux (no API key needed!)", cost: 0, unit: "image", free: true },
@@ -22,11 +24,12 @@ const RIU_DATA = {
       { id: "fal-ai/nano-banana-2/edit",    name: "Nano Banana 2 Edit — identity-locked relight/re-scene", cost: 0.10, unit: "image" },
     ],
     video: [
-      { id: "fal-ai/kling-video/v3/pro/image-to-video",   name: "Kling v3 Pro (image→video) — cinematic + native audio, best value", cost: 0.168, unit: "second" },
+      { id: "fal-ai/kling-video/v3/pro/image-to-video",   name: "Kling v3 Pro (image→video) — cinematic + native audio, best value ($0.112/s audio off)", cost: 0.168, unit: "second" },
+      { id: "bytedance/seedance-2.0/mini/reference-to-video", name: "Seedance 2.0 Mini (reference→video) — cheapest drafts, 720p", cost: 0.0928, unit: "second" },
       { id: "bytedance/seedance-2.0/fast/image-to-video", name: "Seedance 2.0 Fast (image→video) — cheap drafts, 720p", cost: 0.2419, unit: "second" },
       { id: "bytedance/seedance-2.0/image-to-video",      name: "Seedance 2.0 Pro (image→video) — flagship, synced audio, 1080p", cost: 0.6804, unit: "second" },
       { id: "fal-ai/kling-video/v3/4k/image-to-video",    name: "Kling v3 4K (image→video) — native 4K masters", cost: 0.42, unit: "second" },
-      { id: "fal-ai/minimax/hailuo-02/standard/text-to-video", name: "Hailuo 02 (text→video, no start image)", cost: 0.045, unit: "second" },
+      { id: "fal-ai/minimax/hailuo-2.3/standard/text-to-video", name: "Hailuo 2.3 (text→video, no start image) — B-roll & establishing shots", cost: 0.047, unit: "second" },
     ],
     videoEdit: [
       { id: "fal-ai/kling-video/o3/pro/video-to-video/edit", name: "Kling O3 Pro Edit — relight/re-scene a clip, audio preserved", cost: 0.168, unit: "second" },
@@ -306,6 +309,10 @@ const RIU_DATA = {
     { name: "Forest & birds",     prompt: "peaceful forest ambience, birds chirping, light wind in leaves, seamless loop, no music, no voices" },
     { name: "Classroom hum",      prompt: "soft classroom background room tone, distant quiet chatter, seamless loop, no music" },
     { name: "Coffee shop",        prompt: "cozy coffee shop ambience, distant murmuring, cup clinks, seamless loop, no music, no voices" },
+    { name: "Restaurant dining room (quiet)", prompt: "warm sit-down restaurant dining room ambience, quiet murmur of distant conversation, occasional soft clink of plates and cutlery, gentle ambient room tone, seamless loop, no music, no distinct words, no voices" },
+    { name: "Restaurant dining room (busy)",  prompt: "busy sit-down restaurant during a dinner rush, layered distant conversation murmur, cutlery and plate clinks, occasional chair scrape, lively but not chaotic, seamless loop, no music, no distinct words, no voices" },
+    { name: "Restaurant kitchen (back of house)", prompt: "restaurant kitchen back-of-house ambience, sizzling pans, soft clatter of pots and utensils, distant exhaust fan hum, occasional muffled kitchen chatter, seamless loop, no music, no distinct words, no voices" },
+    { name: "Restaurant service counter", prompt: "restaurant service counter and pass ambience, soft register beeps, plates being set down, distant dining-room murmur behind, seamless loop, no music, no distinct words, no voices" },
     { name: "Wind & open air",    prompt: "soft open-air wind ambience, outdoor natural room tone, seamless loop, no music, no voices" },
     { name: "City traffic (soft)",prompt: "distant soft city traffic ambience, urban background tone, seamless loop, no music, no voices" },
     { name: "White noise / focus",prompt: "smooth even white noise, focus and study background, seamless loop, no music, no voices" },

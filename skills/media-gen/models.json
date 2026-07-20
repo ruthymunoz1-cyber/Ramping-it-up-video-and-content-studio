@@ -1,6 +1,7 @@
 {
-  "last_updated": "2026-05-21",
-  "notes": "Curated 'current best' registry for Fal.ai. Update default and add entries when better models drop. Verify fal_id values at fal.ai/models if a 404 occurs. unit_price_per_second_usd is for video models; if missing or stale (>30 days), WebFetch fal.ai/models/{fal_id} before quoting cost.",
+  "last_updated": "2026-07-18",
+  "notes": "Curated 'current best' registry for Fal.ai. Update default and add entries when better models drop. Verify fal_id values at fal.ai/models if a 404 occurs. unit_price_per_second_usd is for video models; if missing or stale (>30 days), WebFetch fal.ai/models/{fal_id} before quoting cost. NOTE: fal.ai model pages return 403 to plain fetchers as of Jul 2026 - verify via web search of the model page URL instead.",
+  "watchlist": "Seedance 2.5 went public early Jul 2026 (native 30s 4K, up to 50 reference images, native audio) - no verified fal endpoint/pricing yet, re-check next refresh. Kling v3 Turbo Pro exists on fal (fal-ai/kling-video/v3/turbo/pro/image-to-video), pricing unverified.",
 
   "image": {
     "default": "nano-banana-pro",
@@ -71,7 +72,28 @@
         },
         "unit_price_per_second_usd": 0.168,
         "unit_price_per_second_usd_audio_off": 0.112,
-        "price_last_verified": "2026-05-21",
+        "pricing_note": "Audio on = $0.168/s, audio off = $0.112/s, audio with voice control = $0.196/s.",
+        "price_last_verified": "2026-07-18",
+        "output_path": "video.url"
+      },
+      "seedance-2-mini": {
+        "fal_id": "bytedance/seedance-2.0/mini/reference-to-video",
+        "best_for": "Cheapest Seedance tier for draft iterations before committing to a full-price render. Reference-image input.",
+        "default_args": {
+          "duration": 5,
+          "resolution": "720p"
+        },
+        "unit_price_per_second_usd": 0.0928,
+        "pricing_note": "Approx (third-party source): 480p ~$0.0433/s, 720p ~$0.0928/s. Verify on the fal page before quoting.",
+        "price_last_verified": "2026-07-18",
+        "output_path": "video.url"
+      },
+      "seedance-2-reference": {
+        "fal_id": "bytedance/seedance-2.0/reference-to-video",
+        "best_for": "Seedance 2.0 with multiple reference images - strongest option for character-consistency work driven by a turnaround sheet. Pricing NOT yet verified: WebFetch/search the fal page before quoting cost.",
+        "default_args": {
+          "duration": 5
+        },
         "output_path": "video.url"
       },
       "kling-v3-4k": {

@@ -65,7 +65,13 @@ const Providers = {
     return cand;
   },
 
-  /* Read a local file into a data: URI (fal endpoints accept data URIs). */
+  /* Read a local file into a data: URI. Fine for small images, but fal.ai
+   * rejects request bodies above a size threshold with a 422 ("Request is
+   * too large... upload the input media files to a URL") — this bit real
+   * video/audio uploads (Lip Sync) since a whole clip base64-encoded inline
+   * in JSON is much bigger than the raw file. Use falUpload() below for
+   * anything that might be more than a couple MB (video, audio, and to be
+   * safe any user-uploaded file headed into a model's request body). */
   fileToDataUri(file) {
     return new Promise((resolve, reject) => {
       const rd = new FileReader();
@@ -73,6 +79,45 @@ const Providers = {
       rd.onerror = reject;
       rd.readAsDataURL(file);
     });
+  },
+
+  /* Upload a local file to fal's storage CDN and return a real https://
+   * URL, instead of inlining it as a giant base64 string in the request
+   * body. Two-step flow: ask fal for a signed upload URL, PUT the raw
+   * bytes there, then use the returned public file URL as image_url /
+   * video_url / audio_url in the actual model call. */
+  async falUpload(file, onStatus) {
+    const key = this.keys().fal;
+    if (!key) throw new Error("No fal.ai API key set. Add it in ⚙️ Settings.");
+    if (onStatus) onStatus(`Uploading ${file.name || "file"} (${(file.size / 1e6).toFixed(1)} MB)…`);
+    const initRes = await fetch("https://rest.alpha.fal.ai/storage/upload/initiate", {
+      method: "POST",
+      headers: { "Authorization": `Key ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ content_type: file.type || "application/octet-stream", file_name: file.name || "upload" }),
+    });
+    if (!initRes.ok) throw new Error(`fal.ai upload-initiate failed (${initRes.status}): ${await initRes.text()}`);
+    const { upload_url, file_url } = await initRes.json();
+    if (!upload_url || !file_url) throw new Error("fal.ai upload-initiate returned no upload_url/file_url.");
+    const putRes = await fetch(upload_url, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    if (!putRes.ok) throw new Error(`fal.ai file upload failed (${putRes.status}): ${await putRes.text()}`);
+    return file_url;
+  },
+
+  /* Use this instead of fileToDataUri whenever the result goes straight
+   * into a fal model call — small images still work either way, but this
+   * avoids the request-too-large failure for anything bigger (video,
+   * audio, or large images) without needing to guess a size cutoff. */
+  async fileForFal(file, onStatus) {
+    try {
+      return await this.falUpload(file, onStatus);
+    } catch (e) {
+      if (onStatus) onStatus(`Upload failed (${e.message}) — falling back to inline data, which may fail for large files.`);
+      return await this.fileToDataUri(file);
+    }
   },
 
   /* ---------------- ElevenLabs ---------------- */
@@ -322,11 +367,21 @@ const Providers = {
 
   async freeSpeak(text, voice = "nova", deliveryDesc = "natural delivery") {
     const p = encodeURIComponent(`Read the following text exactly as written, verbatim, in a ${deliveryDesc}: ${text}`);
-    const res = await fetch(`https://text.pollinations.ai/${p}?model=openai-audio&voice=${voice}`);
-    if (!res.ok) throw new Error(`Free TTS failed (${res.status}). Try again — the free tier can be busy — or use ElevenLabs.`);
-    const blob = await res.blob();
-    if (!/audio/.test(blob.type)) throw new Error("Free TTS returned no audio (service busy). Try again or use ElevenLabs.");
-    return { blobUrl: URL.createObjectURL(blob), blob };
+    const url = `https://text.pollinations.ai/${p}?model=openai-audio&voice=${voice}`;
+    let lastErr;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Free TTS failed (${res.status}). Try again — the free tier can be busy — or use ElevenLabs.`);
+        const blob = await res.blob();
+        if (!/audio/.test(blob.type)) throw new Error("Free TTS returned no audio (service busy). Try again or use ElevenLabs.");
+        return { blobUrl: URL.createObjectURL(blob), blob };
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 2) await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+    throw lastErr;
   },
 
   /* Grab a frame from a local video file as a data URI (for Relight). */
