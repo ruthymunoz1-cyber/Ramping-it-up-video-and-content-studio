@@ -1387,7 +1387,7 @@ const Bind = {
       if (!name) return setStatus("c-status", "err", "Give your character a name.");
       let refImage = null;
       const f = $("#c-ref").files[0];
-      if (f) refImage = await Providers.fileToDataUri(f);
+      if (f) refImage = await Providers.fileForFal(f, s => setStatus("c-status", "info", s));
       State.characters.push({
         id: "c" + Date.now(),
         name, age: $("#c-age").value.trim(), gender: $("#c-gender").value.trim(),
@@ -1643,7 +1643,7 @@ const Bind = {
       const input = { prompt, duration: secs, aspect_ratio: $("#vid-ar").value };
       const f = $("#vid-image").files[0];
       const urlIn = $("#vid-image-url").value.trim();
-      if (f) input.image_url = await Providers.fileToDataUri(f);
+      if (f) input.image_url = await Providers.fileForFal(f, s => setStatus("vid-status", "info", s));
       else if (urlIn) input.image_url = urlIn;
       if (/image-to-video/.test(modelId) && !input.image_url)
         return setStatus("vid-status", "err", "This model needs a start image — upload one or paste a URL (tip: generate your character in the Image Studio first, or use the two-shot composer above for two-character scenes).");
@@ -1675,14 +1675,14 @@ const Bind = {
         if (fr.duration < 3 || fr.duration > 10.5)
           return setStatus("rl-status", "err", `Clip is ${fr.duration.toFixed(1)}s — it must be 3–10 seconds. Trim it first.`);
         st.frameUri = fr.dataUri; st.duration = fr.duration;
-        st.videoUri = await Providers.fileToDataUri(f);
+        st.videoUri = await Providers.fileForFal(f, s => setStatus("rl-status", "info", s));
         $("#rl-clipinfo").textContent = `Clip loaded: ${fr.duration.toFixed(1)}s, ${fr.width}×${fr.height}. Reference frame extracted.`;
         clearStatus("rl-status"); updateCost();
       } catch (err) { setStatus("rl-status", "err", err.message); }
     };
     $("#rl-image").onchange = async (e) => {
       const f = e.target.files[0]; if (!f) return;
-      st.frameUri = await Providers.fileToDataUri(f); st.videoUri = null; st.duration = 0;
+      st.frameUri = await Providers.fileForFal(f, s => setStatus("rl-status", "info", s)); st.videoUri = null; st.duration = 0;
       $("#rl-clipinfo").textContent = "Photo loaded — step ① will relight it (step ② needs a clip).";
     };
 
@@ -1740,7 +1740,7 @@ const Bind = {
       const preset = RIU_DATA.restylePresets[+sel.dataset.i];
       let ref = null;
       const f = $("#an-image").files[0];
-      if (f) ref = await Providers.fileToDataUri(f);
+      if (f) ref = await Providers.fileForFal(f, s => setStatus("an-status", "info", s));
       else ref = characterRef($("#an-char").value);
       if (!ref) return setStatus("an-status", "err", "Upload an image, or pick a character that has a reference photo.");
       const notes = $("#an-notes").value.trim();
@@ -1780,10 +1780,12 @@ const Bind = {
       const modelId = $("#ls-model").value;
       const m = models("lipsync").find(x => x.id === modelId);
       const vf = $("#ls-video").files[0], af = $("#ls-audio").files[0];
-      const video_url = vf ? await Providers.fileToDataUri(vf) : $("#ls-video-url").value.trim();
-      const audio_url = af ? await Providers.fileToDataUri(af) : $("#ls-audio-url").value.trim();
-      if (!video_url || !audio_url) return setStatus("ls-status", "err", "Both a face video and a voice audio are required.");
-      runFalJob({ statusId: "ls-status", resultId: "ls-result", kind: "video", modelId, input: { video_url, audio_url }, prompt: "lip sync", cost: m.cost * 10 });
+      try {
+        const video_url = vf ? await Providers.fileForFal(vf, s => setStatus("ls-status", "info", s)) : $("#ls-video-url").value.trim();
+        const audio_url = af ? await Providers.fileForFal(af, s => setStatus("ls-status", "info", s)) : $("#ls-audio-url").value.trim();
+        if (!video_url || !audio_url) return setStatus("ls-status", "err", "Both a face video and a voice audio are required.");
+        runFalJob({ statusId: "ls-status", resultId: "ls-result", kind: "video", modelId, input: { video_url, audio_url }, prompt: "lip sync", cost: m.cost * 10 });
+      } catch (e) { setStatus("ls-status", "err", e.message); }
     };
   },
 
