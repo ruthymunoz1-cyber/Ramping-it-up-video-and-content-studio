@@ -683,10 +683,13 @@ const Views = {
         <h3>Narrate (ElevenLabs — your cloned voice)</h3>
         <label class="f-label">Voice</label>
         <div class="row">
+          <input type="text" id="vo-search" placeholder="🔍 Search voices by name…" style="max-width:220px">
           <select id="vo-voice"><option value="">Load voices first…</option></select>
+          <button class="btn sm fixed" id="vo-preview" disabled title="Hear a short sample of the selected voice — no generation cost">▶ Preview</button>
           <button class="btn sm fixed" id="vo-load">↻ Load my voices</button>
           <select id="vo-delivery">${RIU_DATA.deliveryStyles.map((d, i) => `<option value="${i}">${d.name}</option>`).join("")}</select>
         </div>
+        <audio id="vo-preview-player" style="display:none"></audio>
         <label class="f-label">Script</label>
         <textarea id="vo-text" placeholder="Paste your narration script here…"></textarea>
         <div class="hint">~$0.10–0.30 per 1,000 characters depending on plan. This box: <span id="vo-chars">0</span> characters. Delivery style shapes tone/expressiveness — the words are unaffected.</div>
@@ -718,6 +721,7 @@ Jordan: Actually, yeah — where DOES it go after it falls?
 Maya: Let's find out together."></textarea>
         <div class="mt"><button class="btn sm" id="dlg-scan">🔍 Detect speakers</button></div>
         <div id="dlg-speakers" class="mt"></div>
+        <audio id="dlg-preview-player" style="display:none"></audio>
         <label class="f-label">Gap between lines (seconds)</label>
         <input type="number" id="dlg-gap" value="0.4" min="0" max="2" step="0.1" style="max-width:120px">
         <div class="mt"><button class="btn primary" id="dlg-go">🎬 Generate combined dialogue file</button></div>
@@ -1790,13 +1794,29 @@ const Bind = {
   },
 
   voice() {
+    let voVoices = [];
     const loadVoices = async (selectId, statusId) => {
       try {
         setStatus(statusId, "info", "Loading voices…");
         const voices = await Providers.elVoices();
-        $("#" + selectId).innerHTML = voices.map(v => `<option value="${v.voice_id}">${esc(v.name)}${v.category === "cloned" ? " 🧬" : ""}</option>`).join("");
-        setStatus(statusId, "ok", `${voices.length} voices loaded.`);
+        if (selectId === "vo-voice") voVoices = voices;
+        $("#" + selectId).innerHTML = voices.map(v => `<option value="${v.voice_id}" data-preview="${esc(v.preview_url || "")}">${esc(v.name)}${v.category === "cloned" ? " 🧬" : ""}</option>`).join("");
+        setStatus(statusId, "ok", `${voices.length} voices loaded.${selectId === "vo-voice" ? " Use 🔍 Search to filter, or ▶ Preview to hear the selected voice before generating." : ""}`);
+        if (selectId === "vo-voice") $("#vo-preview").disabled = !voices.length;
       } catch (e) { setStatus(statusId, "err", e.message); }
+    };
+    $("#vo-search").oninput = () => {
+      const q = $("#vo-search").value.trim().toLowerCase();
+      $$("#vo-voice option").forEach(opt => { opt.hidden = q && !opt.textContent.toLowerCase().includes(q); });
+    };
+    $("#vo-preview").onclick = () => {
+      const opt = $("#vo-voice").selectedOptions[0];
+      const url = opt && opt.dataset.preview;
+      if (!url) return setStatus("vo-status", "err", "No preview available for this voice.");
+      const player = $("#vo-preview-player");
+      player.src = url; player.play().catch(() => {});
+      const btn = $("#vo-preview"); const orig = btn.textContent;
+      btn.textContent = "🔊 Playing…"; player.onended = () => { btn.textContent = orig; };
     };
     $("#fv-go").onclick = async () => {
       const text = $("#fv-text").value.trim();
@@ -1863,11 +1883,24 @@ const Bind = {
       return dlgElVoices;
     };
 
+    /* Preview lookup keyed by "el:<voice_id>" so the play button can find
+     * the right sample clip regardless of which row/search state it's in. */
+    let dlgPreviewByValue = {};
+    const playPreview = (audioElId, url, btn) => {
+      if (!url) return;
+      const player = $("#" + audioElId);
+      player.src = url;
+      player.play().catch(() => {});
+      if (btn) { const orig = btn.textContent; btn.textContent = "🔊 Playing…"; player.onended = () => { btn.textContent = orig; }; }
+    };
+
     const scanSpeakers = async () => {
       const { speakers } = parseDialogue();
       if (!speakers.length) { setStatus("dlg-status", "err", "Write at least one line first."); return false; }
       if (Providers.keys().eleven && !dlgElVoices) setStatus("dlg-status", "info", "Loading your ElevenLabs voices…");
       const el = await dlgLoadElVoices();
+      dlgPreviewByValue = {};
+      el.forEach(v => { if (v.preview_url) dlgPreviewByValue["el:" + v.voice_id] = v.preview_url; });
       const optionsFor = (i) => {
         const elGroup = el.length ? `<optgroup label="ElevenLabs — your account (reliable)">${el.map((v, vi) =>
           `<option value="el:${v.voice_id}"${vi === i % el.length ? " selected" : ""}>${esc(v.name)}${v.category === "cloned" ? " 🧬" : ""}</option>`).join("")}</optgroup>` : "";
@@ -1875,12 +1908,37 @@ const Bind = {
           `<option value="free:${v}"${!el.length && vi === i % Providers.freeVoices.length ? " selected" : ""}>${v}</option>`).join("")}</optgroup>`;
         return elGroup + freeGroup;
       };
-      $("#dlg-speakers").innerHTML = speakers.map((s, i) => `
+      const searchHtml = el.length ? `
+        <div class="row" style="margin-bottom:6px">
+          <input type="text" id="dlg-voice-search" placeholder="🔍 Search voice names to filter every speaker's list…" style="max-width:280px">
+        </div>` : "";
+      $("#dlg-speakers").innerHTML = searchHtml + speakers.map((s, i) => `
         <div class="row" style="margin-bottom:6px">
           <span class="fixed" style="min-width:100px;font-weight:600">${esc(s)}</span>
           <select data-dlg-voice="${esc(s)}">${optionsFor(i)}</select>
+          <button type="button" class="btn sm fixed" data-dlg-preview="${esc(s)}" title="Hear a short sample of the selected voice — no generation cost">▶ Preview</button>
         </div>`).join("");
       clearStatus("dlg-status");
+
+      $$("[data-dlg-preview]").forEach(btn => {
+        btn.onclick = () => {
+          const speaker = btn.dataset.dlgPreview;
+          const sel = $(`[data-dlg-voice="${speaker}"]`);
+          const url = dlgPreviewByValue[sel.value];
+          if (!url) return setStatus("dlg-status", "err", "No preview available for this voice (free-tier voices don't have samples — generate a short line to hear them).");
+          playPreview("dlg-preview-player", url, btn);
+        };
+      });
+      const dlgSearch = $("#dlg-voice-search");
+      if (dlgSearch) dlgSearch.oninput = () => {
+        const q = dlgSearch.value.trim().toLowerCase();
+        $$("[data-dlg-voice]").forEach(sel => {
+          $$("option", sel).forEach(opt => {
+            const isFree = opt.value.startsWith("free:");
+            opt.hidden = !isFree && q && !opt.textContent.toLowerCase().includes(q);
+          });
+        });
+      };
       if (Providers.keys().eleven && !el.length)
         setStatus("dlg-status", "err", "Could not reach ElevenLabs with your saved key — free voices offered instead. Check the key in ⚙️ Settings.");
       return true;
