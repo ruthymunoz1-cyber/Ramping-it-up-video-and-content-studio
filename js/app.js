@@ -1825,19 +1825,27 @@ const Bind = {
 
   voice() {
     let voVoices = [];
+    const renderVoOptions = (voices) => voices.map(v =>
+      `<option value="${v.voice_id}" data-preview="${esc(v.preview_url || "")}">${esc(v.name)}${v.category === "cloned" ? " 🧬" : ""}</option>`).join("");
     const loadVoices = async (selectId, statusId) => {
       try {
         setStatus(statusId, "info", "Loading voices…");
         const voices = await Providers.elVoices();
-        if (selectId === "vo-voice") voVoices = voices;
-        $("#" + selectId).innerHTML = voices.map(v => `<option value="${v.voice_id}" data-preview="${esc(v.preview_url || "")}">${esc(v.name)}${v.category === "cloned" ? " 🧬" : ""}</option>`).join("");
+        if (selectId === "vo-voice") { voVoices = voices; $("#vo-search").value = ""; }
+        $("#" + selectId).innerHTML = renderVoOptions(voices);
         setStatus(statusId, "ok", `${voices.length} voices loaded.${selectId === "vo-voice" ? " Use 🔍 Search to filter, or ▶ Preview to hear the selected voice before generating." : ""}`);
         if (selectId === "vo-voice") $("#vo-preview").disabled = !voices.length;
       } catch (e) { setStatus(statusId, "err", e.message); }
     };
+    /* Native <select> popups don't reliably hide <option hidden> in their
+     * open list across browsers/OSes, so filtering has to rebuild the
+     * option set from the cached full list rather than toggle .hidden. */
     $("#vo-search").oninput = () => {
       const q = $("#vo-search").value.trim().toLowerCase();
-      $$("#vo-voice option").forEach(opt => { opt.hidden = q && !opt.textContent.toLowerCase().includes(q); });
+      const matches = q ? voVoices.filter(v => v.name.toLowerCase().includes(q)) : voVoices;
+      const prevSelected = $("#vo-voice").value;
+      $("#vo-voice").innerHTML = matches.length ? renderVoOptions(matches) : `<option value="">No voices match "${esc($("#vo-search").value)}"</option>`;
+      if (matches.some(v => v.voice_id === prevSelected)) $("#vo-voice").value = prevSelected;
     };
     $("#vo-preview").onclick = () => {
       const opt = $("#vo-voice").selectedOptions[0];
@@ -1931,13 +1939,11 @@ const Bind = {
       const el = await dlgLoadElVoices();
       dlgPreviewByValue = {};
       el.forEach(v => { if (v.preview_url) dlgPreviewByValue["el:" + v.voice_id] = v.preview_url; });
-      const optionsFor = (i) => {
-        const elGroup = el.length ? `<optgroup label="ElevenLabs — your account (reliable)">${el.map((v, vi) =>
-          `<option value="el:${v.voice_id}"${vi === i % el.length ? " selected" : ""}>${esc(v.name)}${v.category === "cloned" ? " 🧬" : ""}</option>`).join("")}</optgroup>` : "";
-        const freeGroup = `<optgroup label="Free (Pollinations — can be busy)">${Providers.freeVoices.map((v, vi) =>
-          `<option value="free:${v}"${!el.length && vi === i % Providers.freeVoices.length ? " selected" : ""}>${v}</option>`).join("")}</optgroup>`;
-        return elGroup + freeGroup;
-      };
+      const elGroupHtml = (list, selectedIdx) => list.length ? `<optgroup label="ElevenLabs — your account (reliable)">${list.map((v, vi) =>
+        `<option value="el:${v.voice_id}"${vi === selectedIdx ? " selected" : ""}>${esc(v.name)}${v.category === "cloned" ? " 🧬" : ""}</option>`).join("")}</optgroup>` : "";
+      const freeGroupHtml = (selectedIdx) => `<optgroup label="Free (Pollinations — can be busy)">${Providers.freeVoices.map((v, vi) =>
+        `<option value="free:${v}"${selectedIdx === vi ? " selected" : ""}>${v}</option>`).join("")}</optgroup>`;
+      const optionsFor = (i) => elGroupHtml(el, i % (el.length || 1)) + freeGroupHtml(!el.length ? i % Providers.freeVoices.length : -1);
       const searchHtml = el.length ? `
         <div class="row" style="margin-bottom:6px">
           <input type="text" id="dlg-voice-search" placeholder="🔍 Search voice names to filter every speaker's list…" style="max-width:280px">
@@ -1959,14 +1965,20 @@ const Bind = {
           playPreview("dlg-preview-player", url, btn);
         };
       });
+      /* Native <select> popups don't reliably hide <option hidden> in their
+       * open list across browsers/OSes, so filtering rebuilds the
+       * ElevenLabs optgroup from the cached list rather than toggling
+       * .hidden — the free-voice optgroup is left untouched. */
       const dlgSearch = $("#dlg-voice-search");
       if (dlgSearch) dlgSearch.oninput = () => {
         const q = dlgSearch.value.trim().toLowerCase();
+        const matches = q ? el.filter(v => v.name.toLowerCase().includes(q)) : el;
         $$("[data-dlg-voice]").forEach(sel => {
-          $$("option", sel).forEach(opt => {
-            const isFree = opt.value.startsWith("free:");
-            opt.hidden = !isFree && q && !opt.textContent.toLowerCase().includes(q);
-          });
+          const prevSelected = sel.value;
+          const elGroup = matches.length ? elGroupHtml(matches, -1)
+            : `<optgroup label="ElevenLabs — your account (reliable)"><option value="" disabled>No voices match "${esc(dlgSearch.value)}"</option></optgroup>`;
+          sel.innerHTML = elGroup + freeGroupHtml(-1);
+          if (matches.some(v => "el:" + v.voice_id === prevSelected) || prevSelected.startsWith("free:")) sel.value = prevSelected;
         });
       };
       if (Providers.keys().eleven && !el.length)

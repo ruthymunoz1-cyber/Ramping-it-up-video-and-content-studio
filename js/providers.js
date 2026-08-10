@@ -298,12 +298,23 @@ const Providers = {
     } catch {
       throw new Error("Could not load the video engine — check your internet connection and try again (first load needs ~30MB).");
     }
+    /* @ffmpeg/ffmpeg spawns its own background Worker pointed straight at
+     * the jsdelivr CDN URL. GitHub Pages' security policy blocks browsers
+     * from constructing a Worker from a cross-origin script that way
+     * ("cannot be accessed from origin ..."). Fixed the same way coreURL/
+     * wasmURL already are below: fetch the worker script ourselves and
+     * hand FFmpeg a same-origin blob: URL instead. Confirmed against the
+     * package's own source (classes.ts): classWorkerURL is read inside
+     * load()'s destructured config, NOT the constructor - passing it to
+     * `new FFmpeg({...})` (an earlier attempt) is silently ignored. */
     const ff = new FFmpeg();
     if (onLog) ff.on("log", ({ message }) => onLog(message));
     const base = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm";
     await ff.load({
       coreURL: await this._toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
       wasmURL: await this._toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
+      classWorkerURL: await this._toBlobURL(
+        "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js", "text/javascript"),
     });
     this._ffmpeg = ff;
     return ff;
