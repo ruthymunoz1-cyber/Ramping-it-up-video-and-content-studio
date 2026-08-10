@@ -368,6 +368,7 @@ const Views = {
       ["locations", "🗺️", "Location Scout", "Landmarks, museums, sets — a reusable library"],
       ["bookOutline", "📚", "Book Outline", "Bestseller chapter structures, incl. diverse picture books"],
       ["crossword", "🧩", "Crossword Studio", "Vocabulary/lesson lists → real printable crosswords"],
+      ["coloringBook", "🖍️", "Coloring Book Studio", "Page list → a full, printable coloring book"],
       ["marketScout", "📊", "Market Scout", "Free directional gut-check before you spend a cent"],
       ["cost", "💰", "Cost Planner", "Budget a whole project before spending"],
     ];
@@ -1256,6 +1257,32 @@ MESA | Spanish word for table"></textarea>
         <div class="mt row" id="cw-actions" style="display:none">
           <button class="btn sm fixed" id="cw-download">⬇ Download PNG</button>
           <button class="btn sm fixed" id="cw-print">🖨 Print puzzle + clues</button>
+        </div>
+      </div>`;
+  },
+
+  /* ---------------- coloring book studio ---------------- */
+  coloringBook() {
+    return `
+      <div class="page-head"><div class="page-title">🖍️ Coloring Book Studio</div>
+      <div class="page-desc">Turn a page list into a full, printable coloring book — clean black-outline line art, no color, one page per idea. Pick a Character Lab character to keep them consistent across every page, or leave it blank for freestanding scenes.</div></div>
+      <div class="card">
+        <label class="f-label">Book title</label>
+        <input type="text" id="cb-title" placeholder="e.g. Maya's Day at the Park">
+        ${charSelectHtml("cb-char", "Character (optional — keeps them consistent across every page)")}
+        ${modelSelectHtml("cb-model", "image", "imageEdit")}
+        <label class="f-label">Pages — one scene per line</label>
+        <textarea id="cb-pages" style="min-height:160px" placeholder="Maya waking up and stretching in bed
+Maya brushing her teeth in the bathroom
+Maya eating pancakes for breakfast
+Maya playing on the swings at the park
+Maya reading a book before bedtime"></textarea>
+        <div class="hint">Each line becomes one printable page, generated in order. Pages render close to a portrait print-page shape — fine-tune the exact crop for your paper size in KDP or any image editor before publishing.</div>
+        <div class="mt"><button class="btn primary" id="cb-go">🖍️ Generate all pages <span class="cost" id="cb-cost"></span></button></div>
+        <div class="status" id="cb-status"></div>
+        <div class="board-grid mt" id="cb-gallery"></div>
+        <div class="mt row" id="cb-actions" style="display:none">
+          <button class="btn sm fixed" id="cb-print">🖨 Print / save PDF</button>
         </div>
       </div>`;
   },
@@ -3241,6 +3268,99 @@ const Bind = {
     };
   },
 
+  coloringBook() {
+    const state = { pages: [] }; // [{desc, imgUrl, cost}]
+
+    const renderGallery = () => {
+      $("#cb-gallery").innerHTML = state.pages.map((p, i) => `
+        <div class="panel">
+          <div class="panel-img" data-cb-img="${i}">
+            ${p.imgUrl ? `<img src="${p.imgUrl}" alt="page ${i + 1}">` : `<div class="panel-empty">page ${i + 1}</div>`}
+          </div>
+          <div class="panel-meta">
+            <div class="row" style="gap:6px">
+              <span class="fixed panel-num">${i + 1}</span>
+              <button class="btn sm fixed" data-cb-gen="${i}" style="margin-left:auto">🎨 ${p.imgUrl ? "Regenerate" : "Generate"}</button>
+              ${p.imgUrl ? `<a class="btn sm fixed" href="${p.imgUrl}" download="page-${i + 1}.png">⬇</a>` : ""}
+            </div>
+            <div class="muted" style="font-size:12px">${esc(p.desc)}</div>
+          </div>
+        </div>`).join("");
+      $$("[data-cb-gen]").forEach(b => b.onclick = () => genPage(+b.dataset.cbGen));
+      $("#cb-actions").style.display = state.pages.some(p => p.imgUrl) ? "" : "none";
+    };
+
+    const genPage = async (i) => {
+      const p = state.pages[i];
+      const charId = $("#cb-char").value;
+      const modelId = $("#cb-model").value;
+      const refs = characterRefs(charId);
+      const prompt = characterPrefix(charId) + p.desc +
+        ". Clean black-and-white coloring book page — bold smooth black outlines only, absolutely no color, no shading, no grey fills, pure white background, kid-friendly simplified details, large open areas to color, printable quality.";
+      setStatus("cb-status", "info", `Generating page ${i + 1}/${state.pages.length}…`);
+      try {
+        let url, cost = 0;
+        if (modelId.startsWith("pollinations:")) {
+          const out = await Providers.freeImage(prompt, { width: 850, height: 1100, model: modelId.split(":")[1] });
+          url = out.sourceUrl;
+        } else {
+          const input = /edit/.test(modelId) && refs.length
+            ? { prompt, image_urls: refs, num_images: 1 }
+            : { prompt, aspect_ratio: "4:5" }; // closest supported shape to a portrait print page
+          const res = await Providers.falRun(modelId, input, s => setStatus("cb-status", "info", s));
+          url = Providers.extractMedia(res);
+          cost = modelsIn("image", "imageEdit").find(x => x.id === modelId)?.cost || 0;
+        }
+        if (!url) throw new Error("No image returned.");
+        p.imgUrl = url; p.cost = cost;
+        State.addToGallery({ kind: "image", url, prompt: `Coloring page: ${p.desc}`, model: modelId, cost });
+        renderGallery();
+        setStatus("cb-status", "ok", `Page ${i + 1} ready.`);
+      } catch (e) { setStatus("cb-status", "err", `Page ${i + 1}: ${e.message}`); }
+    };
+
+    const updateCost = () => {
+      const n = $("#cb-pages").value.split("\n").map(s => s.trim()).filter(Boolean).length;
+      const m = modelsIn("image", "imageEdit").find(x => x.id === $("#cb-model").value);
+      const cost = (m?.cost || 0) * n;
+      $("#cb-cost").textContent = n ? `~$${cost.toFixed(3)} for ${n} page${n > 1 ? "s" : ""}` : "";
+    };
+    $("#cb-pages").oninput = updateCost;
+    $("#cb-model").onchange = updateCost;
+    updateCost();
+
+    $("#cb-go").onclick = async () => {
+      const lines = $("#cb-pages").value.split("\n").map(s => s.trim()).filter(Boolean);
+      if (!lines.length) return setStatus("cb-status", "err", "Add at least one page — one scene per line.");
+      state.pages = lines.map(desc => ({ desc, imgUrl: null }));
+      renderGallery();
+      const btn = $("#cb-go"); btn.disabled = true;
+      for (let i = 0; i < state.pages.length; i++) {
+        await genPage(i);
+      }
+      btn.disabled = false;
+      setStatus("cb-status", "ok", `Coloring book complete — ${state.pages.length} page(s). Print it, or download each page.`);
+    };
+
+    $("#cb-print").onclick = () => {
+      const title = $("#cb-title").value.trim() || "Coloring Book";
+      const ready = state.pages.filter(p => p.imgUrl);
+      if (!ready.length) return;
+      const w = window.open("", "_blank");
+      w.document.write(`<!DOCTYPE html><html><head><title>${esc(title)}</title><style>
+        body{font-family:Georgia,serif;margin:0;padding:0}
+        .page{page-break-after:always;padding:24px;text-align:center}
+        .page:last-child{page-break-after:auto}
+        img{max-width:100%;max-height:88vh}
+        h1{font-size:18px;margin:0 0 12px}</style></head><body>
+        ${ready.map((p, i) => `<div class="page"><h1>${esc(title)} — page ${i + 1}</h1><img src="${p.imgUrl}"></div>`).join("")}
+        <script>window.onload=()=>setTimeout(()=>window.print(),600)<\/script></body></html>`);
+      w.document.close();
+    };
+
+    renderGallery();
+  },
+
   cost() {
     $("#cp-go").onclick = () => {
       const scenes = +$("#cp-scenes").value, secs = +$("#cp-secs").value, takes = +$("#cp-takes").value;
@@ -3423,6 +3543,7 @@ const NAV = [
   ["locations", "🗺️", "Location Scout", null],
   ["bookOutline", "📚", "Book Outline", null],
   ["crossword", "🧩", "Crossword Studio", null],
+  ["coloringBook", "🖍️", "Coloring Book Studio", null],
   ["marketScout", "📊", "Market Scout", null],
   ["editor", "✂️", "Editor's Room", null],
   ["cost", "💰", "Cost Planner", null],
