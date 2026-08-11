@@ -1338,20 +1338,47 @@ MESA | Spanish word for table"></textarea>
       <div class="card">
         <label class="f-label">Book title</label>
         <input type="text" id="cb-title" placeholder="e.g. Maya's Day at the Park">
+        <div class="row">
+          <div>
+            <label class="f-label">Line style</label>
+            <select id="cb-style">
+              <option value="bold">Bold &amp; Easy — large-print (thick outlines, simple shapes, seniors/beginners/kids)</option>
+              <option value="standard">Standard detail (moderate line weight, more elements per page)</option>
+              <option value="intricate">Intricate (fine 1–2px lines, 100+ elements — mandalas/florals/geometric)</option>
+            </select>
+          </div>
+          <div>
+            <label class="f-label">Trim size</label>
+            <select id="cb-trim">
+              <option value="8.5x11">8.5 × 11 in (US Letter — most common for coloring books)</option>
+              <option value="8x10">8 × 10 in</option>
+              <option value="6x9">6 × 9 in</option>
+            </select>
+          </div>
+        </div>
         ${charSelectHtml("cb-char", "Character (optional — keeps them consistent across every page)")}
         ${modelSelectHtml("cb-model", "image", "imageEdit")}
+        <div class="divider"></div>
+        <label class="f-label">Auto-draft page ideas (optional, FREE) — theme + how many pages</label>
+        <div class="row">
+          <input type="text" id="cb-theme" placeholder="e.g. a Black and Afro-Latino kid's day: home, school, park, family, hair styling, community" style="flex:3">
+          <input type="number" id="cb-count" value="20" min="1" max="120" style="flex:1">
+          <button class="btn fixed" id="cb-autodraft">🎲 Draft ideas</button>
+        </div>
+        <div class="hint">Drafts one distinct scene per line straight into the list below — for a big book (e.g. 80 pages) run it a few times with different angles and merge, or edit freely after.</div>
+        <div class="status" id="cb-draft-status"></div>
         <label class="f-label">Pages — one scene per line</label>
         <textarea id="cb-pages" style="min-height:160px" placeholder="Maya waking up and stretching in bed
 Maya brushing her teeth in the bathroom
 Maya eating pancakes for breakfast
 Maya playing on the swings at the park
 Maya reading a book before bedtime"></textarea>
-        <div class="hint">Each line becomes one printable page, generated in order. Pages render close to a portrait print-page shape — fine-tune the exact crop for your paper size in KDP or any image editor before publishing.</div>
+        <div class="hint">Each line becomes one printable page, generated in order. Pages render at the exact aspect ratio of your chosen trim size.</div>
         <div class="mt"><button class="btn primary" id="cb-go">🖍️ Generate all pages <span class="cost" id="cb-cost"></span></button></div>
         <div class="status" id="cb-status"></div>
         <div class="board-grid mt" id="cb-gallery"></div>
         <div class="mt row" id="cb-actions" style="display:none">
-          <button class="btn sm fixed" id="cb-print">🖨 Print / save PDF</button>
+          <button class="btn sm fixed" id="cb-print">🖨 Print / save PDF (sized to trim)</button>
         </div>
       </div>`;
   },
@@ -3554,6 +3581,21 @@ const Bind = {
   coloringBook() {
     const state = { pages: [] }; // [{desc, imgUrl, cost}]
 
+    /* width/height in inches per trim option — also drives Pollinations pixel
+     * size (100 DPI) and the print stylesheet's @page size. */
+    const TRIMS = {
+      "8.5x11": { w: 8.5, h: 11 },
+      "8x10": { w: 8, h: 10 },
+      "6x9": { w: 6, h: 9 },
+    };
+    const trimDims = () => TRIMS[$("#cb-trim").value] || TRIMS["8.5x11"];
+
+    const STYLE_PROMPTS = {
+      bold: "extra-thick bold black outlines (large-print / beginner style), very simple uncluttered shapes, minimal small details, huge open areas to color, low visual complexity — friendly for seniors, low-vision colorists, beginners and kids",
+      standard: "bold smooth black outlines only, kid-friendly simplified details, large open areas to color",
+      intricate: "fine thin black outlines (1-2px), highly detailed intricate patterns, 100+ small elements per page, mandala/floral/geometric complexity, meditative adult coloring book style",
+    };
+
     const renderGallery = () => {
       $("#cb-gallery").innerHTML = state.pages.map((p, i) => `
         <div class="panel">
@@ -3578,13 +3620,15 @@ const Bind = {
       const charId = $("#cb-char").value;
       const modelId = $("#cb-model").value;
       const refs = characterRefs(charId);
+      const style = STYLE_PROMPTS[$("#cb-style").value] || STYLE_PROMPTS.bold;
       const prompt = characterPrefix(charId) + p.desc +
-        ". Clean black-and-white coloring book page — bold smooth black outlines only, absolutely no color, no shading, no grey fills, pure white background, kid-friendly simplified details, large open areas to color, printable quality.";
+        `. Clean black-and-white coloring book page — ${style}, absolutely no color, no shading, no grey fills, pure white background, printable quality.`;
       setStatus("cb-status", "info", `Generating page ${i + 1}/${state.pages.length}…`);
       try {
         let url, cost = 0;
+        const { w, h } = trimDims();
         if (modelId.startsWith("pollinations:")) {
-          const out = await Providers.freeImage(prompt, { width: 850, height: 1100, model: modelId.split(":")[1] });
+          const out = await Providers.freeImage(prompt, { width: Math.round(w * 100), height: Math.round(h * 100), model: modelId.split(":")[1] });
           url = out.sourceUrl;
         } else {
           const input = /edit/.test(modelId) && refs.length
@@ -3600,6 +3644,28 @@ const Bind = {
         renderGallery();
         setStatus("cb-status", "ok", `Page ${i + 1} ready.`);
       } catch (e) { setStatus("cb-status", "err", `Page ${i + 1}: ${e.message}`); }
+    };
+
+    $("#cb-autodraft").onclick = async () => {
+      const theme = $("#cb-theme").value.trim();
+      const count = Math.max(1, Math.min(120, +$("#cb-count").value || 20));
+      if (!theme) return setStatus("cb-draft-status", "err", "Describe the theme first — who's in the book, what they're doing, the setting.");
+      setStatus("cb-draft-status", "info", `Drafting ${count} page ideas…`);
+      try {
+        const existing = $("#cb-pages").value.split("\n").map(s => s.trim()).filter(Boolean);
+        const prompt = `List exactly ${count} distinct, concrete coloring-book page scenes for this theme: "${theme}". ` +
+          `One scene per line, no numbering, no bullets, no extra commentary — just the plain scene description, ` +
+          `each visual and simple enough to become a single-page black-and-white line-art illustration. ` +
+          `Vary the setting and activity across lines so no two pages look alike.` +
+          (existing.length ? ` Do not repeat any of these already-used scenes: ${existing.slice(0, 40).join(" | ")}.` : "");
+        const out = await Providers.freeText(prompt);
+        const lines = out.split("\n").map(l => l.replace(/^[\s\-*\d.)]+/, "").trim()).filter(Boolean);
+        if (!lines.length) throw new Error("No ideas came back — try again.");
+        const merged = existing.concat(lines);
+        $("#cb-pages").value = merged.join("\n");
+        updateCost();
+        setStatus("cb-draft-status", "ok", `Added ${lines.length} page idea(s) — ${merged.length} total. Review/edit below before generating art.`);
+      } catch (e) { setStatus("cb-draft-status", "err", e.message); }
     };
 
     const updateCost = () => {
@@ -3629,16 +3695,21 @@ const Bind = {
       const title = $("#cb-title").value.trim() || "Coloring Book";
       const ready = state.pages.filter(p => p.imgUrl);
       if (!ready.length) return;
-      const w = window.open("", "_blank");
-      w.document.write(`<!DOCTYPE html><html><head><title>${esc(title)}</title><style>
+      const { w: tw, h: th } = trimDims();
+      const win = window.open("", "_blank");
+      win.document.write(`<!DOCTYPE html><html><head><title>${esc(title)}</title><style>
+        @page{size:${tw}in ${th}in;margin:0.5in}
         body{font-family:Georgia,serif;margin:0;padding:0}
-        .page{page-break-after:always;padding:24px;text-align:center}
+        .page{page-break-after:always;width:${tw}in;height:${th}in;box-sizing:border-box;padding:0.25in;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
         .page:last-child{page-break-after:auto}
-        img{max-width:100%;max-height:88vh}
-        h1{font-size:18px;margin:0 0 12px}</style></head><body>
-        ${ready.map((p, i) => `<div class="page"><h1>${esc(title)} — page ${i + 1}</h1><img src="${p.imgUrl}"></div>`).join("")}
+        .title-page{justify-content:center;font-family:Georgia,serif}
+        .title-page h1{font-size:36px;margin:0 0 8px}
+        img{max-width:100%;max-height:82%;object-fit:contain}
+        .pnum{font-size:11px;color:#888;margin-top:6px}</style></head><body>
+        <div class="page title-page"><h1>${esc(title)}</h1><div class="muted">${ready.length} pages</div></div>
+        ${ready.map((p, i) => `<div class="page"><img src="${p.imgUrl}"><div class="pnum">${i + 1}</div></div>`).join("")}
         <script>window.onload=()=>setTimeout(()=>window.print(),600)<\/script></body></html>`);
-      w.document.close();
+      win.document.close();
     };
 
     renderGallery();
