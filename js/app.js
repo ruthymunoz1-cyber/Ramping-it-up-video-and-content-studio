@@ -1210,10 +1210,10 @@ Maya: Let's find out together."></textarea>
 
     return `
       <div class="page-head"><div class="page-title">📚 Book Outline</div>
-      <div class="page-desc">Bestseller-shaped chapter structures — including a diverse-representation picture-book template — to plan your manuscript before writing it in Scrivener/Atticus/Word. Feeds straight into the 🎧 Audiobook Studio (chapter text) and 📖 Book Cover Studio (title/concept) once written.</div></div>
+      <div class="page-desc">Bestseller-shaped chapter structures — including a diverse-representation picture-book template — then write full chapter prose from that structure, free ($0, Pollinations). Draft here, do your real editing pass in Scrivener/Atticus/Word. Feeds straight into the 🎧 Audiobook Studio (chapter text) and 📖 Book Cover Studio (title/concept).</div></div>
       <div class="card">
         <h3>🕵️ Self-editing check — avoiding AI tells</h3>
-        <p class="muted">Run your manuscript against this before you call it done. Full reference with sourcing: <code class="k">docs/avoiding-ai-tells.md</code> in the repo.</p>
+        <p class="muted">Run your manuscript against this before you call it done — doubly important for anything generated below. Full reference with sourcing: <code class="k">docs/avoiding-ai-tells.md</code> in the repo.</p>
         <table class="plain">${RIU_DATA.aiTellsChecklist.map(c => `<tr><td>☐ ${esc(c.check)}</td><td class="muted">${esc(c.why)}</td></tr>`).join("")}</table>
       </div>
       <div class="card">
@@ -1222,11 +1222,21 @@ Maya: Let's find out together."></textarea>
         <p class="muted mt" id="bo-desc"></p>
         <label class="f-label">Book title</label>
         <input type="text" id="bo-title" placeholder="e.g. The Girl Who Counted Stars">
+        <div class="row">
+          <div><label class="f-label">Chapter length when generated</label>
+            <select id="bo-length">
+              <option value="short">Short (~150 words — picture book / page-per-beat)</option>
+              <option value="medium" selected>Medium (~400 words)</option>
+              <option value="long">Long (~800 words — full prose chapter)</option>
+            </select></div>
+        </div>
         <div id="bo-chapters"></div>
         <div class="mt row">
+          <button class="btn fixed" id="bo-write-all">✍️ Write all chapters <span class="muted">(FREE)</span></button>
           <button class="btn primary fixed" id="bo-save">💾 Save outline</button>
           <button class="btn fixed" id="bo-export">⬇ Export as text</button>
         </div>
+        <div class="status" id="bo-status"></div>
       </div>
       ${saved}`;
   },
@@ -3163,11 +3173,48 @@ const Bind = {
       const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
       $("#bo-desc").textContent = t.desc;
       $("#bo-chapters").innerHTML = t.chapters.map((c, i) => `
-        <label class="f-label">${esc(c.title)}</label>
+        <div class="row" style="align-items:baseline;gap:8px">
+          <label class="f-label" style="margin-bottom:0">${esc(c.title)}</label>
+          <button class="btn sm fixed" data-bo-write="${i}" style="margin-left:auto">✍️ Write this chapter</button>
+        </div>
         <div class="hint" style="margin:0 0 5px">${esc(c.tip)}</div>
-        <textarea data-bo-chapter="${i}" style="min-height:70px" placeholder="Write this chapter's notes/draft beats…"></textarea>`).join("");
+        <textarea data-bo-chapter="${i}" style="min-height:70px" placeholder="Notes/draft beats — or leave blank and click Write, above, to generate a full first draft from the prompt alone…"></textarea>`).join("");
+      $$("[data-bo-write]").forEach(b => b.onclick = () => writeChapter(+b.dataset.boWrite));
     };
     $("#bo-template").onchange = renderChapters; renderChapters();
+
+    const lengthWords = () => ({ short: 150, medium: 400, long: 800 })[$("#bo-length").value];
+
+    const writeChapter = async (i) => {
+      const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
+      const c = t.chapters[i];
+      const title = $("#bo-title").value.trim() || "Untitled";
+      const notes = $(`[data-bo-chapter="${i}"]`).value.trim();
+      const words = lengthWords();
+      const prompt =
+        `You are ghostwriting one chapter/beat of a book titled "${title}" (${t.name}). ` +
+        `This beat is "${c.title}" — ${c.tip}. ` +
+        (notes ? `The author's notes/beats for this section: ${notes}. Follow these closely. ` : "") +
+        `Write the actual prose for this section now, approximately ${words} words. Return ONLY the prose text itself — ` +
+        `no title, no headers, no meta-commentary, no "Here is the chapter" preamble. ` +
+        RIU_DATA.antiAiWritingInstruction;
+      setStatus("bo-status", "info", `Writing "${c.title}"…`);
+      $(`[data-bo-write="${i}"]`).disabled = true;
+      try {
+        const prose = await Providers.freeText(prompt);
+        $(`[data-bo-chapter="${i}"]`).value = prose.trim();
+        setStatus("bo-status", "ok", `"${c.title}" drafted — $0.00. Review it against the AI-tells checklist above before calling it done.`);
+      } catch (e) { setStatus("bo-status", "err", `"${c.title}": ${e.message}`); }
+      $(`[data-bo-write="${i}"]`).disabled = false;
+    };
+
+    $("#bo-write-all").onclick = async () => {
+      const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
+      const btn = $("#bo-write-all"); btn.disabled = true;
+      for (let i = 0; i < t.chapters.length; i++) await writeChapter(i);
+      btn.disabled = false;
+      setStatus("bo-status", "ok", `All ${t.chapters.length} chapters drafted — $0.00 total. Review each against the AI-tells checklist before calling the manuscript done.`);
+    };
 
     $("#bo-save").onclick = () => {
       const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
