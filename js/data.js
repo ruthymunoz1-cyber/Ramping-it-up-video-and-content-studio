@@ -247,26 +247,43 @@ const RIU_DATA = {
   locationSuffix: "Cinematic wide establishing shot, no people in frame, photorealistic, rich natural light, high detail, room for a subject to be composited into the scene",
 
   /* Anti-AI-tell writing instruction, injected into script/story drafting
-   * prompts (Director, etc). See docs/avoiding-ai-tells.md for the full
-   * reference and sourcing. */
+   * prompts (Director, Book Outline chapter-writing, etc). Expanded from the
+   * original word-ban list with concrete editorial moves — burstiness,
+   * sensory specificity, and de-hedging — sourced from "They'll Never Know
+   * AI Wrote It" (Insiderforce.io). See docs/avoiding-ai-tells.md for the
+   * full reference and sourcing. */
   antiAiWritingInstruction:
-    "Write in a natural, human voice. Avoid AI-writing tells: don't use the words 'delve', 'tapestry', " +
-    "'testament to', 'realm', 'landscape' (as a metaphor), 'underscore', 'pivotal', 'robust', or 'leverage'. " +
-    "Don't use 'not X, it's Y' contrast constructions more than once. Avoid rule-of-three lists (groups of exactly " +
-    "three adjectives/items) — use two, or four with an odd one out. Don't stack more than one metaphor per " +
-    "paragraph. Don't end paragraphs by restating the point just made. Vary sentence length to match the emotional " +
-    "temperature of the moment — short and fragmented under tension, longer and flowing when calm. Use concrete, " +
-    "specific details (real-sounding names, numbers, sensory specifics) instead of generic description.",
+    "Write in a natural, human voice, applying these specific moves rather than generic 'sound human' instructions: " +
+    "BANNED WORDS: delve, tapestry, testament to, realm, landscape (as a metaphor), underscore, pivotal, robust, " +
+    "leverage, unlock, unleash, ecosystem, paradigm, game-changing, impactful. " +
+    "BANNED OPENERS/CLOSERS: never open a sentence or paragraph with 'Additionally,', 'Furthermore,', or " +
+    "'Consequently,'; never close with 'In conclusion,' or 'To summarize,' or a sentence that just restates the " +
+    "point already made. " +
+    "NO HEDGING: cut 'it is often recommended', 'many experts suggest', 'it can be argued that', and 'there are " +
+    "benefits to both approaches' — replace the hedge with an actual position, stated plainly, even if it could be " +
+    "wrong. " +
+    "BURSTINESS (vary sentence rhythm on purpose): find two medium-length sentences in a row and cut the first to a " +
+    "bare, short statement of fact (the Cut); fuse a cause-and-effect pair into one longer sentence using " +
+    "'because'/'even though'/'which means' so short sentences have a longer valley to contrast against (the " +
+    "Stretch); end at least one paragraph on a fragment, not a complete sentence (the Drop). " +
+    "CONCRETE OVER ABSTRACT: replace vague phrases ('under pressure', 'intuitive design', 'act quickly') with one " +
+    "physical, sensory, specific detail per paragraph — a real number, a specific object, a particular sound or " +
+    "texture — instead of a category word. " +
+    "Avoid rule-of-three lists (groups of exactly three adjectives/items) — use two, or four with an odd one out. " +
+    "Don't stack more than one metaphor per paragraph. Don't use passive voice. Don't use 'not X, it's Y' contrast " +
+    "constructions more than once.",
 
   /* Condensed self-editing checklist shown in-app (Book Outline). Full
    * reference with sourcing: docs/avoiding-ai-tells.md */
   aiTellsChecklist: [
-    { check: "Read 3 sentences in a row aloud in one breath", why: "If it's easy, the rhythm is too smooth and uniform — vary sentence length." },
-    { check: "Search for: delve, tapestry, testament to, realm, landscape, underscore, pivotal, robust, leverage", why: "Statistically overrepresented in AI writing — swap for plain, specific words." },
+    { check: "Read 3 sentences in a row aloud in one breath", why: "If it's easy, the rhythm is too smooth and uniform — vary sentence length (the Cut/Stretch/Drop moves)." },
+    { check: "Search for: delve, tapestry, testament to, realm, landscape, underscore, pivotal, robust, leverage, unlock, unleash, ecosystem, paradigm, game-changing, impactful", why: "Statistically overrepresented in AI writing — swap for plain, specific words." },
+    { check: "Search for hedges: 'it is often recommended', 'many experts suggest', 'it can be argued', 'there are benefits to both'", why: "AI is constitutionally non-committal — readers trust a stated position, even an imperfect one, more than a hedge." },
+    { check: "Search for section openers 'Additionally,'/'Furthermore,'/'Consequently,' and closers 'In conclusion,'/'To summarize,'", why: "Reliable machine fingerprints — cut them, the section almost always works without the transition." },
     { check: "Count rule-of-three lists (exactly 3 adjectives/items in a row)", why: "AI can't resist symmetry. Cut one item or add an odd fourth." },
     { check: "Check paragraph endings for a restated summary sentence", why: "Delete it — the paragraph almost always works without it." },
     { check: "Look for 'not X, it's Y' constructions — more than one per page?", why: "Sounds profound once, a tic after that." },
-    { check: "Is every description generic, or does at least one detail feel invented/specific?", why: "'The vehicle moved swiftly' vs. a real brand, smell, or number." },
+    { check: "Is every description generic, or does at least one detail feel invented/specific?", why: "'The vehicle moved swiftly' vs. a real brand, smell, or number — one concrete detail per paragraph is enough." },
     { check: "Zoom into hands, eyes, and any background text on generated images", why: "Still the most common AI-image tells — no prompt fixes this 100%, needs a manual look." },
   ],
 

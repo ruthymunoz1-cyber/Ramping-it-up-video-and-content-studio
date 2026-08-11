@@ -22,6 +22,7 @@ const State = {
   sounds: Store.get("sounds", []),           // { id, name, url }
   bookOutlines: Store.get("bookOutlines", []),
   marketScouts: Store.get("marketScouts", []),
+  styleGuide: Store.get("styleGuide", { character: "", yes: "", no: "" }),
   activeBoardId: null,
   saveCharacters() { Store.set("characters", this.characters); },
   saveGallery() { Store.set("gallery", this.gallery.slice(0, 200)); },
@@ -31,8 +32,23 @@ const State = {
   saveSounds() { Store.set("sounds", this.sounds); },
   saveBookOutlines() { Store.set("bookOutlines", this.bookOutlines); },
   saveMarketScouts() { Store.set("marketScouts", this.marketScouts.slice(0, 100)); },
+  saveStyleGuide() { Store.set("styleGuide", this.styleGuide); },
   addToGallery(item) { this.gallery.unshift({ ...item, ts: Date.now() }); this.saveGallery(); },
 };
+
+/* Personal Digital Style Guide (Character / Yes list / No list), set once in
+ * Settings, injected automatically into every free-text writing prompt
+ * (Director script, Book Outline chapters) alongside the anti-AI-tells
+ * instruction. Empty fields are simply omitted. */
+function styleGuideInstruction() {
+  const g = State.styleGuide;
+  if (!g || (!g.character?.trim() && !g.yes?.trim() && !g.no?.trim())) return "";
+  return " Write in this specific voice, not a generic one: " + [
+    g.character?.trim() && `You are: ${g.character.trim()}.`,
+    g.yes?.trim() && `Always: ${g.yes.trim()}.`,
+    g.no?.trim() && `Never: ${g.no.trim()}.`,
+  ].filter(Boolean).join(" ");
+}
 
 /* Editable model registry: overrides from Settings merge over RIU_DATA. */
 function models(category) {
@@ -1367,6 +1383,24 @@ Maya reading a book before bedtime"></textarea>
         <div class="status" id="set-status"></div>
       </div>
       <div class="card">
+        <h3>✍️ My Writing Style</h3>
+        <p class="muted">Set this once — it's injected automatically into every free-text generation (Director scripts, Book Outline chapters) alongside the anti-AI-tells guardrails, so first drafts already sound like you instead of a generic average. Leave any field blank to skip it.</p>
+        <label class="f-label">Character — who the AI should sound like when writing as you</label>
+        <textarea id="sg-character" style="min-height:60px" placeholder="e.g. A former investigative journalist who now writes about business strategy — skeptical of jargon, writes for smart adults who don't have time to be condescended to.">${esc(State.styleGuide.character)}</textarea>
+        <label class="f-label">Always (the Yes list) — concrete positive instructions</label>
+        <textarea id="sg-yes" style="min-height:50px" placeholder="e.g. Keep sentences under 18 words unless building to an effect. Lead with the problem, not the solution. Use second person.">${esc(State.styleGuide.yes)}</textarea>
+        <label class="f-label">Never (the No list) — specific habits to ban</label>
+        <textarea id="sg-no" style="min-height:50px" placeholder="e.g. Never open a section with a transitional adverb. Never end with 'In conclusion'. Never use passive voice.">${esc(State.styleGuide.no)}</textarea>
+        <div class="mt"><button class="btn primary" id="sg-save">💾 Save my style</button></div>
+        <div class="status" id="sg-status"></div>
+        <div class="divider"></div>
+        <h4>Don't know how to describe your voice? Let the free model find it (the "Mirror" technique)</h4>
+        <p class="muted">Paste 3–5 pieces of your best writing below — pieces you already revised until they felt right. The model analyzes the pattern and drafts the three fields above for you to review and adjust.</p>
+        <textarea id="sg-samples" style="min-height:120px" placeholder="Paste your writing samples here, separated by blank lines…"></textarea>
+        <div class="mt"><button class="btn" id="sg-analyze">🪞 Analyze my style (FREE)</button></div>
+        <div class="status" id="sg-analyze-status"></div>
+      </div>
+      <div class="card">
         <h3>✅ Test my setup (live)</h3>
         <p class="muted">Runs real generations with your keys so you know everything works before a big project. Each step tells you exactly what passed or failed.</p>
         <div class="row">
@@ -2217,7 +2251,7 @@ const Bind = {
             `"shot": "WIDE" | "MED" | "CLOSE-UP", "emotion": "the ONE emotional job this scene does for the audience (e.g. curiosity, tension, awe, relief, joy)", ` +
             `"seconds": integer 3-10 — this scene's target length; pace it by its job (hooks punchy 3-4s, explanations 6-8s, payoffs 8-10s)}]} ` +
             `with exactly ${fmt.scenes} scenes. Strong hook in scene 1, payoff in the last scene, continuous action from scene to scene. ` +
-            `The "narration" text specifically: ${RIU_DATA.antiAiWritingInstruction}`);
+            `The "narration" text specifically: ${RIU_DATA.antiAiWritingInstruction}${styleGuideInstruction()}`);
           if (!plan.scenes?.length) throw new Error("empty plan");
         } catch {
           // offline/busy fallback: deterministic plan from the format template
@@ -3197,7 +3231,7 @@ const Bind = {
         (notes ? `The author's notes/beats for this section: ${notes}. Follow these closely. ` : "") +
         `Write the actual prose for this section now, approximately ${words} words. Return ONLY the prose text itself — ` +
         `no title, no headers, no meta-commentary, no "Here is the chapter" preamble. ` +
-        RIU_DATA.antiAiWritingInstruction;
+        RIU_DATA.antiAiWritingInstruction + styleGuideInstruction();
       setStatus("bo-status", "info", `Writing "${c.title}"…`);
       $(`[data-bo-write="${i}"]`).disabled = true;
       try {
@@ -3478,6 +3512,41 @@ const Bind = {
       localStorage.setItem("riu.key.fal", $("#set-fal").value.trim());
       localStorage.setItem("riu.key.eleven", $("#set-eleven").value.trim());
       setStatus("set-status", "ok", "Keys saved (in this browser only).");
+    };
+
+    $("#sg-save").onclick = () => {
+      State.styleGuide = {
+        character: $("#sg-character").value.trim(),
+        yes: $("#sg-yes").value.trim(),
+        no: $("#sg-no").value.trim(),
+      };
+      State.saveStyleGuide();
+      setStatus("sg-status", "ok", "Style saved — now applied automatically to Director scripts and Book Outline chapters.");
+    };
+
+    $("#sg-analyze").onclick = async () => {
+      const samples = $("#sg-samples").value.trim();
+      if (!samples) return setStatus("sg-analyze-status", "err", "Paste a few writing samples first.");
+      setStatus("sg-analyze-status", "info", "Analyzing your style…");
+      $("#sg-analyze").disabled = true;
+      try {
+        const raw = await Providers.freeText(
+          "Below are examples of my best writing. Act as a style analyst, not a content summarizer. Analyze " +
+          "sentence structure and rhythm, how tone shifts, vocabulary level and word preferences, how pieces open " +
+          "and close, and any distinctive quirks or habits. Then respond in EXACTLY this format and nothing else, " +
+          "no preamble: \nCHARACTER: <one paragraph describing who I am as a writer, specific not generic>\n" +
+          "YES: <comma-separated concrete positive instructions derived from the samples>\n" +
+          "NO: <comma-separated specific habits or words this writer would never use>\n\nMy writing samples:\n" + samples);
+        const character = raw.match(/CHARACTER:\s*([\s\S]*?)\s*YES:/i)?.[1]?.trim();
+        const yes = raw.match(/YES:\s*([\s\S]*?)\s*NO:/i)?.[1]?.trim();
+        const no = raw.match(/NO:\s*([\s\S]*)/i)?.[1]?.trim();
+        if (!character && !yes && !no) throw new Error("Couldn't parse a style profile from that — try again, or fill the three fields above by hand.");
+        if (character) $("#sg-character").value = character;
+        if (yes) $("#sg-yes").value = yes;
+        if (no) $("#sg-no").value = no;
+        setStatus("sg-analyze-status", "ok", "Style profile drafted above — review it, then click \"Save my style\".");
+      } catch (e) { setStatus("sg-analyze-status", "err", e.message); }
+      $("#sg-analyze").disabled = false;
     };
     /* ---- live setup tests ---- */
     const TEST_PROMPT = "A joyful Black woman teacher with deep, rich mahogany brown skin (Monk Skin Tone 8), " +
