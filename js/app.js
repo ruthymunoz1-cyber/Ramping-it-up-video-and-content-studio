@@ -1269,12 +1269,21 @@ Maya: Let's find out together."></textarea>
               <option value="long">Long (~800 words — full prose chapter)</option>
             </select></div>
         </div>
+        <div class="card" style="background:var(--panel-2,rgba(255,255,255,.03))">
+          <h4>📔 Story Bible <span class="muted">(keeps names, setting & facts consistent across every chapter — most important for novels/longer fiction)</span></h4>
+          <label class="f-label">Characters & setting</label>
+          <textarea id="bo-bible-chars" style="min-height:60px" placeholder="e.g. Mara Ortiz, 34, ex-firefighter turned PI. Setting: coastal town of Redfern, present day, always raining."></textarea>
+          <label class="f-label">Key facts / continuity notes — update these as you write</label>
+          <textarea id="bo-bible-facts" style="min-height:60px" placeholder="e.g. Mara's brother died in Ch. 2 — every later chapter should still reflect that. She drives a 2009 blue pickup, not a car."></textarea>
+        </div>
         <div id="bo-chapters"></div>
         <div class="mt row">
           <button class="btn fixed" id="bo-write-all">✍️ Write all chapters <span class="muted">(FREE)</span></button>
           <button class="btn primary fixed" id="bo-save">💾 Save outline</button>
           <button class="btn fixed" id="bo-export">⬇ Export as text</button>
+          <button class="btn fixed" id="bo-export-book">📕 Export formatted book (print/PDF)</button>
         </div>
+        <div class="hint">The formatted export opens a print-ready book — title page, table of contents, one chapter per page — use your browser's "Save as PDF" in the print dialog to get an upload-ready file.</div>
         <div class="status" id="bo-status"></div>
       </div>
       ${saved}`;
@@ -1306,6 +1315,17 @@ MESA | Spanish word for table"></textarea>
         <div class="mt row" id="cw-actions" style="display:none">
           <button class="btn sm fixed" id="cw-download">⬇ Download PNG</button>
           <button class="btn sm fixed" id="cw-print">🖨 Print puzzle + clues</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📖 Puzzle Book — compile multiple puzzles</h3>
+        <p class="muted">Generate a puzzle above, then add it to the book below. Repeat for each puzzle you want in the book, then compile everything into one printable PDF — every puzzle up front, all the answer keys together at the back, the way real puzzle books are laid out.</p>
+        <label class="f-label">Book title</label>
+        <input type="text" id="cwb-title" placeholder="e.g. 30 Days of Spanish Vocabulary">
+        <div class="mt"><button class="btn" id="cwb-add">➕ Add current puzzle to book</button></div>
+        <div id="cwb-list" class="mt"></div>
+        <div class="mt row" id="cwb-actions" style="display:none">
+          <button class="btn primary fixed" id="cwb-print">🖨 Compile &amp; print/save whole book</button>
         </div>
       </div>`;
   },
@@ -3300,8 +3320,12 @@ const Bind = {
       const title = $("#bo-title").value.trim() || "Untitled";
       const notes = $(`[data-bo-chapter="${i}"]`).value.trim();
       const words = lengthWords();
+      const bibleChars = $("#bo-bible-chars").value.trim();
+      const bibleFacts = $("#bo-bible-facts").value.trim();
       const prompt =
         `You are ghostwriting one chapter/beat of a book titled "${title}" (${t.name}). ` +
+        (bibleChars ? `Characters & setting, stay consistent with this across the whole book: ${bibleChars}. ` : "") +
+        (bibleFacts ? `Established facts so far, do not contradict these: ${bibleFacts}. ` : "") +
         `This beat is "${c.title}" — ${c.tip}. ` +
         (notes ? `The author's notes/beats for this section: ${notes}. Follow these closely. ` : "") +
         `Write the actual prose for this section now, approximately ${words} words. Return ONLY the prose text itself — ` +
@@ -3329,7 +3353,8 @@ const Bind = {
       const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
       const title = $("#bo-title").value.trim() || "Untitled";
       const chapters = t.chapters.map((c, i) => ({ ...c, content: $(`[data-bo-chapter="${i}"]`).value.trim() }));
-      State.bookOutlines.unshift({ title, template: t.name, chapters });
+      const bible = { chars: $("#bo-bible-chars").value.trim(), facts: $("#bo-bible-facts").value.trim() };
+      State.bookOutlines.unshift({ title, template: t.name, chapters, bible });
       State.saveBookOutlines();
       render("bookOutline");
     };
@@ -3340,6 +3365,32 @@ const Bind = {
       t.chapters.forEach((c, i) => { lines.push(`## ${c.title}`, $(`[data-bo-chapter="${i}"]`).value.trim(), ""); });
       downloadText(title.replace(/\W+/g, "-") + "-outline.txt", lines.join("\n"));
     };
+
+    $("#bo-export-book").onclick = () => {
+      const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
+      const title = $("#bo-title").value.trim() || "Untitled";
+      const author = ""; // no author field in this quick version — easy to add later if wanted
+      const chapters = t.chapters.map((c, i) => ({ title: c.title, content: $(`[data-bo-chapter="${i}"]`).value.trim() }));
+      const missing = chapters.filter(c => !c.content).length;
+      const paragraphs = (text) => text.split(/\n{2,}/).map(p => `<p>${esc(p.trim()).replace(/\n/g, "<br>")}</p>`).join("");
+      const w = window.open("", "_blank");
+      w.document.write(`<!DOCTYPE html><html><head><title>${esc(title)}</title><style>
+        body{font-family:Georgia,serif;padding:0;color:#1a1a1a;line-height:1.6}
+        .titlepage{page-break-after:always;text-align:center;padding-top:35vh}
+        .titlepage h1{font-size:36px;margin-bottom:8px} .titlepage p{color:#666}
+        .toc{page-break-after:always;padding:40px}
+        .toc h2{font-size:22px} .toc ol{font-size:16px;line-height:2}
+        .chapter{page-break-before:always;padding:40px 60px;max-width:640px;margin:0 auto}
+        .chapter h2{font-size:24px;border-bottom:1px solid #ccc;padding-bottom:8px}
+        .chapter p{margin:0 0 1em;text-align:justify}</style></head><body>
+        <div class="titlepage"><h1>${esc(title)}</h1><p>${esc(t.name)}</p></div>
+        <div class="toc"><h2>Table of Contents</h2><ol>${chapters.map(c => `<li>${esc(c.title)}</li>`).join("")}</ol></div>
+        ${chapters.map(c => `<div class="chapter"><h2>${esc(c.title)}</h2>${c.content ? paragraphs(c.content) : '<p style="color:#999"><em>[Not yet written]</em></p>'}</div>`).join("")}
+        <script>window.onload=()=>setTimeout(()=>window.print(),600)<\/script></body></html>`);
+      w.document.close();
+      if (missing) setStatus("bo-status", "info", `Book compiled — ${missing} chapter(s) are still empty and show as [Not yet written]. Write them first, then re-export, or save as PDF now and fill the rest in later.`);
+    };
+
     $$("[data-del-outline]").forEach(b => b.onclick = () => {
       State.bookOutlines.splice(+b.dataset.delOutline, 1);
       State.saveBookOutlines(); render("bookOutline");
@@ -3432,6 +3483,70 @@ const Bind = {
         <div class="cols"><div><h3>Across</h3>${across.map(p => `<div><b>${p.number}.</b> ${esc(p.clue)}</div>`).join("")}</div>
         <div><h3>Down</h3>${down.map(p => `<div><b>${p.number}.</b> ${esc(p.clue)}</div>`).join("")}</div></div>
         <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script></body></html>`);
+      w.document.close();
+    };
+
+    /* ---- Puzzle Book: compile several generated puzzles into one printable book ---- */
+    const bookPuzzles = []; // [{title, result}]
+
+    const renderBookList = () => {
+      $("#cwb-list").innerHTML = bookPuzzles.length
+        ? `<table class="plain">${bookPuzzles.map((p, i) => `<tr>
+            <td><b>${i + 1}.</b> ${esc(p.title)}</td>
+            <td class="muted">${p.result.placed.length} words, ${p.result.width}×${p.result.height}</td>
+            <td class="right"><button class="btn sm danger" data-cwb-del="${i}">Remove</button></td>
+          </tr>`).join("")}</table>`
+        : `<p class="muted">No puzzles added yet.</p>`;
+      $$("[data-cwb-del]").forEach(b => b.onclick = () => { bookPuzzles.splice(+b.dataset.cwbDel, 1); renderBookList(); syncBookActions(); });
+      syncBookActions();
+    };
+    const syncBookActions = () => { $("#cwb-actions").style.display = bookPuzzles.length ? "" : "none"; };
+    renderBookList();
+
+    $("#cwb-add").onclick = () => {
+      if (!current) return setStatus("cw-status", "err", "Generate a puzzle above first, then add it to the book.");
+      const title = $("#cw-title").value.trim() || `Puzzle ${bookPuzzles.length + 1}`;
+      bookPuzzles.push({ title, result: current });
+      renderBookList();
+      setStatus("cw-status", "ok", `Added "${title}" to the book — ${bookPuzzles.length} puzzle(s) so far.`);
+    };
+
+    $("#cwb-print").onclick = () => {
+      if (!bookPuzzles.length) return;
+      const bookTitle = $("#cwb-title").value.trim() || "Puzzle Book";
+      const pages = bookPuzzles.map(p => {
+        drawGrid(p.result, false);
+        const blank = $("#cw-canvas").toDataURL("image/png");
+        const across = p.result.placed.filter(x => x.dir === "A").sort((a, b) => a.number - b.number);
+        const down = p.result.placed.filter(x => x.dir === "D").sort((a, b) => a.number - b.number);
+        return { title: p.title, blank, across, down };
+      });
+      const answerPages = bookPuzzles.map(p => {
+        drawGrid(p.result, true);
+        return { title: p.title, answer: $("#cw-canvas").toDataURL("image/png") };
+      });
+      if (current) drawGrid(current, $("#cw-answers").checked); // restore the visible canvas to its prior state
+
+      const w = window.open("", "_blank");
+      w.document.write(`<!DOCTYPE html><html><head><title>${esc(bookTitle)}</title><style>
+        body{font-family:Georgia,serif;padding:24px;color:#222}
+        .cover{text-align:center;padding-top:30vh}
+        .cover h1{font-size:32px}
+        .puzzle-page{page-break-before:always;padding-top:10px}
+        h1{font-size:22px} h2{font-size:16px;margin-top:0}
+        img{max-width:100%;margin:14px 0}
+        .cols{display:flex;gap:40px} .cols>div{flex:1} h3{margin-top:0}
+        .answers-section{page-break-before:always}</style></head><body>
+        <div class="cover"><h1>${esc(bookTitle)}</h1><p>${bookPuzzles.length} puzzles</p></div>
+        ${pages.map((p, i) => `<div class="puzzle-page">
+          <h1>${i + 1}. ${esc(p.title)}</h1><img src="${p.blank}">
+          <div class="cols"><div><h3>Across</h3>${p.across.map(c => `<div><b>${c.number}.</b> ${esc(c.clue)}</div>`).join("")}</div>
+          <div><h3>Down</h3>${p.down.map(c => `<div><b>${c.number}.</b> ${esc(c.clue)}</div>`).join("")}</div></div>
+        </div>`).join("")}
+        <div class="answers-section"><h1>Answer Keys</h1>
+        ${answerPages.map((p, i) => `<div class="puzzle-page"><h2>${i + 1}. ${esc(p.title)}</h2><img src="${p.answer}"></div>`).join("")}
+        </div>
+        <script>window.onload=()=>setTimeout(()=>window.print(),600)<\/script></body></html>`);
       w.document.close();
     };
   },
