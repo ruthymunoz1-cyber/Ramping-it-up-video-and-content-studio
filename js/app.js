@@ -460,6 +460,13 @@ const Views = {
       ${list || `<p class="pill-note">No characters yet — create your first host below.</p>`}
 
       <div class="card">
+        <h3>🎨 Quick-start a cast</h3>
+        <p class="muted">One click adds a ready-made trio — a boy and two girls, one Afro-Latina — with distinct Monk skin tones, ages and hair styles already filled in, so they read as clearly different kids on the page instead of the same character recolored. Generate each one's turnaround sheet below to lock in consistency, then edit any field freely.</p>
+        <div class="mt"><button class="btn" id="c-quickstart-kids">＋ Add boy + 2 girls cast (1 Afro-Latina)</button></div>
+        <div class="status" id="c-quickstart-status"></div>
+      </div>
+
+      <div class="card">
         <h3>New character</h3>
         <div class="row">
           <div><label class="f-label">Name</label><input type="text" id="c-name" placeholder="e.g. Ms. Ruthy"></div>
@@ -1551,6 +1558,42 @@ const Bind = {
       });
       State.saveCharacters();
       render("characters");
+    };
+
+    $("#c-quickstart-kids").onclick = () => {
+      const KIDS_CAST = [
+        {
+          name: "Zae", age: "about 7 years old", gender: "boy", ethnicity: "Black American",
+          mst: 8, undertone: "warm red", hairTexture: "4B", hairStyle: "short natural afro",
+          hairColor: "black", eyes: "warm dark brown, bright and curious",
+          face: "round face, big gap-tooth smile", build: "average build for his age",
+          wardrobe: "striped tee and denim overalls", vibe: "playful, curious, always inventing a game",
+        },
+        {
+          name: "Amara", age: "about 6 years old", gender: "girl", ethnicity: "Black American",
+          mst: 9, undertone: "golden", hairTexture: "4A", hairStyle: "box braids",
+          hairColor: "black with colorful beads", eyes: "warm brown, expressive",
+          face: "round cheeks, dimples when she smiles", build: "small and energetic for her age",
+          wardrobe: "yellow sundress with white sneakers", vibe: "cheerful, imaginative, loves to sing while she plays",
+        },
+        {
+          name: "Camila", age: "about 8 years old", gender: "girl", ethnicity: "Afro-Latina, Dominican-American",
+          mst: 7, undertone: "copper", hairTexture: "3C", hairStyle: "curly shag",
+          hairColor: "dark brown", eyes: "dark brown, big and bright",
+          face: "heart-shaped face, light freckles across her nose", build: "average build for her age",
+          wardrobe: "coral t-shirt with floral shorts", vibe: "bold, energetic, loves to dance and lead the group",
+        },
+      ];
+      const existingNames = new Set(State.characters.map(c => c.name));
+      const added = [];
+      KIDS_CAST.forEach(k => {
+        if (existingNames.has(k.name)) return;
+        State.characters.push({ id: "c" + Date.now() + Math.floor(Math.random() * 1000), ...k, seed: Math.floor(Math.random() * 999999), refImage: null });
+        added.push(k.name);
+      });
+      State.saveCharacters();
+      if (added.length) { render("characters"); setStatus("c-quickstart-status", "ok", `Added ${added.join(", ")}. Generate each one's turnaround sheet below to lock in consistency across every page.`); }
+      else setStatus("c-quickstart-status", "info", "That cast is already in your list — scroll up to find them, or delete and re-add to reset.");
     };
 
     $$("[data-del-char]").forEach(b => b.onclick = () => {
