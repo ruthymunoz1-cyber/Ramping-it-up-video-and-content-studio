@@ -1357,7 +1357,8 @@ MESA | Spanish word for table"></textarea>
           <div>
             <label class="f-label">Trim size</label>
             <select id="cb-trim">
-              <option value="8.5x11">8.5 × 11 in (US Letter — most common for coloring books)</option>
+              <option value="8.5x11">8.5 × 11 in (US Letter — standard for adult/large-print books)</option>
+              <option value="8.5x8.5">8.5 × 8.5 in (square — trending for kids' coloring books)</option>
               <option value="8x10">8 × 10 in</option>
               <option value="6x9">6 × 9 in</option>
             </select>
@@ -1374,13 +1375,13 @@ MESA | Spanish word for table"></textarea>
         </div>
         <div class="hint">Drafts one distinct scene per line straight into the list below — for a big book (e.g. 80 pages) run it a few times with different angles and merge, or edit freely after.</div>
         <div class="status" id="cb-draft-status"></div>
-        <label class="f-label">Pages — one scene per line</label>
-        <textarea id="cb-pages" style="min-height:160px" placeholder="Maya waking up and stretching in bed
+        <label class="f-label">Pages — one scene per line. Add an optional affirmation with a pipe: <code>scene | affirmation</code></label>
+        <textarea id="cb-pages" style="min-height:160px" placeholder="Maya waking up and stretching in bed | Today is a fresh start.
 Maya brushing her teeth in the bathroom
 Maya eating pancakes for breakfast
 Maya playing on the swings at the park
-Maya reading a book before bedtime"></textarea>
-        <div class="hint">Each line becomes one printable page, generated in order. Pages render at the exact aspect ratio of your chosen trim size.</div>
+Maya reading a book before bedtime | You did something new today, and that matters."></textarea>
+        <div class="hint">Each line becomes one printable page, generated in order. Pages render at the exact aspect ratio of your chosen trim size. The affirmation (optional, most pages should skip it) is set as real printed text — never baked into the AI art — so spelling is always exact.</div>
         <div class="mt"><button class="btn primary" id="cb-go">🖍️ Generate all pages <span class="cost" id="cb-cost"></span></button></div>
         <div class="status" id="cb-status"></div>
         <div class="board-grid mt" id="cb-gallery"></div>
@@ -3622,12 +3623,13 @@ const Bind = {
   },
 
   coloringBook() {
-    const state = { pages: [] }; // [{desc, imgUrl, cost}]
+    const state = { pages: [] }; // [{desc, affirmation, imgUrl, cost}]
 
     /* width/height in inches per trim option — also drives Pollinations pixel
      * size (100 DPI) and the print stylesheet's @page size. */
     const TRIMS = {
       "8.5x11": { w: 8.5, h: 11 },
+      "8.5x8.5": { w: 8.5, h: 8.5 },
       "8x10": { w: 8, h: 10 },
       "6x9": { w: 6, h: 9 },
     };
@@ -3652,6 +3654,7 @@ const Bind = {
               ${p.imgUrl ? `<a class="btn sm fixed" href="${p.imgUrl}" download="page-${i + 1}.png">⬇</a>` : ""}
             </div>
             <div class="muted" style="font-size:12px">${esc(p.desc)}</div>
+            ${p.affirmation ? `<div class="tag gold" style="margin-top:4px">💬 ${esc(p.affirmation)}</div>` : ""}
           </div>
         </div>`).join("");
       $$("[data-cb-gen]").forEach(b => b.onclick = () => genPage(+b.dataset.cbGen));
@@ -3724,7 +3727,10 @@ const Bind = {
     $("#cb-go").onclick = async () => {
       const lines = $("#cb-pages").value.split("\n").map(s => s.trim()).filter(Boolean);
       if (!lines.length) return setStatus("cb-status", "err", "Add at least one page — one scene per line.");
-      state.pages = lines.map(desc => ({ desc, imgUrl: null }));
+      state.pages = lines.map(line => {
+        const [desc, affirmation] = line.split("|").map(s => s.trim());
+        return { desc, affirmation: affirmation || "", imgUrl: null };
+      });
       renderGallery();
       const btn = $("#cb-go"); btn.disabled = true;
       for (let i = 0; i < state.pages.length; i++) {
@@ -3747,10 +3753,11 @@ const Bind = {
         .page:last-child{page-break-after:auto}
         .title-page{justify-content:center;font-family:Georgia,serif}
         .title-page h1{font-size:36px;margin:0 0 8px}
-        img{max-width:100%;max-height:82%;object-fit:contain}
+        img{max-width:100%;max-height:${ready.some(p => p.affirmation) ? "70%" : "82%"};object-fit:contain}
+        .affirmation{font-style:italic;font-size:15px;margin-top:10px;padding:0 0.4in;color:#333}
         .pnum{font-size:11px;color:#888;margin-top:6px}</style></head><body>
         <div class="page title-page"><h1>${esc(title)}</h1><div class="muted">${ready.length} pages</div></div>
-        ${ready.map((p, i) => `<div class="page"><img src="${p.imgUrl}"><div class="pnum">${i + 1}</div></div>`).join("")}
+        ${ready.map((p, i) => `<div class="page"><img src="${p.imgUrl}">${p.affirmation ? `<div class="affirmation">${esc(p.affirmation)}</div>` : ""}<div class="pnum">${i + 1}</div></div>`).join("")}
         <script>window.onload=()=>setTimeout(()=>window.print(),600)<\/script></body></html>`);
       win.document.close();
     };
