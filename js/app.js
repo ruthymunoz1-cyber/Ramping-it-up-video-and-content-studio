@@ -1563,14 +1563,14 @@ const Bind = {
     $("#c-quickstart-kids").onclick = () => {
       const KIDS_CAST = [
         {
-          name: "Zae", age: "about 7 years old", gender: "boy", ethnicity: "Black American",
+          name: "Malik", age: "about 7 years old", gender: "boy", ethnicity: "African American",
           mst: 8, undertone: "warm red", hairTexture: "4B", hairStyle: "short natural afro",
           hairColor: "black", eyes: "warm dark brown, bright and curious",
           face: "round face, big gap-tooth smile", build: "average build for his age",
           wardrobe: "striped tee and denim overalls", vibe: "playful, curious, always inventing a game",
         },
         {
-          name: "Amara", age: "about 6 years old", gender: "girl", ethnicity: "Black American",
+          name: "Nia", age: "about 6 years old", gender: "girl", ethnicity: "African American",
           mst: 9, undertone: "golden", hairTexture: "4A", hairStyle: "box braids",
           hairColor: "black with colorful beads", eyes: "warm brown, expressive",
           face: "round cheeks, dimples when she smiles", build: "small and energetic for her age",
