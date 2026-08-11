@@ -1210,6 +1210,29 @@ Maya: Let's find out together."></textarea>
         <div class="status" id="ms-status"></div>
         <div id="ms-out" class="mt"></div>
       </div>
+      <div class="card" id="ms-gts-card" style="display:none">
+        <h3>📐 GTS Validation — Book niches (Gravity / Targeting / Saturation)</h3>
+        <p class="muted">Included automatically in the scout above when Platform is "Book". This is the same AI-directional estimate as the rest of the scout, not live Amazon data — the checklist below is what to verify yourself on Amazon/KDP before committing production budget.</p>
+        <table class="plain">
+          <tr><td><b>☐ Search Volume</b></td><td class="muted">Keyword gets 1,000+ searches/month (check with a keyword tool, e.g. Bookbeam or Helium 10 — the AI cannot see real search volume)</td></tr>
+          <tr><td><b>☐ Competitor BSR</b></td><td class="muted">At least 3 existing books rank under 100,000 in the Kindle Store for this keyword — that's the demand signal (roughly $500–$1,000/mo per book at that rank)</td></tr>
+          <tr><td><b>☐ Review Barrier</b></td><td class="muted">The top-ranking books have under 1,000 reviews each — 5,000+ means the niche is likely too saturated for a new entrant</td></tr>
+          <tr><td><b>☐ Profit Margin</b></td><td class="muted">A sustainable paperback price point is above $14.99 once printing cost is factored in</td></tr>
+        </table>
+      </div>
+      <div class="card" id="ms-econ-card" style="display:none">
+        <h3>📐 Book Unit-Economics Calculator</h3>
+        <p class="muted">Pure math, $0, no AI call — model what one book actually needs to sell to hit a revenue target, across markets.</p>
+        <div class="row">
+          <div><label class="f-label">Target monthly revenue for this book</label><input type="number" id="ec-target" value="694"></div>
+          <div><label class="f-label">Net profit per copy</label><input type="number" id="ec-net" value="5" step="0.5"></div>
+        </div>
+        <p class="mt"><b>Copies/day needed: <span id="ec-copies"></span></b> · <span id="ec-daily" class="muted"></span></p>
+        <div class="divider"></div>
+        <h4>Multi-market split (edit any market's daily copies)</h4>
+        <table class="plain" id="ec-markets"></table>
+        <p class="mt"><b>Total daily revenue across markets: <span id="ec-total"></span></b></p>
+      </div>
       ${saved ? `<div class="card"><h3>Past scouts</h3><table class="plain">${saved}</table></div>` : ""}`;
   },
 
@@ -3161,6 +3184,13 @@ const Bind = {
 
   marketScout() {
     const renderScoutResult = (rec) => {
+      const gts = rec.gts ? `
+        <div class="divider"></div>
+        <h4>📐 GTS estimate</h4>
+        <p><b>Gravity (demand):</b> ${esc(rec.gts.gravity || "")} — ${esc(rec.gts.gravityReason || "")}</p>
+        <p><b>Targeting (audience):</b> ${esc(rec.gts.targeting || "")} — ${esc(rec.gts.targetingReason || "")}</p>
+        <p><b>Saturation (competition):</b> ${esc(rec.gts.saturation || "")} — ${esc(rec.gts.saturationReason || "")}</p>
+        <p class="muted">Directional AI read, not live Amazon data — verify against the checklist below before committing budget.</p>` : "";
       $("#ms-out").innerHTML = `
         <div class="card scene-card">
           <h3>${esc(rec.topic)} — <span class="tag gold">${esc(rec.verdict || "")}</span></h3>
@@ -3169,13 +3199,54 @@ const Bind = {
           <p><b>Differentiation angle:</b> ${esc(rec.angle || "")}</p>
           <p><b>CPM tier:</b> ${esc(rec.cpmTier || "")} — ${esc(rec.cpmReason || "")}</p>
           <p><b>Verdict reasoning:</b> ${esc(rec.verdictReason || "")}</p>
+          ${gts}
         </div>`;
     };
+
+    const syncPlatformSections = () => {
+      const isBook = $("#ms-platform").value === "Book";
+      $("#ms-gts-card").style.display = isBook ? "" : "none";
+      $("#ms-econ-card").style.display = isBook ? "" : "none";
+    };
+    $("#ms-platform").onchange = syncPlatformSections;
+    syncPlatformSections();
+
+    /* ---- Book Unit-Economics Calculator (pure math, $0, from the Minimum
+     * Viable Book Portfolio revenue model: target/net = copies needed,
+     * split across markets). ---- */
+    const markets = [
+      { name: "United States", copies: 1, net: 5 },
+      { name: "United Kingdom", copies: 1, net: 5 },
+      { name: "Canada", copies: 1, net: 5 },
+      { name: "Australia", copies: 1, net: 5 },
+    ];
+    const renderEcon = () => {
+      const target = +$("#ec-target").value || 0;
+      const net = +$("#ec-net").value || 1;
+      const copiesPerDay = target / 30 / net;
+      $("#ec-copies").textContent = copiesPerDay.toFixed(1);
+      $("#ec-daily").textContent = `(~$${(target / 30).toFixed(2)}/day at $${net.toFixed(2)} net per copy)`;
+      $("#ec-markets").innerHTML =
+        `<tr><th>Market</th><th>Copies/day</th><th>Net/copy</th><th>Revenue</th></tr>` +
+        markets.map((m, i) => `<tr>
+          <td>${esc(m.name)}</td>
+          <td><input type="number" data-ec-copies="${i}" value="${m.copies}" min="0" step="0.5" style="width:70px"></td>
+          <td><input type="number" data-ec-net="${i}" value="${m.net}" min="0" step="0.5" style="width:70px"></td>
+          <td>$${(m.copies * m.net).toFixed(2)}</td>
+        </tr>`).join("");
+      $$("[data-ec-copies]").forEach(inp => inp.oninput = () => { markets[+inp.dataset.ecCopies].copies = +inp.value || 0; renderEcon(); });
+      $$("[data-ec-net]").forEach(inp => inp.oninput = () => { markets[+inp.dataset.ecNet].net = +inp.value || 0; renderEcon(); });
+      $("#ec-total").textContent = `$${markets.reduce((s, m) => s + m.copies * m.net, 0).toFixed(2)}/day`;
+    };
+    $("#ec-target").oninput = renderEcon;
+    $("#ec-net").oninput = renderEcon;
+    renderEcon();
 
     $("#ms-go").onclick = async () => {
       const topic = $("#ms-topic").value.trim();
       if (!topic) return setStatus("ms-status", "err", "What's the topic/niche?");
       const platform = $("#ms-platform").value;
+      const isBook = platform === "Book";
       const btn = $("#ms-go"); btn.disabled = true;
       try {
         setStatus("ms-status", "info", "Scouting (free AI estimate, not live data)…");
@@ -3185,7 +3256,11 @@ const Bind = {
           `"competition": "1-2 sentences on how crowded this space is", ` +
           `"angle": "a specific differentiation angle to stand out", ` +
           `"cpmTier": "Low or Medium or High", "cpmReason": "1 sentence why", ` +
-          `"verdict": "Go or Maybe or Skip", "verdictReason": "1-2 sentences"}`);
+          `"verdict": "Go or Maybe or Skip", "verdictReason": "1-2 sentences"` +
+          (isBook ? `, "gts": {"gravity": "Strong or Moderate or Weak", "gravityReason": "1 sentence on likely demand", ` +
+            `"targeting": "Specific or Vague", "targetingReason": "1 sentence on whether the audience/pain point is specific enough", ` +
+            `"saturation": "Open or Competitive or Saturated", "saturationReason": "1 sentence on competitive weak spots or lack thereof"}` : "") +
+          `}`);
         const rec = { topic, platform, ...result, ts: Date.now() };
         State.marketScouts.unshift(rec);
         State.saveMarketScouts();
