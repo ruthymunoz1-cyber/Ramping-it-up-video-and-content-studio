@@ -162,6 +162,90 @@ function buildWordTimings(text, duration) {
   });
 }
 
+/* ---------------- manuscript editing report (deterministic, $0, ProWritingAid-style) ----------------
+ * All checks below are text statistics/pattern-matching, not AI calls — instant, free, and honest about
+ * being heuristics (esp. passive-voice and adverb detection, which have real false-positive rates). */
+const STOPWORDS = new Set("a an the and or but nor for so yet of to in on at by with from as is are was were be been being this that these those it its i you he she they we him her them his hers their our your my me us not no do does did doing have has had having will would shall should can could may might must if then than into over under again further once here there when where why how all any both each few more most other some such only own same too very just".split(" "));
+
+function countSyllables(word) {
+  const w = word.toLowerCase().replace(/[^a-z]/g, "");
+  if (!w) return 0;
+  const groups = w.match(/[aeiouy]+/g) || [];
+  let n = groups.length;
+  if (w.endsWith("e") && n > 1) n--;
+  return Math.max(n, 1);
+}
+
+function analyzeManuscript(text) {
+  const clean = text.trim();
+  const words = clean.match(/[A-Za-z']+/g) || [];
+  const wordCount = words.length;
+  const sentences = clean.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 1);
+  const sentenceCount = sentences.length || 1;
+
+  const totalSyllables = words.reduce((s, w) => s + countSyllables(w), 0);
+  const avgWordsPerSentence = wordCount / sentenceCount;
+  const avgSyllablesPerWord = wordCount ? totalSyllables / wordCount : 0;
+  const fleschEase = 206.835 - 1.015 * avgWordsPerSentence - 84.6 * avgSyllablesPerWord;
+  const fleschGrade = 0.39 * avgWordsPerSentence + 11.8 * avgSyllablesPerWord - 15.59;
+
+  const lengths = sentences.map(s => (s.match(/[A-Za-z']+/g) || []).length);
+  const meanLen = lengths.reduce((a, b) => a + b, 0) / (lengths.length || 1);
+  const variance = lengths.reduce((a, b) => a + (b - meanLen) ** 2, 0) / (lengths.length || 1);
+  const stdevLen = Math.sqrt(variance);
+  let longestRun = 1, curRun = 1, runStart = 0, bestStart = 0;
+  for (let i = 1; i < lengths.length; i++) {
+    if (Math.abs(lengths[i] - lengths[i - 1]) <= 3) curRun++;
+    else { curRun = 1; runStart = i; }
+    if (curRun > longestRun) { longestRun = curRun; bestStart = runStart; }
+  }
+  const flatlineExample = sentences.slice(bestStart, bestStart + Math.min(longestRun, 3));
+
+  const isPassive = (s) => /\b(am|is|are|was|were|be|been|being)\s+\w+(ed|en)\b/i.test(s);
+  const passiveSentences = sentences.filter(isPassive);
+
+  const adverbs = words.filter(w => /ly$/i.test(w) && w.length > 4);
+  const adverbFreq = {};
+  adverbs.forEach(a => { const k = a.toLowerCase(); adverbFreq[k] = (adverbFreq[k] || 0) + 1; });
+  const topAdverbs = Object.entries(adverbFreq).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+  const wordFreq = {};
+  words.forEach(w => {
+    const k = w.toLowerCase();
+    if (k.length > 3 && !STOPWORDS.has(k)) wordFreq[k] = (wordFreq[k] || 0) + 1;
+  });
+  const perThousand = wordCount ? 1000 / wordCount : 0;
+  const overusedWords = Object.entries(wordFreq)
+    .filter(([, n]) => n >= 4 && n * perThousand >= 2)
+    .sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+  const lowerTokens = (clean.toLowerCase().match(/[a-z']+/g) || []);
+  const gramFreq = {};
+  for (let i = 0; i + 3 < lowerTokens.length; i++) {
+    const gram = lowerTokens.slice(i, i + 4);
+    if (gram.every(t => STOPWORDS.has(t))) continue;
+    const key = gram.join(" ");
+    gramFreq[key] = (gramFreq[key] || 0) + 1;
+  }
+  const repeatedPhrases = Object.entries(gramFreq).filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+  const lowerText = clean.toLowerCase();
+  const bannedHits = RIU_DATA.bannedWords
+    .map(w => [w, (lowerText.match(new RegExp("\\b" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "g")) || []).length])
+    .filter(([, n]) => n > 0);
+  const clicheHits = RIU_DATA.clichePhrases
+    .map(w => [w, (lowerText.split(w).length - 1)])
+    .filter(([, n]) => n > 0);
+
+  return {
+    wordCount, sentenceCount, avgWordsPerSentence, fleschEase, fleschGrade,
+    stdevLen, longestRun, flatlineExample,
+    passiveCount: passiveSentences.length, passivePct: (passiveSentences.length / sentenceCount) * 100, passiveExamples: passiveSentences.slice(0, 8),
+    adverbCount: adverbs.length, adverbPct: wordCount ? (adverbs.length / wordCount) * 100 : 0, topAdverbs,
+    overusedWords, repeatedPhrases, bannedHits, clicheHits,
+  };
+}
+
 const srtTime = (s) => {
   const ms = Math.max(0, Math.round(s * 1000));
   const h = String(Math.floor(ms / 3600000)).padStart(2, "0");
@@ -1301,6 +1385,17 @@ Maya: Let's find out together."></textarea>
         <div class="mt"><button class="btn" id="bo-suggest-desc">📝 Generate description (FREE)</button></div>
         <textarea id="bo-description" style="min-height:100px" placeholder="Generated description will appear here — edit freely before using it."></textarea>
         <div class="status" id="bo-status"></div>
+      </div>
+      <div class="card">
+        <h3>🔍 Editing Report <span class="muted">— ProWritingAid-style checks, $0, instant, works on any pasted manuscript</span></h3>
+        <p class="muted">Pure text analysis, no AI call — readability, sentence-rhythm/burstiness, passive voice, adverb density, overused words &amp; repeated phrases, plus the same banned-word/cliché bank the generators avoid. Heuristic-based (especially passive voice and adverbs) — a second opinion, not a verdict; still needs your eye and, for anything you're selling, a real human editing pass.</p>
+        <label class="f-label">Manuscript text</label>
+        <textarea id="er-text" style="min-height:180px" placeholder="Paste any manuscript here — a chapter, a full book, or something written entirely outside this Studio."></textarea>
+        <div class="mt row">
+          <button class="btn primary fixed" id="er-go">🔍 Run editing report</button>
+          <button class="btn fixed" id="er-pull">⬇ Pull from my chapters above</button>
+        </div>
+        <div id="er-out" class="mt"></div>
       </div>
       ${saved}`;
   },
@@ -3472,6 +3567,45 @@ const Bind = {
         setStatus("bo-status", "ok", "Description drafted — $0.00. Review it against the AI-tells checklist before using it.");
       } catch (e) { setStatus("bo-status", "err", e.message); }
       $("#bo-suggest-desc").disabled = false;
+    };
+
+    $("#er-pull").onclick = () => {
+      const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
+      const text = chapterContext(t);
+      if (!text) return setStatus("bo-status", "err", "No chapters written yet to pull from.");
+      $("#er-text").value = t.chapters.map((c, i) => $(`[data-bo-chapter="${i}"]`)?.value.trim()).filter(Boolean).join("\n\n");
+    };
+
+    $("#er-go").onclick = () => {
+      const text = $("#er-text").value.trim();
+      if (!text) return setStatus("bo-status", "err", "Paste some manuscript text into the Editing Report box first.");
+      const r = analyzeManuscript(text);
+      const easeLabel = r.fleschEase >= 80 ? "easy" : r.fleschEase >= 60 ? "standard" : r.fleschEase >= 30 ? "difficult" : "very dense";
+      const flatlineWarn = r.longestRun >= 5
+        ? `<p style="color:var(--warn,#c77)">⚠ ${r.longestRun} sentences in a row are all within 3 words of each other — this is the flat "AI monotone" rhythm. Example: <em>${r.flatlineExample.map(esc).join(" ")}</em></p>`
+        : `<p class="muted">✓ No long run of same-length sentences found — good rhythm variation.</p>`;
+      $("#er-out").innerHTML = `
+        <div class="card scene-card">
+          <table class="plain">
+            <tr><td><b>Word count</b></td><td>${r.wordCount}</td><td><b>Sentence count</b></td><td>${r.sentenceCount}</td></tr>
+            <tr><td><b>Avg sentence length</b></td><td>${r.avgWordsPerSentence.toFixed(1)} words</td><td><b>Reading level</b></td><td>~Grade ${Math.max(0, r.fleschGrade).toFixed(1)} (${easeLabel})</td></tr>
+          </table>
+          <h4>Sentence rhythm (burstiness)</h4>
+          <p>Length varies by ±${r.stdevLen.toFixed(1)} words on average.</p>
+          ${flatlineWarn}
+          <h4>Passive voice <span class="muted">(heuristic — some false positives expected)</span></h4>
+          <p>${r.passiveCount} of ${r.sentenceCount} sentences (${r.passivePct.toFixed(0)}%) flagged.</p>
+          ${r.passiveExamples.length ? `<ul>${r.passiveExamples.map(s => `<li>${esc(s)}</li>`).join("")}</ul>` : ""}
+          <h4>Adverb density</h4>
+          <p>${r.adverbCount} adverbs (${r.adverbPct.toFixed(1)}% of words)${r.topAdverbs.length ? " — most common: " + r.topAdverbs.map(([w, n]) => `${esc(w)} (${n})`).join(", ") : ""}</p>
+          <h4>Overused words</h4>
+          ${r.overusedWords.length ? `<p>${r.overusedWords.map(([w, n]) => `${esc(w)} (${n}×)`).join(", ")}</p>` : `<p class="muted">None flagged.</p>`}
+          <h4>Repeated phrases</h4>
+          ${r.repeatedPhrases.length ? `<p>${r.repeatedPhrases.map(([p, n]) => `"${esc(p)}" (${n}×)`).join(", ")}</p>` : `<p class="muted">None flagged.</p>`}
+          <h4>Banned words &amp; clichés</h4>
+          ${(r.bannedHits.length || r.clicheHits.length) ? `<p>${[...r.bannedHits, ...r.clicheHits].map(([w, n]) => `${esc(w)} (${n}×)`).join(", ")}</p>` : `<p class="muted">None found — clean on this check.</p>`}
+        </div>`;
+      setStatus("bo-status", "ok", "Editing report ready — $0.00, instant. Still needs your eye, and a human pass before anything sells.");
     };
 
     $("#bo-save").onclick = () => {

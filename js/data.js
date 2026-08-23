@@ -287,6 +287,25 @@ const RIU_DATA = {
     { check: "Zoom into hands, eyes, and any background text on generated images", why: "Still the most common AI-image tells — no prompt fixes this 100%, needs a manual look." },
   ],
 
+  /* Words flagged by the Editing Report (Book Outline) as overrepresented in
+   * AI writing — same list antiAiWritingInstruction bans at generation time,
+   * kept as a plain array here so the report can scan arbitrary pasted text
+   * too, not just Studio-generated prose. */
+  bannedWords: [
+    "delve", "tapestry", "testament to", "realm", "landscape", "underscore", "pivotal",
+    "robust", "leverage", "unlock", "unleash", "ecosystem", "paradigm", "game-changing", "impactful",
+  ],
+
+  /* Common cliché/filler phrases the Editing Report flags — a different
+   * failure mode than the AI-tell words above (these are generic human
+   * writing habits too, not AI-specific), but they read the same way to an
+   * editor: filler that any manuscript reads better without. */
+  clichePhrases: [
+    "at the end of the day", "in today's world", "little did they know", "needless to say",
+    "in order to", "due to the fact that", "it goes without saying", "each and every",
+    "first and foremost", "last but not least", "when all is said and done", "for all intents and purposes",
+  ],
+
   /* Reserves clean negative space for later text overlay — the technique
    * that makes book-page illustrations (personalized keepsake books,
    * picture books, comics) actually usable once text is added per-page or
