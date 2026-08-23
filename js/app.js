@@ -246,6 +246,73 @@ function analyzeManuscript(text) {
   };
 }
 
+/* ---------------- pacing & dialogue report (deterministic, $0, AutoCrit-style) ----------------
+ * Fiction-craft checks distinct from the general Editing Report above: dialogue share, dialogue-tag
+ * variety, adverbs riding on tags, filter/telling words, weak-verb+adverb combos, and a pacing curve
+ * (sentence length by section — short runs read as fast/tense, long runs as slow/reflective).
+ * No live published-fiction corpus to compare against (that's the one real thing a paid AutoCrit
+ * subscription has that this can't) — benchmarks below are commonly-cited craft norms, stated as such. */
+const TAG_VERBS = ["said", "asked", "replied", "answered", "shouted", "whispered", "exclaimed", "retorted",
+  "muttered", "snapped", "yelled", "cried", "interjected", "stated", "declared", "demanded", "questioned", "murmured", "growled", "hissed"];
+const PLAIN_TAGS = new Set(["said", "asked"]);
+const FILTER_WORDS = ["felt", "saw", "heard", "noticed", "realized", "wondered", "watched", "thought", "knew", "seemed"];
+const WEAK_VERBS = ["walked", "ran", "looked", "moved", "went", "said", "smiled", "laughed", "sat", "stood"];
+
+function analyzePacingDialogue(text) {
+  const clean = text.trim();
+  const words = clean.match(/[A-Za-z']+/g) || [];
+  const wordCount = words.length;
+  const sentences = clean.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 1);
+
+  const dialogueRuns = clean.match(/["“][^"”]+["”]/g) || [];
+  const dialogueWordCount = dialogueRuns.reduce((s, d) => s + (d.match(/[A-Za-z']+/g) || []).length, 0);
+  const dialoguePct = wordCount ? (dialogueWordCount / wordCount) * 100 : 0;
+
+  let plainTagCount = 0, showyTagCount = 0, adverbInTagCount = 0;
+  const showyTagExamples = [];
+  dialogueRuns.forEach(run => {
+    const idx = clean.indexOf(run);
+    const after = clean.slice(idx + run.length, idx + run.length + 60);
+    const windowWords = (after.match(/[A-Za-z']+/g) || []).slice(0, 6);
+    const tagIdx = windowWords.findIndex(w => TAG_VERBS.includes(w.toLowerCase()));
+    if (tagIdx === -1) return;
+    const tag = windowWords[tagIdx].toLowerCase();
+    if (PLAIN_TAGS.has(tag)) plainTagCount++;
+    else { showyTagCount++; if (showyTagExamples.length < 6) showyTagExamples.push(tag); }
+    const nextWord = windowWords[tagIdx + 1];
+    if (nextWord && /ly$/i.test(nextWord)) adverbInTagCount++;
+  });
+  const totalTags = plainTagCount + showyTagCount;
+
+  const filterCounts = {};
+  words.forEach(w => { const k = w.toLowerCase(); if (FILTER_WORDS.includes(k)) filterCounts[k] = (filterCounts[k] || 0) + 1; });
+  const filterHits = Object.entries(filterCounts).sort((a, b) => b[1] - a[1]);
+  const totalFilterWords = filterHits.reduce((s, [, n]) => s + n, 0);
+
+  const weakCombos = [];
+  for (let i = 0; i < words.length - 1; i++) {
+    const w1 = words[i], w2 = words[i + 1];
+    if (!w2) continue;
+    if (WEAK_VERBS.includes(w1.toLowerCase()) && /ly$/i.test(w2)) weakCombos.push(`${w1} ${w2}`);
+    else if (WEAK_VERBS.includes(w2.toLowerCase()) && /ly$/i.test(w1)) weakCombos.push(`${w1} ${w2}`);
+  }
+
+  const numChunks = Math.max(1, Math.min(10, Math.floor(sentences.length / 5) || 1));
+  const chunkSize = Math.ceil(sentences.length / numChunks) || 1;
+  const pacingCurve = [];
+  for (let c = 0; c < numChunks; c++) {
+    const chunkSentences = sentences.slice(c * chunkSize, (c + 1) * chunkSize);
+    const lens = chunkSentences.map(s => (s.match(/[A-Za-z']+/g) || []).length);
+    pacingCurve.push(lens.length ? lens.reduce((a, b) => a + b, 0) / lens.length : 0);
+  }
+
+  return {
+    dialoguePct, totalTags, plainTagCount, showyTagCount, showyTagExamples, adverbInTagCount,
+    filterHits, totalFilterWords, weakCombos: weakCombos.slice(0, 10), weakComboCount: weakCombos.length,
+    pacingCurve,
+  };
+}
+
 const srtTime = (s) => {
   const ms = Math.max(0, Math.round(s * 1000));
   const h = String(Math.floor(ms / 3600000)).padStart(2, "0");
@@ -1393,9 +1460,12 @@ Maya: Let's find out together."></textarea>
         <textarea id="er-text" style="min-height:180px" placeholder="Paste any manuscript here — a chapter, a full book, or something written entirely outside this Studio."></textarea>
         <div class="mt row">
           <button class="btn primary fixed" id="er-go">🔍 Run editing report</button>
+          <button class="btn fixed" id="pd-go">🎭 Run pacing &amp; dialogue report</button>
           <button class="btn fixed" id="er-pull">⬇ Pull from my chapters above</button>
         </div>
+        <p class="hint">Pacing &amp; dialogue is the fiction-craft companion (dialogue share, tag variety, filter/telling words, weak-verb+adverb combos, a pacing curve by section) — no live published-fiction corpus to compare against, so benchmarks below are commonly-cited craft norms, not a database match.</p>
         <div id="er-out" class="mt"></div>
+        <div id="pd-out" class="mt"></div>
       </div>
       ${saved}`;
   },
@@ -3606,6 +3676,33 @@ const Bind = {
           ${(r.bannedHits.length || r.clicheHits.length) ? `<p>${[...r.bannedHits, ...r.clicheHits].map(([w, n]) => `${esc(w)} (${n}×)`).join(", ")}</p>` : `<p class="muted">None found — clean on this check.</p>`}
         </div>`;
       setStatus("bo-status", "ok", "Editing report ready — $0.00, instant. Still needs your eye, and a human pass before anything sells.");
+    };
+
+    $("#pd-go").onclick = () => {
+      const text = $("#er-text").value.trim();
+      if (!text) return setStatus("bo-status", "err", "Paste some manuscript text into the box above first.");
+      const r = analyzePacingDialogue(text);
+      const dialogueNote = r.dialoguePct === 0
+        ? `<p class="muted">No dialogue detected — fine for nonfiction/narration-only text, worth checking if this is meant to be a fiction scene.</p>`
+        : `<p>${r.dialoguePct.toFixed(0)}% of the text is dialogue. Commonly-cited craft norm for commercial/genre fiction is roughly 30–50% — no live corpus here, so treat that as a rough compass, not a rule.</p>`;
+      const tagNote = r.totalTags === 0 ? `<p class="muted">No dialogue tags detected.</p>` : `<p>${r.plainTagCount} plain ("said"/"asked") vs ${r.showyTagCount} showy tag${r.showyTagCount === 1 ? "" : "s"}${r.showyTagExamples.length ? " (" + r.showyTagExamples.map(esc).join(", ") + ")" : ""}. "Said" stays invisible to readers at any frequency — a high share of showy tags is the actual smell.</p>` +
+        (r.adverbInTagCount ? `<p style="color:var(--warn,#c77)">⚠ ${r.adverbInTagCount} tag${r.adverbInTagCount === 1 ? "" : "s"} paired with an adverb (e.g. "she said quickly") — a classic sign the dialogue itself isn't carrying the emotion.</p>` : "");
+      const maxPace = Math.max(...r.pacingCurve, 1);
+      const curveHtml = `<div class="row" style="align-items:flex-end;gap:4px;height:80px;margin:10px 0">
+        ${r.pacingCurve.map(v => `<div style="flex:1;background:var(--accent,#8a6);height:${Math.max(4, (v / maxPace) * 76)}px" title="${v.toFixed(1)} words/sentence avg"></div>`).join("")}
+      </div><p class="muted">Left = start, right = end. Short bars = fast/tense sections, tall bars = slower/reflective — a wall of tall bars in the middle is the classic "saggy middle."</p>`;
+      $("#pd-out").innerHTML = `
+        <div class="card scene-card">
+          <h4>Dialogue share</h4>${dialogueNote}
+          <h4>Dialogue tags</h4>${tagNote}
+          <h4>Filter/telling words <span class="muted">("she felt", "he saw", "she noticed"...)</span></h4>
+          ${r.totalFilterWords ? `<p>${r.filterHits.map(([w, n]) => `${esc(w)} (${n}×)`).join(", ")} — each is a candidate to cut and show the sensation directly instead of naming it.</p>` : `<p class="muted">None flagged.</p>`}
+          <h4>Weak verb + adverb combos <span class="muted">("walked quickly" → "strode")</span></h4>
+          ${r.weakComboCount ? `<p>${r.weakComboCount} found: ${r.weakCombos.map(esc).join(", ")}</p>` : `<p class="muted">None flagged.</p>`}
+          <h4>Pacing curve <span class="muted">(avg sentence length by section)</span></h4>
+          ${curveHtml}
+        </div>`;
+      setStatus("bo-status", "ok", "Pacing & dialogue report ready — $0.00, instant.");
     };
 
     $("#bo-save").onclick = () => {
