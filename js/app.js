@@ -1267,7 +1267,11 @@ Maya: Let's find out together."></textarea>
         <select id="bo-template">${RIU_DATA.bookTemplates.map(t => `<option value="${t.id}">${t.name}</option>`).join("")}</select>
         <p class="muted mt" id="bo-desc"></p>
         <label class="f-label">Book title</label>
-        <input type="text" id="bo-title" placeholder="e.g. The Girl Who Counted Stars">
+        <div class="row">
+          <input type="text" id="bo-title" placeholder="e.g. The Girl Who Counted Stars">
+          <button class="btn sm fixed" id="bo-suggest-titles">💡 Suggest titles (FREE)</button>
+        </div>
+        <div id="bo-title-suggestions" class="mt"></div>
         <div class="row">
           <div><label class="f-label">Chapter length when generated</label>
             <select id="bo-length">
@@ -1291,6 +1295,11 @@ Maya: Let's find out together."></textarea>
           <button class="btn fixed" id="bo-export-book">📕 Export formatted book (print/PDF)</button>
         </div>
         <div class="hint">The formatted export opens a print-ready book — title page, table of contents, one chapter per page — use your browser's "Save as PDF" in the print dialog to get an upload-ready file.</div>
+        <div class="divider"></div>
+        <h4>📝 Back-cover description</h4>
+        <p class="muted">Generates the hook-driven blurb that goes on the back cover / Amazon listing — pulls from your chapters, so write at least a few first for the best result.</p>
+        <div class="mt"><button class="btn" id="bo-suggest-desc">📝 Generate description (FREE)</button></div>
+        <textarea id="bo-description" style="min-height:100px" placeholder="Generated description will appear here — edit freely before using it."></textarea>
         <div class="status" id="bo-status"></div>
       </div>
       ${saved}`;
@@ -3418,6 +3427,51 @@ const Bind = {
       for (let i = 0; i < t.chapters.length; i++) await writeChapter(i);
       btn.disabled = false;
       setStatus("bo-status", "ok", `All ${t.chapters.length} chapters drafted — $0.00 total. Review each against the AI-tells checklist before calling the manuscript done.`);
+    };
+
+    const chapterContext = (t) => t.chapters
+      .map((c, i) => $(`[data-bo-chapter="${i}"]`)?.value.trim())
+      .filter(Boolean).join("\n\n").slice(0, 3000);
+
+    $("#bo-suggest-titles").onclick = async () => {
+      const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
+      const notes = chapterContext(t);
+      const current = $("#bo-title").value.trim();
+      setStatus("bo-status", "info", "Suggesting titles…");
+      $("#bo-suggest-titles").disabled = true;
+      try {
+        const result = await Providers.freeJson(
+          `Suggest 8 strong book titles for a ${t.name}${current ? ` currently titled "${current}"` : ""}. ` +
+          (notes ? `Here is some of the actual content, base the titles on this, not a generic guess: ${notes} ` : `Template description: ${t.desc} `) +
+          `Titles should be specific and evocative, not generic — avoid title patterns like "The Ultimate Guide to X" or "X: A Journey". ` +
+          `Return ONLY valid JSON, no markdown: {"titles": ["title 1", "title 2", ...]}`);
+        if (!result.titles?.length) throw new Error("No titles returned — try again.");
+        $("#bo-title-suggestions").innerHTML = result.titles.map(ti =>
+          `<button class="btn sm fixed" data-bo-pick-title style="margin:0 6px 6px 0">${esc(ti)}</button>`).join("");
+        $$("[data-bo-pick-title]").forEach(b => b.onclick = () => { $("#bo-title").value = b.textContent; $("#bo-title-suggestions").innerHTML = ""; });
+        setStatus("bo-status", "ok", "Pick a title below, or keep your own — $0.00.");
+      } catch (e) { setStatus("bo-status", "err", e.message); }
+      $("#bo-suggest-titles").disabled = false;
+    };
+
+    $("#bo-suggest-desc").onclick = async () => {
+      const t = RIU_DATA.bookTemplates.find(x => x.id === $("#bo-template").value);
+      const title = $("#bo-title").value.trim() || "Untitled";
+      const notes = chapterContext(t);
+      if (!notes) return setStatus("bo-status", "err", "Write at least one chapter first — the description is drawn from actual content, not guessed from the title alone.");
+      setStatus("bo-status", "info", "Writing the back-cover description…");
+      $("#bo-suggest-desc").disabled = true;
+      try {
+        const prose = await Providers.freeText(
+          `Write a back-cover / Amazon-listing book description for "${title}" (${t.name}), 120-180 words. ` +
+          `Hook in the first line, build intrigue, end with a line that creates urgency to read on — do not summarize the ending. ` +
+          `Base it on this actual content: ${notes} ` +
+          `Return ONLY the description text, no title, no headers, no meta-commentary. ` +
+          RIU_DATA.antiAiWritingInstruction + styleGuideInstruction());
+        $("#bo-description").value = prose.trim();
+        setStatus("bo-status", "ok", "Description drafted — $0.00. Review it against the AI-tells checklist before using it.");
+      } catch (e) { setStatus("bo-status", "err", e.message); }
+      $("#bo-suggest-desc").disabled = false;
     };
 
     $("#bo-save").onclick = () => {
