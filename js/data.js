@@ -7,10 +7,13 @@
 const RIU_DATA = {
 
   /* ---------- generative models (fal.ai queue API) ----------
-   * Registry refreshed 2026-07-18 (Kling v3 Pro prices re-verified; Hailuo
-   * bumped 02→2.3 same price class; Seedance 2.0 Mini added for drafts).
-   * Watchlist: Seedance 2.5 public since early Jul 2026 — endpoint/pricing
-   * unverified, not yet listed. "FREE:" entries run on Pollinations.ai. */
+   * Registry refreshed 2026-10-03 — Seedance 2.5 added (live on fal.ai since
+   * mid-2026: text/image/reference-to-video, native 30s generations, up to
+   * 50 multimodal references). Model ID inferred from fal's seedance-2.0
+   * naming pattern, not confirmed via direct fetch (fal.ai is blocked from
+   * this session's egress) — verify against the fal.ai playground before a
+   * high-volume run, and correct in Settings → Model Registry if it's off.
+   * "FREE:" entries run on Pollinations.ai. */
   models: {
     image: [
       { id: "pollinations:flux",            name: "FREE — Pollinations Flux (no API key needed!)", cost: 0, unit: "image", free: true },
@@ -25,6 +28,8 @@ const RIU_DATA = {
     ],
     video: [
       { id: "fal-ai/kling-video/v3/pro/image-to-video",   name: "Kling v3 Pro (image→video) — cinematic + native audio, best value ($0.112/s audio off)", cost: 0.168, unit: "second" },
+      { id: "bytedance/seedance-2.5/image-to-video",      name: "Seedance 2.5 (image→video) — flagship, 720p, up to 50 multimodal references", cost: 0.473, unit: "second" },
+      { id: "bytedance/seedance-2.5/text-to-video",        name: "Seedance 2.5 (text→video) — native 30s generations, 720p", cost: 0.473, unit: "second" },
       { id: "bytedance/seedance-2.0/mini/reference-to-video", name: "Seedance 2.0 Mini (reference→video) — cheapest drafts, 720p", cost: 0.0928, unit: "second" },
       { id: "bytedance/seedance-2.0/fast/image-to-video", name: "Seedance 2.0 Fast (image→video) — cheap drafts, 720p", cost: 0.2419, unit: "second" },
       { id: "bytedance/seedance-2.0/image-to-video",      name: "Seedance 2.0 Pro (image→video) — flagship, synced audio, 1080p", cost: 0.6804, unit: "second" },
