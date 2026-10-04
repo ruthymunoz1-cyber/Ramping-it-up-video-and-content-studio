@@ -9,6 +9,23 @@ instead of Manus's own managed media tool.
 
 ---
 
+## 0. Fixed brand assets — never regenerated
+
+Two things are **saved files, not something any tool generates per video.**
+Treat both as locked:
+
+- **Signature music.** A single mp3, already saved outside Manus. Every
+  video's audio is narration (generated) combined with this *same* file in
+  the Studio's **Audio Mixer** — never a new `generate_music` call for this
+  page, ever, for any reason, even "just to try a variation."
+- **Narration voice.** One ElevenLabs voice_id, chosen once and fixed. Always
+  pass that exact voice_id to `generate_narration` — never a name, never
+  "pick whichever voice fits." *(Voice not yet locked — once chosen, its
+  voice_id replaces this note and this workflow is updated.)*
+
+If a step seems to call for new music or a different voice, stop and ask
+instead of generating one.
+
 ## 1. Start from the verse, not a template
 
 For every video, the verse comes first. Read it, and ask: what moment of
@@ -104,6 +121,8 @@ guardrail the Studio's Book Outline uses applies here.
 
 - Use the Ramping It Up Studio tools connected through the MCP connector —
   never Manus's own built-in generator, even as a fallback.
+- Never call `generate_music` for this page, and never pick a narration
+  voice other than the one fixed voice_id — see section 0.
 - Quote the estimated cost before any video generation step.
 - Stop and ask before generating anything that doesn't clearly follow from
   this workflow.
