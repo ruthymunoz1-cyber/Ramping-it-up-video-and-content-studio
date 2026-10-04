@@ -45,6 +45,11 @@ because they worked — a different verse earns a different scene.
   the verse's situation — and across the page as a whole, rotate who's
   shown, so a wide range of viewers see someone who looks like them over
   time. Don't settle into one recurring "mascot" family.
+- **English and Spanish versions get their own casting — never a shared
+  scene.** Spanish-language content should reflect the full range of
+  Latino identity (not one "representative" look); English content isn't
+  limited to any one group either. Reusing one scene across both languages
+  to save a couple of dollars works against this — don't do it.
 - Build each character once per video in **Character Lab**, not Image Studio
   alone, so their face, skin tone, and features stay identical across every
   still and clip within that one video — this is what keeps a two-scene
@@ -83,6 +88,16 @@ get right in a $0.04 still you can retry ten times than in a $0.47/sec video
 generation you can't.
 
 ## 5. Animate the approved still — pick the cheapest model that can do the job
+
+**First, decide how many beats this scene actually has — judge it from the
+storyboard, not a fixed rule.** One clean gesture (a hand settling on a
+shoulder) is one still + one clip, same as always. A scene with several
+distinct beats (she sits, then rises and crosses the room, then hands over
+the cup) can't be covered by one continuous generation without going mushy
+— give each beat its own still (approved separately) and its own short
+clip, then pass them all to `finalize_video` as `video_clips` (section 9) to
+stitch them into one sequence. Most days are one beat; some aren't — look at
+what the storyboard actually calls for each time.
 
 - **Default: Kling v3 Pro** (~$0.17/sec, about a third of Seedance 2.5) for
   any shot with a precise human gesture or interaction. It handles subtle
@@ -124,13 +139,15 @@ guardrail the Studio's Book Outline uses applies here.
 
 ## 9. Finalize — one call produces the finished video
 
-Once the clip is approved and narration generated, call `finalize_video`
-with: the clip URL, the narration URL (from `generate_narration`), the
-verse reference, verse text, caption, and the clip's duration in seconds.
-It automatically renders the verse card, layers it with the clip, narration,
-and the fixed signature music, and returns one finished file — no manual
-assembly, no review needed per video once the pipeline is trusted (see the
-one-time check below).
+Once the clip(s) are approved and narration generated, call `finalize_video`
+with: the narration URL (from `generate_narration`), the verse reference,
+verse text, and caption. For a single-beat scene pass `video_url` and the
+clip's duration; for a multi-beat scene (section 5) pass `video_clips` — an
+ordered list of `{url, duration}` for each beat's clip — and it stitches
+them into one sequence automatically, no `video_url`/`duration` needed. It
+also renders the verse card, layers in narration and the fixed signature
+music, and returns one finished file — no manual assembly, no review needed
+per video once the pipeline is trusted (see the one-time check below).
 
 **Before running this across a full month of videos**, generate exactly one
 end-to-end and have the page owner glance at it — mainly to confirm the
