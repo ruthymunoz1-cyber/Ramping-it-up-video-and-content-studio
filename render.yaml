@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ramping-it-up-mcp
+    runtime: node
+    plan: free
+    rootDir: mcp
+    buildCommand: "echo 'zero dependencies — nothing to build'"
+    startCommand: "node http-server.mjs"
+    envVars:
+      - key: FAL_KEY
+        sync: false
+      - key: MCP_AUTH_TOKEN
+        sync: false
+      - key: ELEVEN_KEY
+        sync: false
