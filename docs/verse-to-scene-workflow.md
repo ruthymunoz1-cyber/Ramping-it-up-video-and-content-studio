@@ -17,10 +17,9 @@ Treat both as locked:
 - **Signature music.** A single mp3, saved once as a fixed file on the MCP
   server (never regenerated, never swapped). Manus never calls
   `generate_music` for this page, for any reason, even "just to try a
-  variation." Instead: generate narration with `generate_narration`, then
-  pass its returned temporary URL to `mix_audio`, which automatically
-  overlays it onto the fixed signature music and returns one finished
-  track — fully automated, no manual step.
+  variation." Instead: `finalize_video` (section 9) pulls it in
+  automatically as part of assembling the finished video — fully automated,
+  no manual step, no review needed per video.
 - **Narration voice — two fixed voice_ids, one per language:**
   - English: `Gubgw9l4dtIoQA9YZHgx`
   - Spanish: `DGhxgogT0bhXlRToPzFs`
@@ -102,10 +101,10 @@ generation you can't.
 ## 6. The verse card is never part of the video generation
 
 The Bible verse overlay (reference, verse text, the devotional paraphrase
-line) is a separate text/graphic layer, composited onto a still frame or
-over the video afterward — never something asked of the video model itself.
-Asking a video model to render legible text is expensive and unreliable; a
-text overlay is free and exact every time.
+line) is never asked of the video model itself — rendering legible text
+with a video model is expensive and unreliable. `finalize_video` (section 9)
+renders it separately as a text-accurate image and layers it onto the video
+automatically — no manual compositing step.
 
 ## 7. Generate once, then edit and reuse
 
@@ -123,13 +122,27 @@ a real, specific question (the way "¿Hay un dolor que has estado
 cargando?" does) rather than a vague platitude. The same anti-AI-tells
 guardrail the Studio's Book Outline uses applies here.
 
+## 9. Finalize — one call produces the finished video
+
+Once the clip is approved and narration generated, call `finalize_video`
+with: the clip URL, the narration URL (from `generate_narration`), the
+verse reference, verse text, caption, and the clip's duration in seconds.
+It automatically renders the verse card, layers it with the clip, narration,
+and the fixed signature music, and returns one finished file — no manual
+assembly, no review needed per video once the pipeline is trusted (see the
+one-time check below).
+
+**Before running this across a full month of videos**, generate exactly one
+end-to-end and have the page owner glance at it — mainly to confirm the
+verse card sits where it should. This is a 30-second check, not manual work;
+once confirmed, run the rest of the month without asking again.
+
 ## Always, every video
 
 - Use the Ramping It Up Studio tools connected through the MCP connector —
   never Manus's own built-in generator, even as a fallback.
-- Never call `generate_music` for this page. After `generate_narration`,
-  call `mix_audio` with the narration URL it returns — never ask the page
-  owner to mix it by hand.
+- Never call `generate_music` for this page, and never composite the verse
+  card by hand — `finalize_video` (section 9) does both automatically.
 - Never pick a narration voice, and never call `list_voices` — use the one
   fixed voice_id for the language being narrated, see section 0.
 - Quote the estimated cost before any video generation step.
