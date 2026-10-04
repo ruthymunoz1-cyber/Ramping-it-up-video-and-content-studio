@@ -57,14 +57,14 @@ function requireElevenKey() {
   if (!ELEVEN_KEY) throw new Error("ELEVEN_KEY is not set. Add it to the MCP server env (see mcp/README.md).");
 }
 
-async function elVoices() {
+export async function elVoices() {
   requireElevenKey();
   const res = await fetch(`${ELEVEN_BASE}/v1/voices`, { headers: { "xi-api-key": ELEVEN_KEY } });
   if (!res.ok) throw new Error(`ElevenLabs voices failed (${res.status}): ${await res.text()}`);
   return (await res.json()).voices || [];
 }
 
-async function resolveVoiceId(nameOrId) {
+export async function resolveVoiceId(nameOrId) {
   const voices = await elVoices();
   const exact = voices.find(v => v.voice_id === nameOrId);
   if (exact) return exact;
@@ -74,7 +74,7 @@ async function resolveVoiceId(nameOrId) {
   throw new Error(`No voice matching "${nameOrId}". Available voices: ${names || "(none — check your ElevenLabs account)"}`);
 }
 
-async function elSpeak(voiceId, text, modelId = "eleven_multilingual_v2") {
+export async function elSpeak(voiceId, text, modelId = "eleven_multilingual_v2") {
   requireElevenKey();
   const res = await fetch(`${ELEVEN_BASE}/v1/text-to-speech/${voiceId}`, {
     method: "POST",
@@ -201,9 +201,10 @@ export const TOOLS = [
   },
   {
     name: "generate_narration",
-    description: "Generate spoken narration with ElevenLabs and save it as an MP3 on the local machine (ElevenLabs returns audio " +
-      "bytes, not a hosted URL, so this writes a file and returns its path). Billed to the user's ElevenLabs plan/credits. " +
-      "Local-disk tools only work over the stdio transport (a local MCP client) — not available when connected remotely over HTTP.",
+    description: "Generate spoken narration with ElevenLabs. Billed to the user's ElevenLabs plan/credits — this is the user's own " +
+      "voice account, not a managed/opaque service, so the voice they chose in list_voices is exactly what gets used. " +
+      "Over stdio (local client) this saves an MP3 to local disk and returns its path. Over the remote/HTTP transport " +
+      "(no local disk to write to) it returns the audio directly as a base64 data URI in the response instead.",
     inputSchema: {
       type: "object",
       properties: {
@@ -218,7 +219,7 @@ export const TOOLS = [
     name: "clone_voice",
     description: "Clone a voice from 1-3 local audio samples (each 30s-3min, clean recording, no background noise/music). " +
       "Creates a new ElevenLabs voice usable immediately with generate_narration. Requires an ElevenLabs plan that supports cloning. " +
-      "Local-disk tool, stdio transport only.",
+      "Local-disk tool, stdio transport only — it reads sample files from the local machine, which a remote client has no access to.",
     inputSchema: {
       type: "object",
       properties: {
@@ -231,11 +232,15 @@ export const TOOLS = [
   },
 ];
 
-/* Tools that read/write the local filesystem — meaningless (and unsafe to even
- * attempt) from a remote HTTP client, since "local" means the server's own
- * disk, not the caller's. http-server.mjs filters these out of what it
- * advertises; stdio keeps the full set. */
-export const LOCAL_ONLY_TOOLS = new Set(["generate_narration", "clone_voice"]);
+/* Tools that read/write the local filesystem in a way that's fundamentally
+ * tied to "this machine's disk" — meaningless (and unsafe to even attempt)
+ * from a remote HTTP client. Only clone_voice qualifies: it reads local
+ * sample files with no equivalent remote input. generate_narration used to
+ * be in this set too, but http-server.mjs now gives it a remote-safe
+ * handler (base64 audio in the response) instead of excluding it — a
+ * cloud agent still needs to generate narration through the user's own
+ * ElevenLabs account, not a managed voice service with no cost visibility. */
+export const LOCAL_ONLY_TOOLS = new Set(["clone_voice"]);
 
 /* ---------------- tool implementations ---------------- */
 export const HANDLERS = {

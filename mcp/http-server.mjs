@@ -24,11 +24,12 @@
 
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
-import { TOOLS, HANDLERS, LOCAL_ONLY_TOOLS } from "./lib.mjs";
+import { TOOLS, HANDLERS, LOCAL_ONLY_TOOLS, resolveVoiceId, elSpeak } from "./lib.mjs";
 
 const PORT = process.env.PORT || 8787;
 const AUTH_TOKEN = process.env.MCP_AUTH_TOKEN || "";
 const MAX_BODY_BYTES = 1_000_000; // 1MB — generous for JSON-RPC tool calls, small enough to block abuse
+const MAX_NARRATION_CHARS = 5000; // keeps the base64 response a sane size over HTTP
 
 if (!AUTH_TOKEN) {
   console.error("MCP_AUTH_TOKEN is not set. Refusing to start an unauthenticated server reachable over the network.");
@@ -37,6 +38,21 @@ if (!AUTH_TOKEN) {
 }
 
 const REMOTE_TOOLS = TOOLS.filter(t => !LOCAL_ONLY_TOOLS.has(t.name));
+
+/* generate_narration needs a different implementation remotely: the shared
+ * handler in lib.mjs saves to local disk and returns a path, which means
+ * nothing on a cloud server. This version returns the audio itself, base64-
+ * encoded, directly in the tool result. */
+const REMOTE_HANDLERS = {
+  ...HANDLERS,
+  async generate_narration(a) {
+    if (a.text.length > MAX_NARRATION_CHARS) throw new Error(`Text is ${a.text.length} chars — keep narration under ${MAX_NARRATION_CHARS} chars per call over the remote transport.`);
+    const voice = await resolveVoiceId(a.voice);
+    const buffer = await elSpeak(voice.voice_id, a.text, a.model || "eleven_multilingual_v2");
+    const dataUri = `data:audio/mpeg;base64,${buffer.toString("base64")}`;
+    return `Narration generated with voice "${voice.name}" (${buffer.length} bytes):\n${dataUri}`;
+  },
+};
 
 function authorized(req) {
   const header = req.headers["authorization"] || "";
@@ -74,7 +90,7 @@ async function handleRpc(req) {
     if (LOCAL_ONLY_TOOLS.has(name)) {
       return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `${name} writes to local disk and isn't available over the remote transport.` }], isError: true } };
     }
-    const handler = HANDLERS[name];
+    const handler = REMOTE_HANDLERS[name];
     if (!handler) return { jsonrpc: "2.0", id, error: { code: -32601, message: `Unknown tool: ${name}` } };
     try {
       const text = await handler(args || {});
