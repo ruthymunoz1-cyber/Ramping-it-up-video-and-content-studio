@@ -21,6 +21,11 @@ const ELEVEN_KEY = process.env.ELEVEN_KEY || "";
 const ELEVEN_BASE = process.env.ELEVEN_API_BASE || "https://api.elevenlabs.io";
 const AUDIO_OUTPUT_DIR = process.env.RIU_MCP_OUTPUT_DIR || path.join(homedir(), "Documents", "Ramping It Up Studio", "mcp-audio");
 
+/* The page's one fixed signature music file, hosted as a static asset by
+ * http-server.mjs (see mcp/assets/signature-music.mp3) so fal.ai's servers
+ * can fetch it for mix_audio. Never generated, never swapped per video. */
+const DEFAULT_SIGNATURE_MUSIC_URL = process.env.SIGNATURE_MUSIC_URL || "https://ramping-it-up-mcp.onrender.com/assets/signature-music.mp3";
+
 /* ---------------- fal queue client ---------------- */
 async function falRun(modelId, input) {
   if (!FAL_KEY) throw new Error("FAL_KEY is not set. Add it to the MCP server env (see mcp/README.md).");
@@ -222,6 +227,22 @@ export const TOOLS = [
     },
   },
   {
+    name: "mix_audio",
+    description: "Overlay narration with the page's fixed signature music into one finished audio file, using fal.ai's ffmpeg compose tool " +
+      "(~$0.0002/sec — a 30s track is about $0.006). music_url defaults to the page's permanent signature-music.mp3 — never pass a " +
+      "different music_url for this page, and never call generate_music instead; this tool exists specifically so that's never necessary. " +
+      "narration_url must be a URL fal.ai's servers can fetch — use the temporary URL generate_narration returns over the remote transport, " +
+      "not the base64 data URI. Returns the merged audio's hosted URL.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        narration_url: { type: "string", description: "URL to the narration audio (the temporary URL from generate_narration's remote response)." },
+        music_url: { type: "string", description: "Optional override. Leave unset — it defaults to the page's one fixed signature music file." },
+      },
+      required: ["narration_url"],
+    },
+  },
+  {
     name: "clone_voice",
     description: "Clone a voice from 1-3 local audio samples (each 30s-3min, clean recording, no background noise/music). " +
       "Creates a new ElevenLabs voice usable immediately with generate_narration. Requires an ElevenLabs plan that supports cloning. " +
@@ -306,6 +327,18 @@ export const HANDLERS = {
     const buffer = await elSpeak(voice.voice_id, a.text, a.model || "eleven_multilingual_v2");
     const file = await saveAudioFile(buffer, a.text.slice(0, 40));
     return `Narration generated with voice "${voice.name}":\n${file}`;
+  },
+  async mix_audio(a) {
+    const musicUrl = a.music_url || DEFAULT_SIGNATURE_MUSIC_URL;
+    const result = await falRun("fal-ai/ffmpeg-api/compose", {
+      tracks: [
+        { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0 }] },
+        { id: "music", type: "audio", keyframes: [{ url: musicUrl, timestamp: 0 }] },
+      ],
+    });
+    const url = extractMedia(result);
+    if (!url) throw new Error("No merged audio URL in the result: " + JSON.stringify(result));
+    return `Mixed audio (narration + signature music):\n${url}`;
   },
   async clone_voice(a) {
     const result = await elClone(a.name, a.sample_paths, a.description || "");

@@ -24,12 +24,37 @@
 
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { TOOLS, HANDLERS, LOCAL_ONLY_TOOLS, resolveVoiceId, elSpeak } from "./lib.mjs";
 
 const PORT = process.env.PORT || 8787;
 const AUTH_TOKEN = process.env.MCP_AUTH_TOKEN || "";
 const MAX_BODY_BYTES = 1_000_000; // 1MB — generous for JSON-RPC tool calls, small enough to block abuse
 const MAX_NARRATION_CHARS = 5000; // keeps the base64 response a sane size over HTTP
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || "https://ramping-it-up-mcp.onrender.com";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SIGNATURE_MUSIC_PATH = path.join(__dirname, "assets", "signature-music.mp3");
+
+/* Short-lived in-memory hosting for generated narration, so fal.ai's compose
+ * tool (mix_audio) has a URL it can fetch — ElevenLabs returns raw bytes,
+ * not a hosted URL. Entries are small (a few seconds of MP3) and only need
+ * to survive the few seconds until fal.ai fetches them. */
+const AUDIO_STORE = new Map();
+const AUDIO_TTL_MS = 30 * 60 * 1000;
+function storeAudio(buffer, contentType) {
+  const id = randomUUID();
+  AUDIO_STORE.set(id, { buffer, contentType, expires: Date.now() + AUDIO_TTL_MS });
+  return id;
+}
+function getStoredAudio(id) {
+  const entry = AUDIO_STORE.get(id);
+  if (!entry) return null;
+  if (Date.now() > entry.expires) { AUDIO_STORE.delete(id); return null; }
+  return entry;
+}
 
 if (!AUTH_TOKEN) {
   console.error("MCP_AUTH_TOKEN is not set. Refusing to start an unauthenticated server reachable over the network.");
@@ -50,7 +75,10 @@ const REMOTE_HANDLERS = {
     const voice = await resolveVoiceId(a.voice);
     const buffer = await elSpeak(voice.voice_id, a.text, a.model || "eleven_multilingual_v2");
     const dataUri = `data:audio/mpeg;base64,${buffer.toString("base64")}`;
-    return `Narration generated with voice "${voice.name}" (${buffer.length} bytes):\n${dataUri}`;
+    const id = storeAudio(buffer, "audio/mpeg");
+    const tempUrl = `${PUBLIC_BASE_URL}/audio/${id}.mp3`;
+    return `Narration generated with voice "${voice.name}" (${buffer.length} bytes):\n${dataUri}\n\n` +
+      `Temporary URL (pass this as narration_url to mix_audio — expires in 30 min): ${tempUrl}`;
   },
 };
 
@@ -114,6 +142,27 @@ const server = createServer(async (req, res) => {
   if (req.method === "GET" && (req.url === "/" || req.url === "/health")) {
     res.writeHead(200, { ...cors, "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, server: "ramping-it-up-studio-remote", tools: REMOTE_TOOLS.map(t => t.name) }));
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/audio/")) {
+    const id = req.url.slice("/audio/".length).replace(/\.mp3$/, "");
+    const entry = getStoredAudio(id);
+    if (!entry) { res.writeHead(404, { ...cors, "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Not found or expired (narration URLs last 30 minutes)." })); return; }
+    res.writeHead(200, { ...cors, "Content-Type": entry.contentType, "Content-Length": entry.buffer.length });
+    res.end(entry.buffer);
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/assets/signature-music.mp3") {
+    if (!existsSync(SIGNATURE_MUSIC_PATH)) {
+      res.writeHead(404, { ...cors, "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "signature-music.mp3 has not been uploaded to the server yet." }));
+      return;
+    }
+    const buf = await readFile(SIGNATURE_MUSIC_PATH);
+    res.writeHead(200, { ...cors, "Content-Type": "audio/mpeg", "Content-Length": buf.length });
+    res.end(buf);
     return;
   }
 
