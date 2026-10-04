@@ -14,14 +14,20 @@ instead of Manus's own managed media tool.
 Two things are **saved files, not something any tool generates per video.**
 Treat both as locked:
 
-- **Signature music.** A single mp3, already saved outside Manus. Every
-  video's audio is narration (generated) combined with this *same* file in
-  the Studio's **Audio Mixer** — never a new `generate_music` call for this
-  page, ever, for any reason, even "just to try a variation."
-- **Narration voice.** One ElevenLabs voice_id, chosen once and fixed. Always
-  pass that exact voice_id to `generate_narration` — never a name, never
-  "pick whichever voice fits." *(Voice not yet locked — once chosen, its
-  voice_id replaces this note and this workflow is updated.)*
+- **Signature music.** A single mp3, already saved outside Manus. Manus never
+  touches this file and never calls `generate_music` for this page, for any
+  reason, even "just to try a variation." Manus's job ends at narration +
+  video clip — **the final mix (narration + this fixed music + ambient) is
+  done by hand, by the page owner, in the Studio's Audio Mixer** (a browser
+  tool, not something reachable through the MCP connector — Manus cannot
+  open or use it, so it is never asked to).
+- **Narration voice — two fixed voice_ids, one per language:**
+  - English: `Gubgw9l4dtIoQA9YZHgx`
+  - Spanish: `DGhxgogT0bhXlRToPzFs`
+  Always pass the exact voice_id matching the narration's language to
+  `generate_narration` — never a name, never "pick whichever voice fits,"
+  never `list_voices` (the connected ElevenLabs key can't read the voice
+  list — these two IDs are all that's needed).
 
 If a step seems to call for new music or a different voice, stop and ask
 instead of generating one.
@@ -121,8 +127,11 @@ guardrail the Studio's Book Outline uses applies here.
 
 - Use the Ramping It Up Studio tools connected through the MCP connector —
   never Manus's own built-in generator, even as a fallback.
-- Never call `generate_music` for this page, and never pick a narration
-  voice other than the one fixed voice_id — see section 0.
+- Never call `generate_music` for this page. Hand off narration + the
+  approved video clip and stop — the final music mix is done by hand, not
+  by Manus.
+- Never pick a narration voice, and never call `list_voices` — use the one
+  fixed voice_id for the language being narrated, see section 0.
 - Quote the estimated cost before any video generation step.
 - Stop and ask before generating anything that doesn't clearly follow from
   this workflow.
