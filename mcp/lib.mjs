@@ -118,6 +118,25 @@ async function saveAudioFile(buffer, stem) {
   return file;
 }
 
+/* Renders the verse reference/text/caption as a clean typographic image via
+ * GPT-image-2 (the model already used here for text-heavy graphics, since
+ * video models render legible text unreliably — see workflow rule #6: the
+ * verse card is always a separate graphic layer, never asked of a video
+ * model). Used by finalize_video so the whole assembly is one tool call. */
+async function renderVerseCard({ reference, verseText, caption, aspectRatio = "9:16" }) {
+  const prompt =
+    `A clean, elegant devotional verse card graphic for a social video. Soft neutral background ` +
+    `(warm cream or deep navy — no photo, no people, no clutter). Large, perfectly legible serif ` +
+    `typography, centered, top to bottom: 1) the reference "${reference}" in smaller gold letters at ` +
+    `the top. 2) the verse text "${verseText}" as the largest, most prominent text, wrapped naturally, ` +
+    `high contrast against the background.` +
+    (caption ? ` 3) the line "${caption}" in smaller italic text near the bottom, softer color.` : "") +
+    ` No extra decoration, no watermark, no stock-photo elements — pure clean typography on a simple background.`;
+  const url = extractMedia(await falRun("fal-ai/gpt-image-2", { prompt, aspect_ratio: aspectRatio, num_images: 1 }));
+  if (!url) throw new Error("No verse card image URL in the result.");
+  return url;
+}
+
 /* ---------------- tool definitions ---------------- */
 const MELANIN_LIGHTING =
   "skin properly exposed and color-graded for deep melanin-rich skin — luminous, even, " +
@@ -243,6 +262,32 @@ export const TOOLS = [
     },
   },
   {
+    name: "finalize_video",
+    description: "Assemble ONE finished video for this page: the animated scene clip + an auto-generated verse card overlay + narration + " +
+      "the fixed signature music, merged into a single file via fal.ai's ffmpeg compose tool (~$0.0002/sec — a 30s video is about $0.006, " +
+      "on top of whatever the clip/narration already cost). Generates the verse card automatically from verse_reference/verse_text/caption " +
+      "(skip generation by passing verse_card_url instead, e.g. a previously made card). music_url always defaults to the page's one fixed " +
+      "signature track — never pass a different one, and never call generate_music. Pass duration (the scene clip's length in seconds) so " +
+      "the verse card overlays the full video, not just a flash. " +
+      "IMPORTANT: have the page owner glance at the very first one of these before trusting it for a full batch — exact verse-card " +
+      "positioning on fal's compose tool hasn't been visually confirmed yet.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        video_url: { type: "string", description: "The approved animated scene clip URL." },
+        narration_url: { type: "string", description: "Temporary narration URL from generate_narration's remote response." },
+        verse_reference: { type: "string", description: "e.g. \"Isaiah 41:10\". Required unless verse_card_url is given." },
+        verse_text: { type: "string", description: "The verse text to render on the card. Required unless verse_card_url is given." },
+        caption: { type: "string", description: "Optional short devotional line under the verse." },
+        verse_card_url: { type: "string", description: "Optional — use a pre-made verse card image instead of auto-generating one." },
+        music_url: { type: "string", description: "Optional override. Leave unset — defaults to the page's one fixed signature music." },
+        duration: { type: "number", description: "Scene clip length in seconds, so the verse card overlays the full video." },
+        aspect_ratio: { type: "string", description: "Verse card aspect ratio. Default 9:16 (reels)." },
+      },
+      required: ["video_url", "narration_url"],
+    },
+  },
+  {
     name: "clone_voice",
     description: "Clone a voice from 1-3 local audio samples (each 30s-3min, clean recording, no background noise/music). " +
       "Creates a new ElevenLabs voice usable immediately with generate_narration. Requires an ElevenLabs plan that supports cloning. " +
@@ -339,6 +384,23 @@ export const HANDLERS = {
     const url = extractMedia(result);
     if (!url) throw new Error("No merged audio URL in the result: " + JSON.stringify(result));
     return `Mixed audio (narration + signature music):\n${url}`;
+  },
+  async finalize_video(a) {
+    const musicUrl = a.music_url || DEFAULT_SIGNATURE_MUSIC_URL;
+    const verseCardUrl = a.verse_card_url || await renderVerseCard({
+      reference: a.verse_reference, verseText: a.verse_text, caption: a.caption, aspectRatio: a.aspect_ratio || "9:16",
+    });
+    const durationMs = a.duration ? Math.round(a.duration * 1000) : undefined;
+    const tracks = [
+      { id: "video", type: "video", keyframes: [{ url: a.video_url, timestamp: 0 }] },
+      { id: "verse_card", type: "image", keyframes: [{ url: verseCardUrl, timestamp: 0, ...(durationMs ? { duration: durationMs } : {}) }] },
+      { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0 }] },
+      { id: "music", type: "audio", keyframes: [{ url: musicUrl, timestamp: 0 }] },
+    ];
+    const result = await falRun("fal-ai/ffmpeg-api/compose", { tracks });
+    const url = extractMedia(result);
+    if (!url) throw new Error("No final video URL in the result: " + JSON.stringify(result));
+    return `Final video (scene + verse card + narration + signature music):\n${url}\nVerse card image used: ${verseCardUrl}`;
   },
   async clone_voice(a) {
     const result = await elClone(a.name, a.sample_paths, a.description || "");
