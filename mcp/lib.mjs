@@ -65,9 +65,15 @@ export async function elVoices() {
 }
 
 export async function resolveVoiceId(nameOrId) {
+  /* A raw ElevenLabs voice_id is a 20-char alphanumeric string. If we already
+   * have one, skip the /v1/voices list call entirely — some restricted API
+   * keys (no separate "Voices" read permission in their scopes) can't read
+   * that endpoint at all, which would otherwise break narration even when
+   * the exact voice to use is already known. */
+  if (/^[A-Za-z0-9]{20}$/.test(String(nameOrId))) {
+    return { voice_id: nameOrId, name: nameOrId };
+  }
   const voices = await elVoices();
-  const exact = voices.find(v => v.voice_id === nameOrId);
-  if (exact) return exact;
   const byName = voices.find(v => v.name.toLowerCase() === String(nameOrId).toLowerCase());
   if (byName) return byName;
   const names = voices.map(v => `${v.name} (${v.voice_id})`).join(", ");
