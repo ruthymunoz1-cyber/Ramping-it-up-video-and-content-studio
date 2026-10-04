@@ -14,13 +14,13 @@ instead of Manus's own managed media tool.
 Two things are **saved files, not something any tool generates per video.**
 Treat both as locked:
 
-- **Signature music.** A single mp3, already saved outside Manus. Manus never
-  touches this file and never calls `generate_music` for this page, for any
-  reason, even "just to try a variation." Manus's job ends at narration +
-  video clip — **the final mix (narration + this fixed music + ambient) is
-  done by hand, by the page owner, in the Studio's Audio Mixer** (a browser
-  tool, not something reachable through the MCP connector — Manus cannot
-  open or use it, so it is never asked to).
+- **Signature music.** A single mp3, saved once as a fixed file on the MCP
+  server (never regenerated, never swapped). Manus never calls
+  `generate_music` for this page, for any reason, even "just to try a
+  variation." Instead: generate narration with `generate_narration`, then
+  pass its returned temporary URL to `mix_audio`, which automatically
+  overlays it onto the fixed signature music and returns one finished
+  track — fully automated, no manual step.
 - **Narration voice — two fixed voice_ids, one per language:**
   - English: `Gubgw9l4dtIoQA9YZHgx`
   - Spanish: `DGhxgogT0bhXlRToPzFs`
@@ -127,9 +127,9 @@ guardrail the Studio's Book Outline uses applies here.
 
 - Use the Ramping It Up Studio tools connected through the MCP connector —
   never Manus's own built-in generator, even as a fallback.
-- Never call `generate_music` for this page. Hand off narration + the
-  approved video clip and stop — the final music mix is done by hand, not
-  by Manus.
+- Never call `generate_music` for this page. After `generate_narration`,
+  call `mix_audio` with the narration URL it returns — never ask the page
+  owner to mix it by hand.
 - Never pick a narration voice, and never call `list_voices` — use the one
   fixed voice_id for the language being narrated, see section 0.
 - Quote the estimated cost before any video generation step.
