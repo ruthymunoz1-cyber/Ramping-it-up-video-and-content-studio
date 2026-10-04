@@ -263,28 +263,42 @@ export const TOOLS = [
   },
   {
     name: "finalize_video",
-    description: "Assemble ONE finished video for this page: the animated scene clip + an auto-generated verse card overlay + narration + " +
-      "the fixed signature music, merged into a single file via fal.ai's ffmpeg compose tool (~$0.0002/sec — a 30s video is about $0.006, " +
-      "on top of whatever the clip/narration already cost). Generates the verse card automatically from verse_reference/verse_text/caption " +
-      "(skip generation by passing verse_card_url instead, e.g. a previously made card). music_url always defaults to the page's one fixed " +
-      "signature track — never pass a different one, and never call generate_music. Pass duration (the scene clip's length in seconds) so " +
-      "the verse card overlays the full video, not just a flash. " +
+    description: "Assemble ONE finished video for this page: the scene (a single clip, OR a sequence of clips stitched end-to-end — see " +
+      "video_clips) + an auto-generated verse card overlay + narration + the fixed signature music, merged into a single file via fal.ai's " +
+      "ffmpeg compose tool (~$0.0002/sec — a 30s video is about $0.006, on top of whatever the clips/narration already cost). " +
+      "Use video_clips instead of video_url whenever the scene has more than one distinct beat/gesture (e.g. she sits, then rises and " +
+      "crosses the room, then hands over the cup — each of those is its own still + its own short animation, nailed separately, " +
+      "then stitched here) — a single clip can only carry ONE clean gesture convincingly. " +
+      "Generates the verse card automatically from verse_reference/verse_text/caption (skip generation by passing verse_card_url instead). " +
+      "music_url always defaults to the page's one fixed signature track — never pass a different one, and never call generate_music. " +
       "IMPORTANT: have the page owner glance at the very first one of these before trusting it for a full batch — exact verse-card " +
-      "positioning on fal's compose tool hasn't been visually confirmed yet.",
+      "positioning and multi-clip stitching on fal's compose tool haven't been visually confirmed yet.",
     inputSchema: {
       type: "object",
       properties: {
-        video_url: { type: "string", description: "The approved animated scene clip URL." },
+        video_url: { type: "string", description: "A single approved animated scene clip URL. Use this OR video_clips, not both." },
+        video_clips: {
+          type: "array",
+          description: "A sequence of 2+ clips to stitch end-to-end, in order, for a multi-beat scene. Use this OR video_url, not both.",
+          items: {
+            type: "object",
+            properties: {
+              url: { type: "string" },
+              duration: { type: "number", description: "This clip's length in seconds (the duration you passed to animate_image/generate_video) — required so the next clip starts at the right time." },
+            },
+            required: ["url", "duration"],
+          },
+        },
         narration_url: { type: "string", description: "Temporary narration URL from generate_narration's remote response." },
         verse_reference: { type: "string", description: "e.g. \"Isaiah 41:10\". Required unless verse_card_url is given." },
         verse_text: { type: "string", description: "The verse text to render on the card. Required unless verse_card_url is given." },
         caption: { type: "string", description: "Optional short devotional line under the verse." },
         verse_card_url: { type: "string", description: "Optional — use a pre-made verse card image instead of auto-generating one." },
         music_url: { type: "string", description: "Optional override. Leave unset — defaults to the page's one fixed signature music." },
-        duration: { type: "number", description: "Scene clip length in seconds, so the verse card overlays the full video." },
+        duration: { type: "number", description: "Total scene length in seconds, so the verse card overlays the full video. With video_clips this is computed automatically from the clip durations — only pass it to override." },
         aspect_ratio: { type: "string", description: "Verse card aspect ratio. Default 9:16 (reels)." },
       },
-      required: ["video_url", "narration_url"],
+      required: ["narration_url"],
     },
   },
   {
@@ -390,9 +404,26 @@ export const HANDLERS = {
     const verseCardUrl = a.verse_card_url || await renderVerseCard({
       reference: a.verse_reference, verseText: a.verse_text, caption: a.caption, aspectRatio: a.aspect_ratio || "9:16",
     });
-    const durationMs = a.duration ? Math.round(a.duration * 1000) : undefined;
+
+    let videoKeyframes, autoTotalSec = 0;
+    if (Array.isArray(a.video_clips) && a.video_clips.length) {
+      let t = 0;
+      videoKeyframes = a.video_clips.map(c => {
+        const kf = { url: c.url, timestamp: Math.round(t * 1000) };
+        if (c.duration) { kf.duration = Math.round(c.duration * 1000); t += c.duration; }
+        return kf;
+      });
+      autoTotalSec = t;
+    } else if (a.video_url) {
+      videoKeyframes = [{ url: a.video_url, timestamp: 0 }];
+    } else {
+      throw new Error("Provide either video_url (single shot) or video_clips (a sequence of shots).");
+    }
+
+    const totalSec = a.duration || autoTotalSec || undefined;
+    const durationMs = totalSec ? Math.round(totalSec * 1000) : undefined;
     const tracks = [
-      { id: "video", type: "video", keyframes: [{ url: a.video_url, timestamp: 0 }] },
+      { id: "video", type: "video", keyframes: videoKeyframes },
       { id: "verse_card", type: "image", keyframes: [{ url: verseCardUrl, timestamp: 0, ...(durationMs ? { duration: durationMs } : {}) }] },
       { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0 }] },
       { id: "music", type: "audio", keyframes: [{ url: musicUrl, timestamp: 0 }] },
@@ -400,7 +431,7 @@ export const HANDLERS = {
     const result = await falRun("fal-ai/ffmpeg-api/compose", { tracks });
     const url = extractMedia(result);
     if (!url) throw new Error("No final video URL in the result: " + JSON.stringify(result));
-    return `Final video (scene + verse card + narration + signature music):\n${url}\nVerse card image used: ${verseCardUrl}`;
+    return `Final video (${videoKeyframes.length > 1 ? `${videoKeyframes.length} clips stitched` : "scene"} + verse card + narration + signature music):\n${url}\nVerse card image used: ${verseCardUrl}`;
   },
   async clone_voice(a) {
     const result = await elClone(a.name, a.sample_paths, a.description || "");
