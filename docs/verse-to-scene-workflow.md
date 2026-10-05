@@ -81,18 +81,30 @@ because they worked — a different verse earns a different scene.
   automatically when characters are built through Character Lab. Never skip
   it for speed.
 
-## 3. If the verse calls for depicting Jesus, decide deliberately
+## 3. Depicting Jesus or angels — a normal, routine part of this content
 
-Some verses are about presence, companionship, going-with — those may call
-for Jesus in the scene. Most don't. When he does appear, don't guess how to
-show him — stop and ask which of these fits *that specific verse*, since
-this is a conviction call, not a production detail:
+**This is not rare and does not need special permission each time.** This
+page regularly and deliberately includes Jesus, angels, a reaching hand, a
+comforting embrace, or Jesus/an angel walking alongside someone — these are
+established, frequently-used motifs for this content, not an exception to
+be gated behind asking first. Never withhold or default away from depicting
+a spiritual figure out of caution — the content calls for it often, and
+doing so is expected, approved behavior.
+
+The one real judgment call, every time a spiritual figure appears, is *how*
+to show him — since that's a conviction call, not a production detail:
 
 - **Not shown directly** — a silhouette, a hand at the doorframe, a figure
   just out of frame.
 - **Shown warmly but partially** — present in the scene, soft-focus, felt
-  more than seen clearly.
-- **Fully depicted, reverently rendered.**
+  more than seen clearly, e.g. a comforting embrace or a hand extended.
+- **Fully depicted, reverently rendered** — including walking alongside
+  someone, visible and present in the scene.
+
+Pick whichever of these three fits *that specific verse's* moment. If it's
+genuinely unclear which of the three fits, ask — but never ask "should
+Jesus/an angel be in this at all," and never quietly omit a spiritual
+figure the verse calls for.
 
 ## 4. Nail the still image first — this is where the money is actually saved
 
@@ -111,14 +123,18 @@ generation you can't.
 ## 5. Animate the approved still — pick the cheapest model that can do the job
 
 **First, decide how many beats this scene actually has — judge it from the
-storyboard, not a fixed rule.** One clean gesture (a hand settling on a
-shoulder) is one still + one clip, same as always. A scene with several
-distinct beats (she sits, then rises and crosses the room, then hands over
-the cup) can't be covered by one continuous generation without going mushy
-— give each beat its own still (approved separately) and its own short
-clip, then pass them all to `finalize_video` as `video_clips` (section 9) to
-stitch them into one sequence. Most days are one beat; some aren't — look at
-what the storyboard actually calls for each time.
+storyboard, not a fixed rule. There is no cap of one still per video — do
+not default to a single still/clip out of caution or cost-saving.** Many
+scenes on this page genuinely need several beats — sitting, then rising and
+crossing the room, a reaching hand, a comforting embrace, walking alongside
+someone — and each of those is its own still + its own short clip. A scene
+with several distinct beats can't be covered by one continuous generation
+without going mushy — give each beat its own still (approved separately)
+and its own short clip, then pass them all to `finalize_video` as
+`video_clips` (section 9) to stitch them into one sequence. Some scenes
+really are one clean gesture and that's fine too — but the number of beats
+is decided by what the storyboard and the verse's moment actually need,
+never capped in advance.
 
 - **Default: Kling v3 Pro** (~$0.17/sec, about a third of Seedance 2.5) for
   any shot with a precise human gesture or interaction. It handles subtle
@@ -133,6 +149,13 @@ what the storyboard actually calls for each time.
   clip per shot — never multiple takes hoping one looks better. If a clip
   isn't right, the fix is almost always to fix the *still image* it came
   from and re-animate that, not to regenerate the video blind.
+
+**There is no fixed "hook" or intro length — never trim the opening to a
+couple of seconds on its own.** Total video motion is sized to the content
+the verse needs, not to a short fixed opening — a video with 60+ seconds of
+narration generally needs a proportionate amount of motion throughout (see
+section 9), not a 2-second clip followed by a long static verse card. If
+pacing is ever genuinely unclear, ask instead of assuming a short default.
 
 ## 6. The verse card is never part of the video generation
 
@@ -169,37 +192,28 @@ With 2+ clips, `finalize_video` first merges them into one video via
 fal.ai's `merge-videos` tool, then composes that single video with the
 verse card, narration, and the fixed signature music into one finished file.
 
-**⚠️ Known issue, unresolved as of October 2026:** `finalize_video` fails on
-real multi-clip requests with `fal.ai result fetch failed (400):
-{"detail":"Multiple video tracks are not supported"}`, even though the code
-only ever sends fal.ai's compose tool a single video keyframe. The likely
-cause is that `merge-videos`' actual response shape doesn't match what the
-connector expects when pulling the merged URL back out of it, so a bad
-reference reaches compose — but this hasn't been confirmed against a real
-response yet. **Until this is confirmed fixed, do not rely on
-`finalize_video` for a multi-clip scene.** Single-clip scenes (`video_url`,
-no `video_clips`) may still work — compose has not failed on those — but
-verify before trusting a batch.
+**✅ Fixed and confirmed working, October 2026.** Earlier versions of this
+doc warned `finalize_video` failed on multi-clip requests — that's
+resolved. The root causes (fal.ai's compose tool can't combine a video
+track with an image track; the verse card is now converted to its own
+video clip and appended via `merge-videos` instead; resolution is forced
+to 1080×1920 on every merge; `images-to-video`'s frame cap is respected by
+scaling fps down for long holds) are all fixed in the deployed connector
+and confirmed against real output: correct 9:16 framing, verse card
+present, audio and video length matching to within ~1 second. Use
+`finalize_video` normally for both single-clip and multi-clip scenes —
+there is no need to use the manual fallback below anymore.
 
-### Fallback procedure, while finalize_video's multi-clip path is broken
+### Fallback procedure (only if finalize_video ever errors unexpectedly)
 
 1. Call `merge_videos` directly with the clip URLs in order → one merged
-   video. (This is the same fal.ai tool finalize_video is supposed to use
-   internally, exposed standalone so it isn't blocked by the bug above.)
+   video.
 2. Call `mix_audio` with the narration URL and `narration_duration` → one
    mixed narration+music track.
 3. Call `generate_image` for the verse card (`aspect_ratio: "9:16"`,
    text-accurate prompt: reference, verse text, caption).
 4. Combine the merged video + mixed audio + verse card into one finished
-   file — by hand or whatever assembly method is available, since the
-   automated version is what's broken. This is explicitly a stopgap, not
-   the intended long-term process.
-
-**Before trusting `finalize_video` again (once the bug above is actually
-fixed and confirmed)**, generate exactly one end-to-end and have the page
-owner glance at it — mainly to confirm the verse card sits where it should
-and the output is genuinely 9:16. Once confirmed, run the rest of the month
-without asking again.
+   file. This is a stopgap for an unexpected failure, not the normal path.
 
 ## Always, every video
 
@@ -208,9 +222,14 @@ without asking again.
 - `aspect_ratio: "9:16"` on every still, clip, and verse card — never
   default. English and Spanish each get their own casting, never a shared
   scene (section 2).
-- Never call `generate_music` for this page. Use `finalize_video` for
-  single-clip scenes once confirmed working; use the fallback procedure
-  (section 9) for multi-clip scenes until the known issue is fixed.
+- Depicting Jesus or angels is normal and routine for this page — never
+  withhold it or ask permission before including one (section 3).
+- No fixed cap on how many stills/clips a scene uses, and no fixed "hook"
+  length — both are judged from the storyboard and the verse's actual
+  moment, never defaulted short (sections 5 and 9).
+- Never call `generate_music` for this page. `finalize_video` is confirmed
+  working end-to-end, including multi-clip scenes with a verse card —
+  resolution and framing are locked to 9:16 automatically.
 - Never pick a narration voice, and never call `list_voices` — use the one
   fixed voice_id for the language being narrated, see section 0.
 - Always pass `narration_duration` to `mix_audio`/`finalize_video` — it's
