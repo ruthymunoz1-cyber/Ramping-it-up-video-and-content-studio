@@ -36,7 +36,6 @@ const MAX_BODY_BYTES = 1_000_000; // 1MB — generous for JSON-RPC tool calls, s
 const MAX_NARRATION_CHARS = 5000; // keeps the base64 response a sane size over HTTP
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || "https://ramping-it-up-mcp.onrender.com";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SIGNATURE_MUSIC_PATH = path.join(__dirname, "assets", "signature-music.mp3");
 
 /* Short-lived in-memory hosting for generated narration, so fal.ai's compose
  * tool (mix_audio) has a URL it can fetch — ElevenLabs returns raw bytes,
@@ -154,14 +153,24 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "GET" && req.url === "/assets/signature-music.mp3") {
-    if (!existsSync(SIGNATURE_MUSIC_PATH)) {
-      res.writeHead(404, { ...cors, "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "signature-music.mp3 has not been uploaded to the server yet." }));
+  if (req.method === "GET" && req.url.startsWith("/assets/")) {
+    const rel = decodeURIComponent(req.url.slice("/assets/".length).split("?")[0]);
+    const assetsRoot = path.join(__dirname, "assets");
+    const filePath = path.join(assetsRoot, rel);
+    if (rel.includes("..") || !filePath.startsWith(assetsRoot + path.sep)) {
+      res.writeHead(400, { ...cors, "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Invalid asset path." }));
       return;
     }
-    const buf = await readFile(SIGNATURE_MUSIC_PATH);
-    res.writeHead(200, { ...cors, "Content-Type": "audio/mpeg", "Content-Length": buf.length });
+    if (!existsSync(filePath)) {
+      res.writeHead(404, { ...cors, "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: `${rel} has not been uploaded to the server.` }));
+      return;
+    }
+    const buf = await readFile(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = ext === ".mp4" ? "video/mp4" : ext === ".mp3" ? "audio/mpeg" : "application/octet-stream";
+    res.writeHead(200, { ...cors, "Content-Type": contentType, "Content-Length": buf.length });
     res.end(buf);
     return;
   }
