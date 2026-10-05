@@ -55,13 +55,52 @@ function getStoredAudio(id) {
   return entry;
 }
 
+/* fal.ai jobs (especially video generation and finalize_video's compose
+ * step) routinely run 1-3+ minutes. Holding one HTTP request open that long
+ * gets cut off by hosting-platform connection limits even though the job
+ * keeps running and completes fine on fal's end — confirmed in practice
+ * (two 144s/152s jobs completed successfully but their responses never made
+ * it back). So these tools don't block the request: tools/call starts the
+ * job and returns a job_id immediately; check_job_status polls it. */
+const SLOW_TOOLS = new Set(["generate_image", "animate_image", "generate_video", "lip_sync", "generate_music", "upscale_video", "mix_audio", "finalize_video"]);
+const JOB_STORE = new Map(); // job_id -> { status: "running"|"done"|"error", tool, startedAt, result?, error? }
+const JOB_TTL_MS = 30 * 60 * 1000;
+
+function startJob(name, args) {
+  const jobId = randomUUID();
+  JOB_STORE.set(jobId, { status: "running", tool: name, startedAt: Date.now() });
+  REMOTE_HANDLERS[name](args)
+    .then(text => JOB_STORE.set(jobId, { status: "done", tool: name, startedAt: JOB_STORE.get(jobId).startedAt, result: text }))
+    .catch(e => JOB_STORE.set(jobId, { status: "error", tool: name, startedAt: JOB_STORE.get(jobId).startedAt, error: e.message }));
+  return jobId;
+}
+function getJob(jobId) {
+  const job = JOB_STORE.get(jobId);
+  if (!job) return null;
+  if (Date.now() - job.startedAt > JOB_TTL_MS) { JOB_STORE.delete(jobId); return null; }
+  return job;
+}
+
+const CHECK_JOB_STATUS_TOOL = {
+  name: "check_job_status",
+  description: "Check on a job started by generate_image, animate_image, generate_video, lip_sync, generate_music, upscale_video, " +
+    "mix_audio, or finalize_video — those tools return a job_id immediately instead of waiting (fal.ai jobs can take 1-3+ minutes, " +
+    "longer than a single request should stay open). Call this every ~15-20 seconds with that job_id until status is \"done\" or " +
+    "\"error\" — do not call any of those generation tools again while waiting, and do not treat a \"running\" status as a failure.",
+  inputSchema: {
+    type: "object",
+    properties: { job_id: { type: "string", description: "The job_id returned when the original tool call started." } },
+    required: ["job_id"],
+  },
+};
+
 if (!AUTH_TOKEN) {
   console.error("MCP_AUTH_TOKEN is not set. Refusing to start an unauthenticated server reachable over the network.");
   console.error("Set it to a long random string and pass the same value to your MCP client's auth/header config.");
   process.exit(1);
 }
 
-const REMOTE_TOOLS = TOOLS.filter(t => !LOCAL_ONLY_TOOLS.has(t.name));
+const REMOTE_TOOLS = [...TOOLS.filter(t => !LOCAL_ONLY_TOOLS.has(t.name)), CHECK_JOB_STATUS_TOOL];
 
 /* generate_narration needs a different implementation remotely: the shared
  * handler in lib.mjs saves to local disk and returns a path, which means
@@ -116,6 +155,21 @@ async function handleRpc(req) {
     const { name, arguments: args } = params;
     if (LOCAL_ONLY_TOOLS.has(name)) {
       return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `${name} writes to local disk and isn't available over the remote transport.` }], isError: true } };
+    }
+    if (name === "check_job_status") {
+      const job = getJob((args || {}).job_id);
+      if (!job) return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: "Unknown or expired job_id (jobs are kept for 30 minutes)." }], isError: true } };
+      if (job.status === "running") {
+        const elapsed = Math.round((Date.now() - job.startedAt) / 1000);
+        return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Still running "${job.tool}" (${elapsed}s so far). Check again in ~15-20 seconds.` }] } };
+      }
+      if (job.status === "error") return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: "Error: " + job.error }], isError: true } };
+      return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: job.result }] } };
+    }
+    if (SLOW_TOOLS.has(name)) {
+      if (!REMOTE_HANDLERS[name]) return { jsonrpc: "2.0", id, error: { code: -32601, message: `Unknown tool: ${name}` } };
+      const jobId = startJob(name, args || {});
+      return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: `Started "${name}" (fal.ai jobs can take 1-3+ minutes). job_id: ${jobId}\nCall check_job_status with this job_id every ~15-20 seconds until it reports done — don't call ${name} again while waiting.` }] } };
     }
     const handler = REMOTE_HANDLERS[name];
     if (!handler) return { jsonrpc: "2.0", id, error: { code: -32601, message: `Unknown tool: ${name}` } };
