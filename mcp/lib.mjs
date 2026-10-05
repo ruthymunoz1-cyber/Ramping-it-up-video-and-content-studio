@@ -26,6 +26,29 @@ const AUDIO_OUTPUT_DIR = process.env.RIU_MCP_OUTPUT_DIR || path.join(homedir(), 
  * can fetch it for mix_audio. Never generated, never swapped per video. */
 const DEFAULT_SIGNATURE_MUSIC_URL = process.env.SIGNATURE_MUSIC_URL || "https://ramping-it-up-mcp.onrender.com/assets/signature-music.mp3";
 
+/* Estimated from the file's size and its 320kbps bitrate — this environment
+ * has no ffprobe to measure it exactly. Override via env var if this track
+ * is ever replaced, or if the estimate turns out to be off once heard. Used
+ * to loop the track rather than let it go silent partway through a longer
+ * narration — narration/music start together at 0 and both need to cover
+ * the full runtime. LOOP_TRIM_SEC shaves a touch off each loop so sequential
+ * repeats never overlap even if the real file is a little longer than estimated. */
+const SIGNATURE_MUSIC_DURATION_SEC = Number(process.env.SIGNATURE_MUSIC_DURATION_SEC) || 66;
+const LOOP_TRIM_SEC = 0.3;
+
+function buildMusicTrack(musicUrl, totalSec) {
+  if (!totalSec) return { id: "music", type: "audio", keyframes: [{ url: musicUrl, timestamp: 0 }] };
+  const loopLenMs = Math.round((SIGNATURE_MUSIC_DURATION_SEC - LOOP_TRIM_SEC) * 1000);
+  const totalMs = Math.round(totalSec * 1000);
+  const keyframes = [];
+  let t = 0;
+  while (t < totalMs) {
+    keyframes.push({ url: musicUrl, timestamp: t, duration: Math.min(loopLenMs, totalMs - t) });
+    t += loopLenMs;
+  }
+  return { id: "music", type: "audio", keyframes };
+}
+
 /* ---------------- fal queue client ---------------- */
 async function falRun(modelId, input) {
   if (!FAL_KEY) throw new Error("FAL_KEY is not set. Add it to the MCP server env (see mcp/README.md).");
@@ -250,12 +273,15 @@ export const TOOLS = [
     description: "Overlay narration with the page's fixed signature music into one finished audio file, using fal.ai's ffmpeg compose tool " +
       "(~$0.0002/sec — a 30s track is about $0.006). music_url defaults to the page's permanent signature-music.mp3 — never pass a " +
       "different music_url for this page, and never call generate_music instead; this tool exists specifically so that's never necessary. " +
-      "narration_url must be a URL fal.ai's servers can fetch — use the temporary URL generate_narration returns over the remote transport, " +
-      "not the base64 data URI. Returns the merged audio's hosted URL.",
+      "Pass narration_duration (how long the narration runs, in seconds) so the music loops to cover the whole thing — the signature " +
+      "track is roughly 66s and narration often runs longer; without narration_duration the music plays once and goes silent if it's " +
+      "shorter than the narration. narration_url must be a URL fal.ai's servers can fetch — use the temporary URL generate_narration " +
+      "returns over the remote transport, not the base64 data URI. Returns the merged audio's hosted URL.",
     inputSchema: {
       type: "object",
       properties: {
         narration_url: { type: "string", description: "URL to the narration audio (the temporary URL from generate_narration's remote response)." },
+        narration_duration: { type: "number", description: "How long the narration runs, in seconds — used to loop the music to cover the full length. Omit only if the narration is known to be shorter than ~60s." },
         music_url: { type: "string", description: "Optional override. Leave unset — it defaults to the page's one fixed signature music file." },
       },
       required: ["narration_url"],
@@ -300,7 +326,7 @@ export const TOOLS = [
         verse_card_url: { type: "string", description: "Optional — use a pre-made verse card image instead of auto-generating one." },
         music_url: { type: "string", description: "Optional override. Leave unset — defaults to the page's one fixed signature music." },
         duration: { type: "number", description: "With video_url only: that single clip's length in seconds. Not needed with video_clips (computed automatically from each clip's duration)." },
-        narration_duration: { type: "number", description: "How long the narration actually runs, in seconds. Used to hold the verse card for exactly the right length after the video ends. If omitted, the card holds to the end of the longest track." },
+        narration_duration: { type: "number", description: "How long the narration actually runs, in seconds. Used to hold the verse card for exactly the right length after the video ends, AND to loop the signature music (it's roughly 66s and narration often runs longer) so it covers the whole runtime instead of going silent partway through. Strongly recommended — without it the card holds to the end of the longest track and the music only plays once." },
         aspect_ratio: { type: "string", description: "Verse card aspect ratio. Default 9:16 (reels)." },
       },
       required: ["narration_url"],
@@ -397,7 +423,7 @@ export const HANDLERS = {
     const result = await falRun("fal-ai/ffmpeg-api/compose", {
       tracks: [
         { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0 }] },
-        { id: "music", type: "audio", keyframes: [{ url: musicUrl, timestamp: 0 }] },
+        buildMusicTrack(musicUrl, a.narration_duration),
       ],
     });
     const url = extractMedia(result);
@@ -440,7 +466,7 @@ export const HANDLERS = {
       { id: "video", type: "video", keyframes: videoKeyframes },
       { id: "verse_card", type: "image", keyframes: [verseCardKeyframe] },
       { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0 }] },
-      { id: "music", type: "audio", keyframes: [{ url: musicUrl, timestamp: 0 }] },
+      buildMusicTrack(musicUrl, a.narration_duration),
     ];
     const result = await falRun("fal-ai/ffmpeg-api/compose", { tracks });
     const url = extractMedia(result);
