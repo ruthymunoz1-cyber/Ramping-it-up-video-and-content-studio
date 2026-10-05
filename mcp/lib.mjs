@@ -272,6 +272,19 @@ export const TOOLS = [
     },
   },
   {
+    name: "merge_videos",
+    description: "Concatenate 2+ video clips into one video, in order, using fal.ai's dedicated merge-videos tool (free — $0/compute-sec). " +
+      "Simpler and more reliable than finalize_video's all-in-one assembly (which has a known issue combining video with other tracks) — " +
+      "use this on its own when you just need the clips joined into one file, e.g. for manual final assembly. Returns the merged video's hosted URL.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        video_urls: { type: "array", items: { type: "string" }, description: "Clip URLs in the order they should play." },
+      },
+      required: ["video_urls"],
+    },
+  },
+  {
     name: "mix_audio",
     description: "Overlay narration with the page's fixed signature music into one finished audio file, using fal.ai's ffmpeg compose tool " +
       "(~$0.0002/sec — a 30s track is about $0.006). music_url defaults to the page's permanent signature-music.mp3 — never pass a " +
@@ -425,6 +438,13 @@ export const HANDLERS = {
     const buffer = await elSpeak(voice.voice_id, a.text, a.model || "eleven_multilingual_v2");
     const file = await saveAudioFile(buffer, a.text.slice(0, 40));
     return `Narration generated with voice "${voice.name}":\n${file}`;
+  },
+  async merge_videos(a) {
+    if (!Array.isArray(a.video_urls) || a.video_urls.length < 2) throw new Error("video_urls must be an array of 2 or more clip URLs.");
+    const result = await falRun("fal-ai/ffmpeg-api/merge-videos", { video_urls: a.video_urls });
+    const url = extractMedia(result);
+    if (!url) throw new Error("No merged video URL in the result: " + JSON.stringify(result));
+    return `Merged video (${a.video_urls.length} clips):\n${url}`;
   },
   async mix_audio(a) {
     // fal.ai's compose tool requires an explicit duration on every keyframe

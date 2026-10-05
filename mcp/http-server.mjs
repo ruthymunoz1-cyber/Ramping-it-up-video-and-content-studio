@@ -62,7 +62,7 @@ function getStoredAudio(id) {
  * (two 144s/152s jobs completed successfully but their responses never made
  * it back). So these tools don't block the request: tools/call starts the
  * job and returns a job_id immediately; check_job_status polls it. */
-const SLOW_TOOLS = new Set(["generate_image", "animate_image", "generate_video", "lip_sync", "generate_music", "upscale_video", "mix_audio", "finalize_video"]);
+const SLOW_TOOLS = new Set(["generate_image", "animate_image", "generate_video", "lip_sync", "generate_music", "upscale_video", "mix_audio", "finalize_video", "merge_videos"]);
 const JOB_STORE = new Map(); // job_id -> { status: "running"|"done"|"error", tool, startedAt, result?, error? }
 const JOB_TTL_MS = 30 * 60 * 1000;
 
