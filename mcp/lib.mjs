@@ -37,7 +37,10 @@ const SIGNATURE_MUSIC_DURATION_SEC = Number(process.env.SIGNATURE_MUSIC_DURATION
 const LOOP_TRIM_SEC = 0.3;
 
 function buildMusicTrack(musicUrl, totalSec) {
-  if (!totalSec) return { id: "music", type: "audio", keyframes: [{ url: musicUrl, timestamp: 0 }] };
+  // fal.ai's compose tool requires an explicit `duration` on every keyframe
+  // (confirmed via its own validation error: "tracks[2].keyframes[0].duration
+  // — Field required") — there is no "play once, let it run" option.
+  if (!totalSec) throw new Error("narration_duration is required — fal.ai's compose tool needs an explicit duration on every keyframe, including music.");
   const loopLenMs = Math.round((SIGNATURE_MUSIC_DURATION_SEC - LOOP_TRIM_SEC) * 1000);
   const totalMs = Math.round(totalSec * 1000);
   const keyframes = [];
@@ -273,18 +276,18 @@ export const TOOLS = [
     description: "Overlay narration with the page's fixed signature music into one finished audio file, using fal.ai's ffmpeg compose tool " +
       "(~$0.0002/sec — a 30s track is about $0.006). music_url defaults to the page's permanent signature-music.mp3 — never pass a " +
       "different music_url for this page, and never call generate_music instead; this tool exists specifically so that's never necessary. " +
-      "Pass narration_duration (how long the narration runs, in seconds) so the music loops to cover the whole thing — the signature " +
-      "track is roughly 66s and narration often runs longer; without narration_duration the music plays once and goes silent if it's " +
-      "shorter than the narration. narration_url must be a URL fal.ai's servers can fetch — use the temporary URL generate_narration " +
-      "returns over the remote transport, not the base64 data URI. Returns the merged audio's hosted URL.",
+      "narration_duration is REQUIRED — fal.ai's compose tool needs an explicit duration on every keyframe, with no \"play once\" option, " +
+      "and it's also used to loop the music track to cover the whole thing (the signature track is roughly 66s and narration often runs " +
+      "longer). narration_url must be a URL fal.ai's servers can fetch — use the temporary URL generate_narration returns over the " +
+      "remote transport, not the base64 data URI. Returns the merged audio's hosted URL.",
     inputSchema: {
       type: "object",
       properties: {
         narration_url: { type: "string", description: "URL to the narration audio (the temporary URL from generate_narration's remote response)." },
-        narration_duration: { type: "number", description: "How long the narration runs, in seconds — used to loop the music to cover the full length. Omit only if the narration is known to be shorter than ~60s." },
+        narration_duration: { type: "number", description: "How long the narration actually runs, in seconds. Required — fal.ai's compose tool rejects a request without an explicit duration on every keyframe." },
         music_url: { type: "string", description: "Optional override. Leave unset — it defaults to the page's one fixed signature music file." },
       },
-      required: ["narration_url"],
+      required: ["narration_url", "narration_duration"],
     },
   },
   {
@@ -294,8 +297,11 @@ export const TOOLS = [
       "continue — the card is sequenced AFTER the video ends, never overlaid on top of it from the start. Merged via fal.ai's ffmpeg " +
       "compose tool (~$0.0002/sec — a 30s video is about $0.006, on top of whatever the clips/narration already cost). " +
       "This page's format is typically ~45-50s of continuous video motion, then the verse card for the remainder of a ~60s+ narration — " +
-      "that usually means several stitched beats (video_clips), not one short clip; pass narration_duration (how long the narration " +
-      "actually runs) so the card holds for exactly the right length rather than guessing. " +
+      "that usually means several stitched beats (video_clips), not one short clip. " +
+      "narration_duration is REQUIRED (not optional) — fal.ai's compose tool rejects a request without an explicit duration on every " +
+      "keyframe (video, verse card, narration, AND music all need one — confirmed via the API's own validation error). It's also used " +
+      "to hold the card for the right length and loop the music to cover the full runtime. " +
+      "duration is likewise required when using video_url (a single clip) — each item in video_clips already requires its own duration. " +
       "Use video_clips instead of video_url whenever the scene has more than one distinct beat/gesture (e.g. she sits, then rises and " +
       "crosses the room, then hands over the cup — each of those is its own still + its own short animation, nailed separately, " +
       "then stitched here) — a single clip can only carry ONE clean gesture convincingly. " +
@@ -325,11 +331,11 @@ export const TOOLS = [
         caption: { type: "string", description: "Optional short devotional line under the verse." },
         verse_card_url: { type: "string", description: "Optional — use a pre-made verse card image instead of auto-generating one." },
         music_url: { type: "string", description: "Optional override. Leave unset — defaults to the page's one fixed signature music." },
-        duration: { type: "number", description: "With video_url only: that single clip's length in seconds. Not needed with video_clips (computed automatically from each clip's duration)." },
-        narration_duration: { type: "number", description: "How long the narration actually runs, in seconds. Used to hold the verse card for exactly the right length after the video ends, AND to loop the signature music (it's roughly 66s and narration often runs longer) so it covers the whole runtime instead of going silent partway through. Strongly recommended — without it the card holds to the end of the longest track and the music only plays once." },
+        duration: { type: "number", description: "Required when using video_url: that single clip's length in seconds. Not needed with video_clips (each clip has its own duration)." },
+        narration_duration: { type: "number", description: "How long the narration actually runs, in seconds. Required — fal.ai's compose tool rejects a request without an explicit duration on every keyframe (video, verse card, narration, and music all need one)." },
         aspect_ratio: { type: "string", description: "Verse card aspect ratio. Default 9:16 (reels)." },
       },
-      required: ["narration_url"],
+      required: ["narration_url", "narration_duration"],
     },
   },
   {
@@ -419,10 +425,15 @@ export const HANDLERS = {
     return `Narration generated with voice "${voice.name}":\n${file}`;
   },
   async mix_audio(a) {
+    // fal.ai's compose tool requires an explicit duration on every keyframe
+    // ("tracks[N].keyframes[0].duration — Field required") — fail fast,
+    // before any paid call, rather than let an invalid request burn a job.
+    if (!a.narration_duration) throw new Error("narration_duration is required (fal.ai's compose tool needs an explicit duration on every keyframe, including narration and music).");
     const musicUrl = a.music_url || DEFAULT_SIGNATURE_MUSIC_URL;
+    const narrationMs = Math.round(a.narration_duration * 1000);
     const result = await falRun("fal-ai/ffmpeg-api/compose", {
       tracks: [
-        { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0 }] },
+        { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0, duration: narrationMs }] },
         buildMusicTrack(musicUrl, a.narration_duration),
       ],
     });
@@ -431,41 +442,43 @@ export const HANDLERS = {
     return `Mixed audio (narration + signature music):\n${url}`;
   },
   async finalize_video(a) {
+    if (!a.narration_duration) throw new Error("narration_duration is required (fal.ai's compose tool needs an explicit duration on every keyframe — video, verse card, narration, and music all need one).");
+    if (!a.video_url && !(Array.isArray(a.video_clips) && a.video_clips.length)) {
+      throw new Error("Provide either video_url (single shot, with duration) or video_clips (a sequence of shots, each with duration).");
+    }
+    if (a.video_url && !a.duration) throw new Error("duration is required when using video_url (the clip's length in seconds).");
+
     const musicUrl = a.music_url || DEFAULT_SIGNATURE_MUSIC_URL;
     const verseCardUrl = a.verse_card_url || await renderVerseCard({
       reference: a.verse_reference, verseText: a.verse_text, caption: a.caption, aspectRatio: a.aspect_ratio || "9:16",
     });
 
-    let videoKeyframes, videoEndSec = 0;
+    let videoKeyframes, videoEndSec;
     if (Array.isArray(a.video_clips) && a.video_clips.length) {
       let t = 0;
       videoKeyframes = a.video_clips.map(c => {
-        const kf = { url: c.url, timestamp: Math.round(t * 1000) };
-        if (c.duration) { kf.duration = Math.round(c.duration * 1000); t += c.duration; }
+        const durMs = Math.round(c.duration * 1000);
+        const kf = { url: c.url, timestamp: Math.round(t * 1000), duration: durMs };
+        t += c.duration;
         return kf;
       });
       videoEndSec = t;
-    } else if (a.video_url) {
-      videoKeyframes = [{ url: a.video_url, timestamp: 0 }];
-      if (a.duration) { videoKeyframes[0].duration = Math.round(a.duration * 1000); videoEndSec = a.duration; }
     } else {
-      throw new Error("Provide either video_url (single shot) or video_clips (a sequence of shots).");
+      videoKeyframes = [{ url: a.video_url, timestamp: 0, duration: Math.round(a.duration * 1000) }];
+      videoEndSec = a.duration;
     }
 
     /* The verse card appears AFTER the video's motion ends, not overlaid on
      * top of it from the start — matches the page's actual format: the clip
      * plays through, then the card holds while narration keeps going. */
     const verseCardStartMs = Math.round(videoEndSec * 1000);
-    const verseCardKeyframe = { url: verseCardUrl, timestamp: verseCardStartMs };
-    if (a.narration_duration) {
-      const holdSec = Math.max(0, a.narration_duration - videoEndSec);
-      verseCardKeyframe.duration = Math.round(holdSec * 1000);
-    } // else: no duration given — holds to the end of the longest track (narration)
+    const holdSec = Math.max(0, a.narration_duration - videoEndSec);
+    const verseCardKeyframe = { url: verseCardUrl, timestamp: verseCardStartMs, duration: Math.round(holdSec * 1000) };
 
     const tracks = [
       { id: "video", type: "video", keyframes: videoKeyframes },
       { id: "verse_card", type: "image", keyframes: [verseCardKeyframe] },
-      { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0 }] },
+      { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0, duration: Math.round(a.narration_duration * 1000) }] },
       buildMusicTrack(musicUrl, a.narration_duration),
     ];
     const result = await falRun("fal-ai/ffmpeg-api/compose", { tracks });
