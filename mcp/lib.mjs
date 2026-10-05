@@ -506,21 +506,42 @@ export const HANDLERS = {
       videoUrl = a.video_url;
       videoEndSec = a.duration;
     }
-    const videoKeyframes = [{ url: videoUrl, timestamp: 0, duration: Math.round(videoEndSec * 1000) }];
-
     /* The verse card appears AFTER the video's motion ends, not overlaid on
      * top of it from the start — matches the page's actual format: the clip
-     * plays through, then the card holds while narration keeps going. */
+     * plays through, then the card holds while narration keeps going.
+     *
+     * fal.ai's compose tool cannot combine a "video" track with an "image"
+     * track in the same call ("Multiple video tracks are not supported" —
+     * confirmed live: the identical request succeeds the moment the image
+     * track is removed). So the card is never sent to compose as an image.
+     * Instead it's converted to its own short video clip (images-to-video,
+     * held for the card's duration) and appended to the scene via
+     * merge-videos — the same tool already proven to work for video+video —
+     * producing ONE video that compose only ever sees as a single video
+     * track, same as any other clip. */
+    if (wantsVerseCard) {
+      const holdSec = Math.max(0, a.narration_duration - videoEndSec);
+      const fps = 30;
+      const cardVideoResult = await falRun("fal-ai/ffmpeg-api/images-to-video", {
+        images: [{ url: verseCardUrl, frames: Math.max(1, Math.round(holdSec * fps)) }],
+        fps,
+      });
+      const cardVideoUrl = extractMedia(cardVideoResult);
+      if (!cardVideoUrl) throw new Error("No verse card video URL in the result: " + JSON.stringify(cardVideoResult));
+
+      const mergedResult = await falRun("fal-ai/ffmpeg-api/merge-videos", { video_urls: [videoUrl, cardVideoUrl] });
+      const mergedUrl = extractMedia(mergedResult);
+      if (!mergedUrl) throw new Error("No merged (scene+card) video URL in the result: " + JSON.stringify(mergedResult));
+      videoUrl = mergedUrl;
+      videoEndSec = videoEndSec + holdSec;
+    }
+    const videoKeyframes = [{ url: videoUrl, timestamp: 0, duration: Math.round(videoEndSec * 1000) }];
+
     const tracks = [
       { id: "video", type: "video", keyframes: videoKeyframes },
       { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0, duration: Math.round(a.narration_duration * 1000) }] },
       buildMusicTrack(musicUrl, a.narration_duration),
     ];
-    if (wantsVerseCard) {
-      const verseCardStartMs = Math.round(videoEndSec * 1000);
-      const holdSec = Math.max(0, a.narration_duration - videoEndSec);
-      tracks.push({ id: "verse_card", type: "image", keyframes: [{ url: verseCardUrl, timestamp: verseCardStartMs, duration: Math.round(holdSec * 1000) }] });
-    }
     const result = await falRun("fal-ai/ffmpeg-api/compose", { tracks });
     const url = extractMedia(result);
     if (!url) throw new Error("No final video URL in the result: " + JSON.stringify(result));
