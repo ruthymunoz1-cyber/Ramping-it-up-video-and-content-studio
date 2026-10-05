@@ -521,7 +521,11 @@ export const HANDLERS = {
      * track, same as any other clip. */
     if (wantsVerseCard) {
       const holdSec = Math.max(0, a.narration_duration - videoEndSec);
-      const fps = 30;
+      /* images-to-video caps frames at 1000 (confirmed via its own "Input
+       * should be less than or equal to 1000" error on a real long hold).
+       * It's a static held image, so a lower fps costs nothing visually —
+       * scale it down for long holds instead of hitting the cap. */
+      const fps = Math.max(1, Math.min(30, Math.floor(999 / Math.max(holdSec, 1))));
       const cardVideoResult = await falRun("fal-ai/ffmpeg-api/images-to-video", {
         images: [{ url: verseCardUrl, frames: Math.max(1, Math.round(holdSec * fps)) }],
         fps,
