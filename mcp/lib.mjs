@@ -275,11 +275,16 @@ export const TOOLS = [
     name: "merge_videos",
     description: "Concatenate 2+ video clips into one video, in order, using fal.ai's dedicated merge-videos tool (free — $0/compute-sec). " +
       "Simpler and more reliable than finalize_video's all-in-one assembly (which has a known issue combining video with other tracks) — " +
-      "use this on its own when you just need the clips joined into one file, e.g. for manual final assembly. Returns the merged video's hosted URL.",
+      "use this on its own when you just need the clips joined into one file, e.g. for manual final assembly. " +
+      "If clips come from different generation batches/models, pass target_fps to force a uniform frame rate — mismatched source clips " +
+      "can otherwise produce a merged file with multiple embedded video tracks (confirmed root cause of finalize_video's known issue: " +
+      "fal.ai's own compose tool then rejects that file with \"Multiple video tracks are not supported\", even on a single video_url). " +
+      "Returns the merged video's hosted URL.",
     inputSchema: {
       type: "object",
       properties: {
         video_urls: { type: "array", items: { type: "string" }, description: "Clip URLs in the order they should play." },
+        target_fps: { type: "number", description: "Force all clips to this frame rate before merging (e.g. 30). Recommended whenever clips come from different generations — without it, mismatched source frame rates can produce a file with multiple video tracks that fal.ai's compose tool then rejects." },
       },
       required: ["video_urls"],
     },
@@ -441,7 +446,9 @@ export const HANDLERS = {
   },
   async merge_videos(a) {
     if (!Array.isArray(a.video_urls) || a.video_urls.length < 2) throw new Error("video_urls must be an array of 2 or more clip URLs.");
-    const result = await falRun("fal-ai/ffmpeg-api/merge-videos", { video_urls: a.video_urls });
+    const input = { video_urls: a.video_urls };
+    if (a.target_fps) input.target_fps = a.target_fps;
+    const result = await falRun("fal-ai/ffmpeg-api/merge-videos", input);
     const url = extractMedia(result);
     if (!url) throw new Error("No merged video URL in the result: " + JSON.stringify(result));
     return `Merged video (${a.video_urls.length} clips):\n${url}`;
