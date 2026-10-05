@@ -264,8 +264,12 @@ export const TOOLS = [
   {
     name: "finalize_video",
     description: "Assemble ONE finished video for this page: the scene (a single clip, OR a sequence of clips stitched end-to-end — see " +
-      "video_clips) + an auto-generated verse card overlay + narration + the fixed signature music, merged into a single file via fal.ai's " +
-      "ffmpeg compose tool (~$0.0002/sec — a 30s video is about $0.006, on top of whatever the clips/narration already cost). " +
+      "video_clips) plays first, THEN an auto-generated verse card appears and holds while narration (and the fixed signature music) " +
+      "continue — the card is sequenced AFTER the video ends, never overlaid on top of it from the start. Merged via fal.ai's ffmpeg " +
+      "compose tool (~$0.0002/sec — a 30s video is about $0.006, on top of whatever the clips/narration already cost). " +
+      "This page's format is typically ~45-50s of continuous video motion, then the verse card for the remainder of a ~60s+ narration — " +
+      "that usually means several stitched beats (video_clips), not one short clip; pass narration_duration (how long the narration " +
+      "actually runs) so the card holds for exactly the right length rather than guessing. " +
       "Use video_clips instead of video_url whenever the scene has more than one distinct beat/gesture (e.g. she sits, then rises and " +
       "crosses the room, then hands over the cup — each of those is its own still + its own short animation, nailed separately, " +
       "then stitched here) — a single clip can only carry ONE clean gesture convincingly. " +
@@ -295,7 +299,8 @@ export const TOOLS = [
         caption: { type: "string", description: "Optional short devotional line under the verse." },
         verse_card_url: { type: "string", description: "Optional — use a pre-made verse card image instead of auto-generating one." },
         music_url: { type: "string", description: "Optional override. Leave unset — defaults to the page's one fixed signature music." },
-        duration: { type: "number", description: "Total scene length in seconds, so the verse card overlays the full video. With video_clips this is computed automatically from the clip durations — only pass it to override." },
+        duration: { type: "number", description: "With video_url only: that single clip's length in seconds. Not needed with video_clips (computed automatically from each clip's duration)." },
+        narration_duration: { type: "number", description: "How long the narration actually runs, in seconds. Used to hold the verse card for exactly the right length after the video ends. If omitted, the card holds to the end of the longest track." },
         aspect_ratio: { type: "string", description: "Verse card aspect ratio. Default 9:16 (reels)." },
       },
       required: ["narration_url"],
@@ -405,7 +410,7 @@ export const HANDLERS = {
       reference: a.verse_reference, verseText: a.verse_text, caption: a.caption, aspectRatio: a.aspect_ratio || "9:16",
     });
 
-    let videoKeyframes, autoTotalSec = 0;
+    let videoKeyframes, videoEndSec = 0;
     if (Array.isArray(a.video_clips) && a.video_clips.length) {
       let t = 0;
       videoKeyframes = a.video_clips.map(c => {
@@ -413,18 +418,27 @@ export const HANDLERS = {
         if (c.duration) { kf.duration = Math.round(c.duration * 1000); t += c.duration; }
         return kf;
       });
-      autoTotalSec = t;
+      videoEndSec = t;
     } else if (a.video_url) {
       videoKeyframes = [{ url: a.video_url, timestamp: 0 }];
+      if (a.duration) { videoKeyframes[0].duration = Math.round(a.duration * 1000); videoEndSec = a.duration; }
     } else {
       throw new Error("Provide either video_url (single shot) or video_clips (a sequence of shots).");
     }
 
-    const totalSec = a.duration || autoTotalSec || undefined;
-    const durationMs = totalSec ? Math.round(totalSec * 1000) : undefined;
+    /* The verse card appears AFTER the video's motion ends, not overlaid on
+     * top of it from the start — matches the page's actual format: the clip
+     * plays through, then the card holds while narration keeps going. */
+    const verseCardStartMs = Math.round(videoEndSec * 1000);
+    const verseCardKeyframe = { url: verseCardUrl, timestamp: verseCardStartMs };
+    if (a.narration_duration) {
+      const holdSec = Math.max(0, a.narration_duration - videoEndSec);
+      verseCardKeyframe.duration = Math.round(holdSec * 1000);
+    } // else: no duration given — holds to the end of the longest track (narration)
+
     const tracks = [
       { id: "video", type: "video", keyframes: videoKeyframes },
-      { id: "verse_card", type: "image", keyframes: [{ url: verseCardUrl, timestamp: 0, ...(durationMs ? { duration: durationMs } : {}) }] },
+      { id: "verse_card", type: "image", keyframes: [verseCardKeyframe] },
       { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0 }] },
       { id: "music", type: "audio", keyframes: [{ url: musicUrl, timestamp: 0 }] },
     ];
