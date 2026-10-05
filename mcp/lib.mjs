@@ -487,6 +487,14 @@ export const HANDLERS = {
       reference: a.verse_reference, verseText: a.verse_text, caption: a.caption, aspectRatio: a.aspect_ratio || "9:16",
     })) : null;
 
+    /* merge-videos defaults to deriving its output resolution from one of
+     * the inputs when `resolution` isn't given — confirmed live to produce
+     * the wrong frame size (576×768, neither the scene clips' nor the verse
+     * card's actual dimensions). Reels require 1080×1920 every time, so it's
+     * forced explicitly on every merge-videos call in this function rather
+     * than left to chance. */
+    const REEL_RESOLUTION = { width: 1080, height: 1920 };
+
     /* fal.ai's compose tool rejects multiple keyframes on a single "video"
      * track ("Multiple video tracks are not supported" — confirmed from its
      * own error). A multi-clip scene has to be concatenated into ONE video
@@ -498,7 +506,7 @@ export const HANDLERS = {
       if (a.video_clips.length === 1) {
         videoUrl = a.video_clips[0].url;
       } else {
-        const mergeResult = await falRun("fal-ai/ffmpeg-api/merge-videos", { video_urls: a.video_clips.map(c => c.url) });
+        const mergeResult = await falRun("fal-ai/ffmpeg-api/merge-videos", { video_urls: a.video_clips.map(c => c.url), resolution: REEL_RESOLUTION });
         videoUrl = extractMedia(mergeResult);
         if (!videoUrl) throw new Error("No merged video URL in the result: " + JSON.stringify(mergeResult));
       }
@@ -533,7 +541,7 @@ export const HANDLERS = {
       const cardVideoUrl = extractMedia(cardVideoResult);
       if (!cardVideoUrl) throw new Error("No verse card video URL in the result: " + JSON.stringify(cardVideoResult));
 
-      const mergedResult = await falRun("fal-ai/ffmpeg-api/merge-videos", { video_urls: [videoUrl, cardVideoUrl] });
+      const mergedResult = await falRun("fal-ai/ffmpeg-api/merge-videos", { video_urls: [videoUrl, cardVideoUrl], resolution: REEL_RESOLUTION });
       const mergedUrl = extractMedia(mergedResult);
       if (!mergedUrl) throw new Error("No merged (scene+card) video URL in the result: " + JSON.stringify(mergedResult));
       videoUrl = mergedUrl;
