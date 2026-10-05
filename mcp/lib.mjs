@@ -76,7 +76,8 @@ async function falRun(modelId, input) {
 
 function extractMedia(r) {
   return r?.video?.url || r?.image?.url || r?.images?.[0]?.url || r?.videos?.[0]?.url ||
-         r?.audio?.url || r?.audio_file?.url || r?.audio_url || r?.output?.url || r?.url || null;
+         r?.audio?.url || r?.audio_file?.url || r?.audio_url || r?.video_url || r?.image_url ||
+         r?.output?.url || r?.url || null;
 }
 
 /* ---------------- ElevenLabs client ----------------
