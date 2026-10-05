@@ -303,8 +303,10 @@ export const TOOLS = [
       "to hold the card for the right length and loop the music to cover the full runtime. " +
       "duration is likewise required when using video_url (a single clip) — each item in video_clips already requires its own duration. " +
       "Use video_clips instead of video_url whenever the scene has more than one distinct beat/gesture (e.g. she sits, then rises and " +
-      "crosses the room, then hands over the cup — each of those is its own still + its own short animation, nailed separately, " +
-      "then stitched here) — a single clip can only carry ONE clean gesture convincingly. " +
+      "crosses the room, then hands over the cup — each of those is its own still + its own short animation, nailed separately) — a " +
+      "single clip can only carry ONE clean gesture convincingly. With 2+ clips they're concatenated into one video first via fal.ai's " +
+      "merge-videos tool (free — $0/compute-sec), then that single merged video is composed with the verse card/narration/music — " +
+      "compose itself can't take more than one video source directly. " +
       "Generates the verse card automatically from verse_reference/verse_text/caption (skip generation by passing verse_card_url instead). " +
       "music_url always defaults to the page's one fixed signature track — never pass a different one, and never call generate_music. " +
       "IMPORTANT: have the page owner glance at the very first one of these before trusting it for a full batch — exact verse-card " +
@@ -453,20 +455,26 @@ export const HANDLERS = {
       reference: a.verse_reference, verseText: a.verse_text, caption: a.caption, aspectRatio: a.aspect_ratio || "9:16",
     });
 
-    let videoKeyframes, videoEndSec;
+    /* fal.ai's compose tool rejects multiple keyframes on a single "video"
+     * track ("Multiple video tracks are not supported" — confirmed from its
+     * own error). A multi-clip scene has to be concatenated into ONE video
+     * first via the dedicated merge-videos tool, then composed as a single
+     * video keyframe, same as any other video_url. */
+    let videoUrl, videoEndSec;
     if (Array.isArray(a.video_clips) && a.video_clips.length) {
-      let t = 0;
-      videoKeyframes = a.video_clips.map(c => {
-        const durMs = Math.round(c.duration * 1000);
-        const kf = { url: c.url, timestamp: Math.round(t * 1000), duration: durMs };
-        t += c.duration;
-        return kf;
-      });
-      videoEndSec = t;
+      videoEndSec = a.video_clips.reduce((sum, c) => sum + c.duration, 0);
+      if (a.video_clips.length === 1) {
+        videoUrl = a.video_clips[0].url;
+      } else {
+        const mergeResult = await falRun("fal-ai/ffmpeg-api/merge-videos", { video_urls: a.video_clips.map(c => c.url) });
+        videoUrl = extractMedia(mergeResult);
+        if (!videoUrl) throw new Error("No merged video URL in the result: " + JSON.stringify(mergeResult));
+      }
     } else {
-      videoKeyframes = [{ url: a.video_url, timestamp: 0, duration: Math.round(a.duration * 1000) }];
+      videoUrl = a.video_url;
       videoEndSec = a.duration;
     }
+    const videoKeyframes = [{ url: videoUrl, timestamp: 0, duration: Math.round(videoEndSec * 1000) }];
 
     /* The verse card appears AFTER the video's motion ends, not overlaid on
      * top of it from the start — matches the page's actual format: the clip
@@ -484,7 +492,8 @@ export const HANDLERS = {
     const result = await falRun("fal-ai/ffmpeg-api/compose", { tracks });
     const url = extractMedia(result);
     if (!url) throw new Error("No final video URL in the result: " + JSON.stringify(result));
-    return `Final video (${videoKeyframes.length > 1 ? `${videoKeyframes.length} clips stitched` : "scene"} + verse card + narration + signature music):\n${url}\nVerse card image used: ${verseCardUrl}`;
+    const sceneDesc = (a.video_clips?.length > 1) ? `${a.video_clips.length} clips merged` : "scene";
+    return `Final video (${sceneDesc} + verse card + narration + signature music):\n${url}\nVerse card image used: ${verseCardUrl}`;
   },
   async clone_voice(a) {
     const result = await elClone(a.name, a.sample_paths, a.description || "");
