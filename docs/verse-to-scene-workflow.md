@@ -31,6 +31,27 @@ Treat both as locked:
 If a step seems to call for new music or a different voice, stop and ask
 instead of generating one.
 
+## Technical conventions — required on every call, not optional
+
+- **Aspect ratio is always 9:16 (1080×1920, vertical)** — every still, every
+  clip, every verse card. Pass `aspect_ratio: "9:16"` explicitly every time;
+  never leave it to default. A square or landscape asset is not postable as
+  a Reel and the mistake isn't caught until the finished video is reviewed,
+  so get it right at generation time.
+- **narration_duration is required**, not a nice-to-have, on `mix_audio` and
+  `finalize_video` — fal.ai's compose tool rejects a request without an
+  explicit duration on every keyframe (video, verse card, narration, and
+  music all need one). Always know and pass the narration's actual length
+  in seconds.
+- **Every slow tool is asynchronous.** `generate_image`, `animate_image`,
+  `generate_video`, `lip_sync`, `generate_music`, `upscale_video`,
+  `mix_audio`, `merge_videos`, and `finalize_video` all return a `job_id`
+  immediately instead of waiting (fal.ai jobs routinely take 1-3+ minutes —
+  holding one request open that long gets cut off by hosting limits even
+  though the job keeps running). Call `check_job_status` with that `job_id`
+  every ~15-20 seconds until it reports done. Never retry the original tool
+  or treat a "still running" status as a failure.
+
 ## 1. Start from the verse, not a template
 
 For every video, the verse comes first. Read it, and ask: what moment of
@@ -137,31 +158,65 @@ a real, specific question (the way "¿Hay un dolor que has estado
 cargando?" does) rather than a vague platitude. The same anti-AI-tells
 guardrail the Studio's Book Outline uses applies here.
 
-## 9. Finalize — one call produces the finished video
+## 9. Finalize — one call is meant to produce the finished video
 
-Once the clip(s) are approved and narration generated, call `finalize_video`
-with: the narration URL (from `generate_narration`), the verse reference,
-verse text, and caption. For a single-beat scene pass `video_url` and the
-clip's duration; for a multi-beat scene (section 5) pass `video_clips` — an
-ordered list of `{url, duration}` for each beat's clip — and it stitches
-them into one sequence automatically, no `video_url`/`duration` needed. It
-also renders the verse card, layers in narration and the fixed signature
-music, and returns one finished file — no manual assembly, no review needed
-per video once the pipeline is trusted (see the one-time check below).
+The design: once the clip(s) are approved and narration generated, call
+`finalize_video` with the narration URL (from `generate_narration`), the
+verse reference, verse text, and caption. For a single-beat scene pass
+`video_url` and the clip's duration; for a multi-beat scene (section 5) pass
+`video_clips` — an ordered list of `{url, duration}` for each beat's clip.
+With 2+ clips, `finalize_video` first merges them into one video via
+fal.ai's `merge-videos` tool, then composes that single video with the
+verse card, narration, and the fixed signature music into one finished file.
 
-**Before running this across a full month of videos**, generate exactly one
-end-to-end and have the page owner glance at it — mainly to confirm the
-verse card sits where it should. This is a 30-second check, not manual work;
-once confirmed, run the rest of the month without asking again.
+**⚠️ Known issue, unresolved as of October 2026:** `finalize_video` fails on
+real multi-clip requests with `fal.ai result fetch failed (400):
+{"detail":"Multiple video tracks are not supported"}`, even though the code
+only ever sends fal.ai's compose tool a single video keyframe. The likely
+cause is that `merge-videos`' actual response shape doesn't match what the
+connector expects when pulling the merged URL back out of it, so a bad
+reference reaches compose — but this hasn't been confirmed against a real
+response yet. **Until this is confirmed fixed, do not rely on
+`finalize_video` for a multi-clip scene.** Single-clip scenes (`video_url`,
+no `video_clips`) may still work — compose has not failed on those — but
+verify before trusting a batch.
+
+### Fallback procedure, while finalize_video's multi-clip path is broken
+
+1. Call `merge_videos` directly with the clip URLs in order → one merged
+   video. (This is the same fal.ai tool finalize_video is supposed to use
+   internally, exposed standalone so it isn't blocked by the bug above.)
+2. Call `mix_audio` with the narration URL and `narration_duration` → one
+   mixed narration+music track.
+3. Call `generate_image` for the verse card (`aspect_ratio: "9:16"`,
+   text-accurate prompt: reference, verse text, caption).
+4. Combine the merged video + mixed audio + verse card into one finished
+   file — by hand or whatever assembly method is available, since the
+   automated version is what's broken. This is explicitly a stopgap, not
+   the intended long-term process.
+
+**Before trusting `finalize_video` again (once the bug above is actually
+fixed and confirmed)**, generate exactly one end-to-end and have the page
+owner glance at it — mainly to confirm the verse card sits where it should
+and the output is genuinely 9:16. Once confirmed, run the rest of the month
+without asking again.
 
 ## Always, every video
 
 - Use the Ramping It Up Studio tools connected through the MCP connector —
   never Manus's own built-in generator, even as a fallback.
-- Never call `generate_music` for this page, and never composite the verse
-  card by hand — `finalize_video` (section 9) does both automatically.
+- `aspect_ratio: "9:16"` on every still, clip, and verse card — never
+  default. English and Spanish each get their own casting, never a shared
+  scene (section 2).
+- Never call `generate_music` for this page. Use `finalize_video` for
+  single-clip scenes once confirmed working; use the fallback procedure
+  (section 9) for multi-clip scenes until the known issue is fixed.
 - Never pick a narration voice, and never call `list_voices` — use the one
   fixed voice_id for the language being narrated, see section 0.
+- Always pass `narration_duration` to `mix_audio`/`finalize_video` — it's
+  required, not optional.
+- Every slow tool returns a `job_id` — poll `check_job_status`, never retry
+  blind or treat "still running" as a failure.
 - Quote the estimated cost before any video generation step.
 - Stop and ask before generating anything that doesn't clearly follow from
   this workflow.
