@@ -348,8 +348,8 @@ export const TOOLS = [
           },
         },
         narration_url: { type: "string", description: "Temporary narration URL from generate_narration's remote response." },
-        verse_reference: { type: "string", description: "e.g. \"Isaiah 41:10\". Required unless verse_card_url is given." },
-        verse_text: { type: "string", description: "The verse text to render on the card. Required unless verse_card_url is given." },
+        verse_reference: { type: "string", description: "e.g. \"Isaiah 41:10\". Optional — omit along with verse_text/verse_card_url entirely to skip the verse card (no image track in the output)." },
+        verse_text: { type: "string", description: "The verse text to render on the card. Optional — see verse_reference." },
         caption: { type: "string", description: "Optional short devotional line under the verse." },
         verse_card_url: { type: "string", description: "Optional — use a pre-made verse card image instead of auto-generating one." },
         music_url: { type: "string", description: "Optional override. Leave unset — defaults to the page's one fixed signature music." },
@@ -481,9 +481,10 @@ export const HANDLERS = {
     if (a.video_url && !a.duration) throw new Error("duration is required when using video_url (the clip's length in seconds).");
 
     const musicUrl = a.music_url || DEFAULT_SIGNATURE_MUSIC_URL;
-    const verseCardUrl = a.verse_card_url || await renderVerseCard({
+    const wantsVerseCard = !!(a.verse_card_url || a.verse_reference || a.verse_text);
+    const verseCardUrl = wantsVerseCard ? (a.verse_card_url || await renderVerseCard({
       reference: a.verse_reference, verseText: a.verse_text, caption: a.caption, aspectRatio: a.aspect_ratio || "9:16",
-    });
+    })) : null;
 
     /* fal.ai's compose tool rejects multiple keyframes on a single "video"
      * track ("Multiple video tracks are not supported" — confirmed from its
@@ -509,21 +510,21 @@ export const HANDLERS = {
     /* The verse card appears AFTER the video's motion ends, not overlaid on
      * top of it from the start — matches the page's actual format: the clip
      * plays through, then the card holds while narration keeps going. */
-    const verseCardStartMs = Math.round(videoEndSec * 1000);
-    const holdSec = Math.max(0, a.narration_duration - videoEndSec);
-    const verseCardKeyframe = { url: verseCardUrl, timestamp: verseCardStartMs, duration: Math.round(holdSec * 1000) };
-
     const tracks = [
       { id: "video", type: "video", keyframes: videoKeyframes },
-      { id: "verse_card", type: "image", keyframes: [verseCardKeyframe] },
       { id: "narration", type: "audio", keyframes: [{ url: a.narration_url, timestamp: 0, duration: Math.round(a.narration_duration * 1000) }] },
       buildMusicTrack(musicUrl, a.narration_duration),
     ];
+    if (wantsVerseCard) {
+      const verseCardStartMs = Math.round(videoEndSec * 1000);
+      const holdSec = Math.max(0, a.narration_duration - videoEndSec);
+      tracks.push({ id: "verse_card", type: "image", keyframes: [{ url: verseCardUrl, timestamp: verseCardStartMs, duration: Math.round(holdSec * 1000) }] });
+    }
     const result = await falRun("fal-ai/ffmpeg-api/compose", { tracks });
     const url = extractMedia(result);
     if (!url) throw new Error("No final video URL in the result: " + JSON.stringify(result));
     const sceneDesc = (a.video_clips?.length > 1) ? `${a.video_clips.length} clips merged` : "scene";
-    return `Final video (${sceneDesc} + verse card + narration + signature music):\n${url}\nVerse card image used: ${verseCardUrl}`;
+    return `Final video (${sceneDesc} + narration + signature music${wantsVerseCard ? " + verse card" : " — no verse card"}):\n${url}` + (wantsVerseCard ? `\nVerse card image used: ${verseCardUrl}` : "");
   },
   async clone_voice(a) {
     const result = await elClone(a.name, a.sample_paths, a.description || "");
