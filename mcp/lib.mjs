@@ -112,9 +112,20 @@ export async function resolveVoiceId(nameOrId) {
   throw new Error(`No voice matching "${nameOrId}". Available voices: ${names || "(none — check your ElevenLabs account)"}`);
 }
 
+/* Pinned to a fixed-bitrate format (128kbps CBR) specifically so the real
+ * duration can be computed exactly from the byte count alone (bits / bitrate)
+ * — no MP3 frame parsing needed, and no dependency on a caller-supplied
+ * duration that can drift from the actual file (confirmed live: a stale or
+ * wrong narration_duration caused real finished videos to have audio
+ * trimmed wrong or even looped/doubled). */
+const NARRATION_BITRATE_BPS = 128_000;
+export function mp3DurationSec(buffer) {
+  return (buffer.length * 8) / NARRATION_BITRATE_BPS;
+}
+
 export async function elSpeak(voiceId, text, modelId = "eleven_multilingual_v2") {
   requireElevenKey();
-  const res = await fetch(`${ELEVEN_BASE}/v1/text-to-speech/${voiceId}`, {
+  const res = await fetch(`${ELEVEN_BASE}/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
     method: "POST",
     headers: { "xi-api-key": ELEVEN_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({ text, model_id: modelId, voice_settings: { stability: 0.5, similarity_boost: 0.8 } }),
@@ -305,7 +316,7 @@ export const TOOLS = [
       type: "object",
       properties: {
         narration_url: { type: "string", description: "URL to the narration audio (the temporary URL from generate_narration's remote response)." },
-        narration_duration: { type: "number", description: "How long the narration actually runs, in seconds. Required — fal.ai's compose tool rejects a request without an explicit duration on every keyframe." },
+        narration_duration: { type: "number", description: "How long the narration actually runs, in seconds. If narration_url is a URL generate_narration returned, this is measured automatically and overrides whatever is passed here — do not bother re-measuring it. Required (and must be the real, exact value) only when narration_url comes from somewhere else." },
         music_url: { type: "string", description: "Optional override. Leave unset — it defaults to the page's one fixed signature music file." },
       },
       required: ["narration_url", "narration_duration"],
@@ -355,7 +366,7 @@ export const TOOLS = [
         verse_card_url: { type: "string", description: "Optional — use a pre-made verse card image instead of auto-generating one." },
         music_url: { type: "string", description: "Optional override. Leave unset — defaults to the page's one fixed signature music." },
         duration: { type: "number", description: "Required when using video_url: that single clip's length in seconds. Not needed with video_clips (each clip has its own duration)." },
-        narration_duration: { type: "number", description: "How long the narration actually runs, in seconds. Required — fal.ai's compose tool rejects a request without an explicit duration on every keyframe (video, verse card, narration, and music all need one)." },
+        narration_duration: { type: "number", description: "How long the narration actually runs, in seconds. If narration_url is a URL generate_narration returned, this is measured automatically and overrides whatever is passed here — do not bother re-measuring it. Required (and must be the real, exact value) only when narration_url comes from somewhere else — fal.ai's compose tool rejects a request without an explicit duration on every keyframe." },
         aspect_ratio: { type: "string", description: "Verse card aspect ratio. Default 9:16 (reels)." },
       },
       required: ["narration_url", "narration_duration"],
@@ -445,7 +456,7 @@ export const HANDLERS = {
     const voice = await resolveVoiceId(a.voice);
     const buffer = await elSpeak(voice.voice_id, a.text, a.model || "eleven_multilingual_v2");
     const file = await saveAudioFile(buffer, a.text.slice(0, 40));
-    return `Narration generated with voice "${voice.name}":\n${file}`;
+    return `Narration generated with voice "${voice.name}" (${mp3DurationSec(buffer).toFixed(3)}s):\n${file}`;
   },
   async merge_videos(a) {
     if (!Array.isArray(a.video_urls) || a.video_urls.length < 2) throw new Error("video_urls must be an array of 2 or more clip URLs.");
