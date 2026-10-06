@@ -38,11 +38,16 @@ instead of generating one.
   never leave it to default. A square or landscape asset is not postable as
   a Reel and the mistake isn't caught until the finished video is reviewed,
   so get it right at generation time.
-- **narration_duration is required**, not a nice-to-have, on `mix_audio` and
-  `finalize_video` — fal.ai's compose tool rejects a request without an
-  explicit duration on every keyframe (video, verse card, narration, and
-  music all need one). Always know and pass the narration's actual length
-  in seconds.
+- **narration_duration is measured automatically — do not measure it
+  yourself or reuse a value from an earlier test.** Whenever `narration_url`
+  is a URL `generate_narration` returned, the server measures the exact real
+  duration at generation time and uses that automatically for
+  `mix_audio`/`finalize_video`, overriding anything passed in. (A stale or
+  wrong value here caused two real failures: a 46-second audio/video
+  mismatch once, and the narration audibly looping/doubling another time —
+  this is now structurally prevented for narration generated through this
+  connector.) Only pass an explicit `narration_duration` — and only the
+  real, exact value — when `narration_url` comes from somewhere else.
 - **Every slow tool is asynchronous.** `generate_image`, `animate_image`,
   `generate_video`, `lip_sync`, `generate_music`, `upscale_video`,
   `mix_audio`, `merge_videos`, and `finalize_video` all return a `job_id`
@@ -232,8 +237,9 @@ there is no need to use the manual fallback below anymore.
   resolution and framing are locked to 9:16 automatically.
 - Never pick a narration voice, and never call `list_voices` — use the one
   fixed voice_id for the language being narrated, see section 0.
-- Always pass `narration_duration` to `mix_audio`/`finalize_video` — it's
-  required, not optional.
+- `narration_duration` is measured automatically for any `narration_url`
+  from `generate_narration` — never measure it yourself or reuse an old
+  value. Only pass it explicitly for a narration_url from elsewhere.
 - Every slow tool returns a `job_id` — poll `check_job_status`, never retry
   blind or treat "still running" as a failure.
 - Quote the estimated cost before any video generation step.
