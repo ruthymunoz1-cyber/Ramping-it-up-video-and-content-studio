@@ -81,6 +81,27 @@ function characterPrefix(charId) {
   const c = State.characters.find(x => x.id === charId);
   return c ? compileCharacterToken(c) + ". " : "";
 }
+
+/* Line-art variant: shape/identity only (name, ethnicity, hair, face, build,
+ * wardrobe silhouette) — deliberately drops skin-tone hex/undertone/hair
+ * color and the melanin lighting clause, since that's photographic
+ * color-grading language that actively fights "no color, line art only"
+ * and was turning coloring pages into shaded/colored renders. */
+function characterPrefixForLineArt(charId) {
+  if (!charId) return "";
+  const c = State.characters.find(x => x.id === charId);
+  if (!c) return "";
+  const parts = [];
+  parts.push(`${c.name}, a ${c.ethnicity ? c.ethnicity + " " : ""}${c.gender || "person"}${c.age ? " " + c.age : ""}`);
+  if (c.hairTexture || c.hairStyle) {
+    const tex = RIU_DATA.hairTextures.find(h => h.code === c.hairTexture);
+    parts.push(`${tex ? tex.label.toLowerCase() : ""} hair styled as ${c.hairStyle || "natural"}`.trim());
+  }
+  if (c.face) parts.push(c.face);
+  if (c.build) parts.push(c.build);
+  if (c.wardrobe) parts.push(`wearing ${c.wardrobe}`);
+  return parts.filter(Boolean).join(", ") + ". ";
+}
 function characterSeed(charId) {
   const c = State.characters.find(x => x.id === charId);
   return c ? c.seed : undefined;
@@ -1539,7 +1560,8 @@ MESA | Spanish word for table"></textarea>
           </div>
         </div>
         ${charSelectHtml("cb-char", "Character (optional — keeps them consistent across every page)")}
-        ${modelSelectHtml("cb-model", "image", "imageEdit")}
+        ${modelSelectHtml("cb-model", "image")}
+        <div class="hint">Line art works best on Pollinations (FREE) or FLUX Schnell — photoreal models (Nano Banana, GPT Image 2) tend to fight the "no color" instruction and can add a provider watermark. Coloring pages are always generated from the text description only, never from a character's photo reference, so colors from a reference photo can't bleed into the line art.</div>
         <div class="divider"></div>
         <label class="f-label">Auto-draft page ideas (optional, FREE) — theme + how many pages</label>
         <div class="row">
@@ -3950,10 +3972,9 @@ const Bind = {
       const p = state.pages[i];
       const charId = $("#cb-char").value;
       const modelId = $("#cb-model").value;
-      const refs = characterRefs(charId);
       const style = STYLE_PROMPTS[$("#cb-style").value] || STYLE_PROMPTS.bold;
-      const prompt = characterPrefix(charId) + p.desc +
-        `. Clean black-and-white coloring book page — ${style}, absolutely no color, no shading, no grey fills, pure white background, printable quality.`;
+      const prompt = characterPrefixForLineArt(charId) + p.desc +
+        `. Black-and-white line art coloring book page — ${style}. Pure white background, no color anywhere, no grayscale shading, no gradients, no photographic lighting — flat outline illustration only, like a page from a printed coloring book, printable quality.`;
       setStatus("cb-status", "info", `Generating page ${i + 1}/${state.pages.length}…`);
       try {
         let url, cost = 0;
@@ -3962,12 +3983,13 @@ const Bind = {
           const out = await Providers.freeImage(prompt, { width: Math.round(w * 100), height: Math.round(h * 100), model: modelId.split(":")[1] });
           url = out.sourceUrl;
         } else {
-          const input = /edit/.test(modelId) && refs.length
-            ? { prompt, image_urls: refs, num_images: 1 }
-            : { prompt, aspect_ratio: "4:5" }; // closest supported shape to a portrait print page
+          // Always text-only — never pass a character's (colored, photoreal)
+          // reference image here. An edit model anchored on a reference photo
+          // drags its color/shading into what should be flat line art.
+          const input = { prompt, aspect_ratio: "4:5" }; // closest supported shape to a portrait print page
           const res = await Providers.falRun(modelId, input, s => setStatus("cb-status", "info", s));
           url = Providers.extractMedia(res);
-          cost = modelsIn("image", "imageEdit").find(x => x.id === modelId)?.cost || 0;
+          cost = modelsIn("image").find(x => x.id === modelId)?.cost || 0;
         }
         if (!url) throw new Error("No image returned.");
         p.imgUrl = url; p.cost = cost;
@@ -4001,7 +4023,7 @@ const Bind = {
 
     const updateCost = () => {
       const n = $("#cb-pages").value.split("\n").map(s => s.trim()).filter(Boolean).length;
-      const m = modelsIn("image", "imageEdit").find(x => x.id === $("#cb-model").value);
+      const m = modelsIn("image").find(x => x.id === $("#cb-model").value);
       const cost = (m?.cost || 0) * n;
       $("#cb-cost").textContent = n ? `~$${cost.toFixed(3)} for ${n} page${n > 1 ? "s" : ""}` : "";
     };
