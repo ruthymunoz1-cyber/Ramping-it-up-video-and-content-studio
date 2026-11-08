@@ -152,3 +152,19 @@ Later: customer name/photo upload as a paid add-on (needs an app such as Customi
 - Florida DBA: [Sunbiz fictitious name form (CR4E001)](https://dos.fl.gov/media/702440/cr4e001-12102019.pdf) · [Florida Trend: fictitious names](https://www.floridatrend.com/small-business-florida/2025/12/23/fictitious-names) · [LegalZoom: DBA in Florida](https://www.legalzoom.com/articles/file-a-dba-in-florida) · [Ezel: FL assumed-name requirements](https://ezel.ai/surveys/assumed-name-registration-requirements/florida)
 - Florida LLC: [annual report fees](https://www.statebusinesscompliance.com/blog/florida-llc-annual-report-2026-138-75-due-may-1-400-late-fee-kicks-in-after-september-1) · [LLC Starters FL](https://llcstarters.com/how-to-start-an-llc/florida/)
 - Bible copyright: [Logos RVR licensing](https://www.logos.com/product/1868/reina-valera-revisada) · [RV1909 public domain](https://forums.swordsearcher.com/threads/spanish-bible.3160/latest)
+
+---
+
+## 9. Product ideas backlog (research 2026-11-08; owner approved English sayings too)
+
+| # | Idea | Evidence | Printful product |
+|---|---|---|---|
+| 1 | **Grandparent names in heritage languages**: Abuela/Abuelo, Nonna/Nonno, Lola/Lolo, Oma/Opa, Mémé/Pépé, Vovó/Vovô, Yiayia/Papou, Bubbe/Zayde, 할머니, Bà/Ông, Nai Nai/Lao Lao; "Est. 2026" / grandparent-reveal versions | TikTok: personalized grandma sweatshirt ~159 sold/30d, ~3K lifetime at ~$25; generic sellers use English nicknames only | Sweatshirts, mugs, ornaments, blankets |
+| 2 | **Dual-language / ESL / ELL teacher apparel and gifts** | Teacher sweatshirt ~196 sold/30d; bilingual-teacher angle uncommon; fits RAMP audience | Tees, sweatshirts, mugs, totes |
+| 3 | **Pet keepsakes / pet memorial** with original sayings | Pet memorial products on TikTok: dog figurine ~1,026 sold/30d (+1,186%), paw-print kits growing | Ornaments, blankets, mugs |
+| 4 | **Heritage kitchen**: "Abuela's Kitchen", café con leche, family recipe | Memory-keepsake interest rising (e.g., Remento search growth) | Mugs, aprons (confirm in Printful) |
+| 5 | **Milestones**: pregnancy/baby reveal, quinceañera, graduation (bilingual) | Evergreen gifting categories | Onesies, tees, ornaments |
+| 6 | **Military/veteran family pride (bilingual)** | Owner target audience | Tees, ornaments. **No branch names, seals or insignia (trademarked).** |
+
+Seasonal calendar: Christmas (now) → Valentine's → **Mother's Day (biggest for grandma items)** → Teacher Appreciation (May) → graduation → Father's Day → Hispanic Heritage Month (Sep 15–Oct 15) → Día de los Muertos (memorial, handle respectfully) → Christmas.
+Rule: original sayings only. Don't reproduce copyrighted poems or quotes (e.g., the full "Rainbow Bridge" poem).
