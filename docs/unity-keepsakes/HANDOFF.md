@@ -1,158 +1,148 @@
-# Unity Keepsakes: Project Handoff
+# Unity Keepsakes: Project Handoff (merged)
 
-_Last updated: 2026-11-08. Written for the next Claude Code session (or any helper) picking this project up._
-
----
-
-## 1. Who and what
-
-- **Owner:** founder of **RAMP Linguistic Society**, a language-education company (flagship product: **MEMOIVA**; also runs YouTube channels). Based in **Florida, USA**.
-- **New business:** **Unity Keepsakes**, a print-on-demand store selling **language-inspired and bilingual keepsakes**.
-  - Shopify store: **Unity Keepsakes**, domain **unitykeepsakes.com**, Shopify **Basic** plan, USD, EST timezone.
-  - Fulfillment: **Printful** (prints and ships every order).
-- **Owner's goal:** be as hands-off as possible, using agents for store operations, product research and design.
-  - **Agreed in the conversation:** fully hands-off isn't realistic or safe. The target is **80–90% automated**, with the owner spending about **15–30 minutes a week** on approvals (new designs, payouts, flagged orders).
-- **Hard constraint from the owner:** **nothing may put the language company (RAMP) at risk.** Keep Unity Keepsakes legally and reputationally separate.
+_Last updated: 2026-11-08. Combines the regular-Claude chat handoff with the Claude Code session. **This file is the source of truth.**_
+_Private details (EIN, bank, ID numbers, PO Box number, home address) are deliberately left out. Ask the owner._
 
 ---
 
-## 2. Decisions made
+## 0. Rules (read first)
 
-| Topic | Decision | Notes |
+1. **Don't publish products, set final prices, send messages, or file anything without the owner's explicit approval.**
+2. **Owner does personally:** Printful clicks, payments and bank setup, tax/EIN fields, Sunbiz filings, the USPTO search.
+3. **Before changing anything in Shopify, run `get-shop-info`** and confirm the store is **Unity Keepsakes / unitykeepsakes.com** (confirmed 2026-11-08).
+4. **Keep RAMP Sporting Goods completely separate.** It has its own EIN and Shopify store; never connect to or edit it. The old store `mhb0xx-rs` is **cancelled**; don't use it.
+5. **Don't guess the Shopify plan selector.** Ask the owner what they see.
+6. **No EIN, bank or ID numbers in chat or in files.** API keys go only through the secure credential form.
+7. **Avoid recurring charges.** A previous store cost about $300/month and was closed. **Get approval before any paid app or plan change.**
+8. **Branding:** customers see **Unity Keepsakes**. Never use "RAMP" alone publicly. If the legal entity must be named: "RAMP Linguistic Society LLC" (full name).
+9. Any non-English text the store writes needs a native-speaker check. Bible text: **KJV + Reina-Valera 1909 only** (RVR1960, NIV, ESV and NLT are copyrighted). No trademarked characters or phrases.
+
+---
+
+## 1. Owner, entity, goal
+
+- **Owner:** Ruthy, Florida.
+- **Current legal entity:** **RAMP Linguistic Society LLC** (Florida single-member LLC, the language-education company; flagship product MEMOIVA). Payouts go to its business bank account.
+- **Brand:** **Unity Keepsakes**: bilingual, language-inspired and family keepsakes.
+- **Goal:** a low-cost, mostly hands-off print-on-demand store (Shopify + Printful). Audiences: bilingual families, teachers, businesses/teams, military and veterans, possibly pets. Products: ornaments, family apparel, ugly sweaters, blankets, team/company shirts, bilingual faith items.
+- **Realistic target:** 80–90% automated, with the owner spending about 15–30 minutes a week on approvals.
+
+---
+
+## 2. ⚠️ Open decision: DBA under RAMP vs. a separate LLC
+
+The two chats reached different plans. **The owner must choose.**
+
+| | **A. DBA under RAMP Linguistic Society LLC** (regular-chat plan) | **B. New Unity Keepsakes LLC** (Claude Code recommendation) |
 |---|---|---|
-| Legal structure | **Separate Florida LLC for Unity Keepsakes** (recommended; owner was leaning that way) | A DBA under RAMP doesn't separate liability, and the owner wants RAMP protected. If the LLC is formed, no DBA is needed. |
-| LLC timing | **File now with today's date** (recommended) | Florida allows a Jan 1 effective date for LLCs formed Oct–Dec to skip the first annual report ($138.75), but then the LLC wouldn't exist during the holiday season. |
-| Product scope v1 | **Simplified launch**: Spanish/English bilingual + fixed-language designs + **name personalization in Latin script only** | The "customer types anything in any language" idea is **on hold**: no proven demand, extra risk (fonts, right-to-left text, content moderation). Revisit in 2027 with data. |
-| Languages with fixed text | Spanish, French, Portuguese, Italian, Chinese (Simplified), Chinese (Traditional) | All designed. Chinese uses Noto Serif SC/TC. |
-| Native-speaker review | Required for any text **RAMP/Unity writes** (designs, photos, descriptions). **Not** required for what customers type. | Customer text is printed as typed; protect with preview + checkbox + policy. |
-| Bible-verse products | **Only KJV (English) + Reina-Valera 1909 (Spanish)**, both public domain | **Do NOT use RVR1960, NIV, ESV or NLT**; they are copyrighted and need a license. |
-| Trademarks | No licensed characters or phrases (Grinch, Elf, sports teams, song lyrics, etc.) | Especially on ugly sweaters. |
-| Personalization app (when needed) | **Customily** preferred over Teeinblue | Customily has a documented Printful + Shopify setup, unlimited font uploads and Arabic preview tools. Both need the Printful API key. **Note:** Printful's own built-in personalization works only with **Etsy**, not Shopify. |
+| Cost | $50 state fee (valid 5 yrs) + **required one-time newspaper notice** in the county (price varies by paper) | $125 to form + **$138.75/yr** annual report (due Jan 1–May 1; late fee $400) |
+| New EIN / bank | No, uses RAMP's | Yes, new EIN (free), new bank account, re-do Shopify Payments and Printful billing |
+| Protection for the language company | **None.** Same legal entity, so chargebacks, disputes or lawsuits from the store land on RAMP | **Full separation.** RAMP is shielded |
+| Speed for this season | Fast; can sell under RAMP's existing bank/payouts now | Sunbiz approval is usually quick, but bank and payouts take extra days |
+
+- **Context:** in the Claude Code chat the owner said, *"I don't want anything that can affect my language company."* That points to **B**. A is cheaper and faster.
+- **Middle path:** sell this season under A, then form B and move the store in 2027. **Unverified:** whether Shopify lets you transfer store ownership and domain to a new entity. Check with Shopify before relying on it. A DBA doesn't carry over to a new LLC.
+- **Florida DBA facts (verified):** fee $50, valid 5 years. **Florida requires advertising the fictitious name at least once in a newspaper in the county of the principal place of business before/when registering** (§865.09). The filing form certifies this; proof isn't uploaded. Search the name on Sunbiz first. A DBA doesn't reserve the name or give trademark rights.
 
 ---
 
-## 3. Current status
+## 3. Store status
 
-### Done
-- [x] Shopify store **Unity Keepsakes** exists and was reachable through the Shopify connector (store info confirmed).
-- [x] **16 fixed-language ornament designs** made (3000×3000 px, 300 DPI). Preview: `previews/fixed-language-ornaments.jpg`
-  - "First Christmas" (navy & gold): Spanish, French, Portuguese, Italian, Chinese Simplified, Chinese Traditional
-  - "Family / Merry Christmas" (cream, red & green): same 6 languages
-  - Personalized Spanish versions: SAMPLE (with "Ana & Luis" / "Familia García") + BLANK-BASE (empty name area) for both designs
-- [x] **12-colorway universal personalized template** (print bases + sample product photos). Preview: `previews/universal-colorways.jpg`
-  - Christmas: navy-gold, cranberry-gold, evergreen-gold, snow-silver, cream-classic
-  - Modern: blush-rosegold
-  - Rainbow & fun: pastel-iridescent, bold-rainbow, frosted-ice, midnight-holo
-  - Clear acrylic (transparent PNG, frosted window behind text): CLEAR-ACRYLIC-gold, CLEAR-ACRYLIC-rainbow
-  - **On hold for v1**; samples show 12 scripts and were only machine-checked.
-- [x] All design source code saved in `design-scripts/`. **Rebuild everything with:**
-  ```bash
-  bash docs/unity-keepsakes/design-scripts/build.sh /path/to/output
-  ```
-  Needs python3 + Pillow, node + Playwright/Chromium and access to fonts.googleapis.com. Produces 40 PNGs (verified).
-- [x] Research done on: demand, competitors, Printful products/shipping, personalization apps, Florida LLC costs, Bible copyrights (see section 7).
-
-### Blocked / waiting on the owner
-- [ ] **Printful API key.** The owner will check at developers.printful.com → Tokens → "Add new token" (store-level token for Unity Keepsakes; access to products, files and orders; copy it immediately; note the expiry date, since tokens can't be renewed).
-  - **Never ask for the key in chat.** Use the secure credential form (`request_credential`, host `api.printful.com`).
-  - In the previous cloud session, `api.printful.com` was **blocked by the network proxy**; saving the credential should also allow the host.
-- [ ] **Florida LLC filing** (owner must do it personally).
-- [ ] Owner's choice of which products to launch first (recommended below).
+| Item | Status |
+|---|---|
+| Shopify store | **Unity Keepsakes**, USD, EST. Connector working (verified 2026-11-08). |
+| Plan | **Basic**: $1/month promo for 3 months, then **$39/month from Feb 5**. Confirm with the owner before any upgrade. |
+| Domain | unitykeepsakes.com, purchased and set as primary (last status: propagating). |
+| Shopify Payments | **Not set up.** Owner will connect the business bank account. Card fees 2.9% + 30¢. |
+| Printful app | Installed (Shopify Apps → Printful). |
+| Printful API key | Not created. Only needed for automation or personalization apps. Owner checks developers.printful.com → Tokens. `api.printful.com` was blocked by the network proxy in the cloud session; saving the credential via the secure form should allow it. |
+| Business address | Owner has a **PO Box**. **Unconfirmed** whether Shopify accepts a PO Box as the business address; may need a physical or registered-agent address. |
+| Theme / shipping rates | Not reviewed yet. |
+| Trademark | Web search: no exact "Unity Keepsakes" match. "UNITY" is heavily registered (Unity Technologies, classes 9/41/35); one "UNITY" application in class 28. **Formal USPTO search not done:** owner searches tmsearch.uspto.gov for "Unity Keepsakes" and "Unity" in classes 14, 16, 21, 25, 28. |
 
 ---
 
-## 4. Next tasks (priority order)
+## 4. Products
 
-**Season timing:** it's November 2026. Ornament/Christmas selling window is about 5 weeks. Set the US holiday order cutoff around mid-December and the international cutoff around Dec 1–5. Check Printful's published holiday deadlines.
+### Printful ceramic ornament (sublimation)
+- About **$6.15** base, shipping from about **$5.49**.
+- **Circle is the only shape ready.** Heart, Snowflake and Star show a "!" in Printful and need per-shape adjustment. All existing designs are made for the circle.
+- In Printful, the "Continue" button stays grey until a design is uploaded. **Designs now exist (below).**
 
-1. **Write store policies** (paste into Shopify → Settings → Policies):
-   - Refund policy: personalized items printed exactly as typed, no returns for customer spelling errors; Printful-caused defects replaced.
-   - Shipping policy: worldwide via Printful; international buyers may owe import duties/VAT; holiday cutoff dates.
-   - Personalization checkbox text: _"I confirm my text is spelled correctly. Personalized items are printed exactly as typed and can't be returned for spelling errors."_
-   - Terms line: store may cancel/refund orders containing offensive or infringing text.
-2. **Upload v1 ornaments to Printful → Shopify:** one product per design, **languages as variants** ("Language: Spanish / French / Portuguese / Italian / Chinese (Simplified) / Chinese (Traditional)"). Ceramic ornament first (round; also heart/star/snowflake).
-3. **Write Shopify listings** (titles, descriptions, tags, SEO, collections): bilingual angle, "gift for abuela / bilingual family / first Christmas." Ceramic ornament cost is roughly $6–14 at Printful; suggested retail **$22–26** (confirm the actual cost in Printful).
-4. **Design more products for this season:**
-   - **Bilingual ugly Christmas sweaters**: Printful knit sweaters (up to 4 yarn colors from 36) or all-over-print sweatshirts. Pun ideas: "Feliz Navi-DAD", "Ho Ho Hola". No trademarks.
-   - **Personalized blanket**: Printful Sublimated Sherpa (about $30 cost; better reviews than the thin $25 throw, 50×60″) with a family name + bilingual saying.
-5. **Name personalization (Latin script only).** Install Customily (needs the Printful key) and use the SAMPLE/BLANK-BASE Spanish files. Text field: Great Vibes font, gold (#e8c77d) on navy or red (#8c1d2b) on cream. Character limit about 20.
-6. **January 2027:** faith line (KJV + RVR1909 bilingual verses), company/team sweaters and tees (B2B, bulk), more languages based on sales data.
-7. **Automation ("agents"):** set up as scheduled tasks once listings exist:
-   - **Researcher** (weekly): trends, competitor ads, shortlist of ideas.
-   - **Designer/Lister** (weekly): makes designs and drafts listings; **the owner approves before publishing**.
-   - **Store Manager** (weekly report): sales, best/worst sellers, what to drop or push. Later: screen personalized order text and hold anything questionable for the owner.
-8. **Shopify Markets** for local currencies. **Shopify Tax** on for Florida sales tax.
+### Designs ready (3000×3000 px, 300 DPI, circle-safe)
+- **16 fixed-language ornaments.** Preview: `previews/fixed-language-ornaments.jpg`
+
+  | Language | First Christmas (navy & gold) | Family (cream, red, green) |
+  |---|---|---|
+  | Spanish | Nuestra Primera Navidad | Feliz Navidad · La Familia · 2026 |
+  | French | Notre Premier Noël | Joyeux Noël · La Famille · 2026 |
+  | Portuguese | Nosso Primeiro Natal | Feliz Natal · A Família · 2026 |
+  | Italian | Il Nostro Primo Natale | Buon Natale · La Famiglia · 2026 |
+  | Chinese (Simplified) | 我们的 第一个 圣诞节 | 圣诞快乐 · 阖家欢乐 · 2026 |
+  | Chinese (Traditional) | 我們的 第一個 聖誕節 | 聖誕快樂 · 闔家歡樂 · 2026 |
+
+  Plus Spanish personalized SAMPLE (with names) and BLANK-BASE files for both designs. Each design includes the English line.
+- **12-colorway universal personalized template** (Christmas, modern, rainbow/iridescent, clear acrylic). Preview: `previews/universal-colorways.jpg`. **On hold:** it needs a paid personalization app (a recurring cost).
+- **Rebuild all 40 PNGs:** `bash docs/unity-keepsakes/design-scripts/build.sh <output-dir>` (needs python3 + Pillow, node + Playwright, and access to Google Fonts). The owner also received zip files of all designs.
+
+### Recommended v1 launch (3–5 ready-made designs, no paid apps)
+1. Our First Christmas ornament, with language variants
+2. Bilingual Family ornament, with language variants
+3. One bilingual ugly sweater (Printful knit, up to 4 yarn colors; ideas: "Feliz Navi-DAD", "Ho Ho Hola"). **Not designed yet.**
+4. One blanket: Printful **Sublimated Sherpa** (about $30 cost; better reviews than the thin $25 Throw). **Not designed yet.**
+5. One teacher or team shirt. **Not designed yet.**
+
+Later: customer name/photo upload as a paid add-on (needs an app such as Customily or Teeinblue, ~$19+/mo, **approval required**). Printful's own personalization works with **Etsy only**. "Customer types any language" is on hold (no proven demand, extra risk).
+
+### Research notes
+- Personalized ornaments are a huge but crowded market (Wander Prints ~$10–18M/mo, Macorner ~$6–9.5M/mo, many generic sellers). Compete on the **bilingual/culture niche**, not volume.
+- Spanish personalized ornaments are proven: ParaTigift (Spain) runs about 90–126 Spanish-language ads. Bilingual gift stores are small but real (Feppy ~$18–30K/mo; Duck Duck Books ~$14–24K/mo).
+- TikTok Shop: one competing teacher shirt (42 sold in 30 days, declining). Ugly sweater, pet and veteran shirt searches returned nothing.
+- Printful ships worldwide from centers in the US (NC, TX), Mexico, Canada, UK and Latvia, plus partners in Japan, Australia and Brazil. International buyers may owe import duties.
 
 ---
 
-## 5. Florida LLC checklist (for the owner)
+## 5. Pricing (⚠️ needs owner approval)
 
-| Item | Cost | Notes |
+| Option | Ornament price | Rough profit before other costs |
 |---|---|---|
-| Articles of Organization at **sunbiz.org** | **$125** ($100 filing + $25 registered agent) | Check the name "Unity Keepsakes LLC" in the Sunbiz search first |
-| Annual report | **$138.75 per year**, due **Jan 1 – May 1** | **Late = +$400.** If still unfiled by September, the LLC can be dissolved. **Set a reminder.** |
-| EIN | Free at irs.gov | Avoid paid lookalike sites |
-| Florida sales tax registration (Dept. of Revenue) | Free | Then turn on Shopify Tax |
-| Registered agent | Self (address is public) or a service | Bizee includes year 1 free, then about $100–150/yr |
+| Regular-chat estimate | $19.99 | ~$7.47 ($6.15 product + ~$5.49 shipping + ~$0.88 fees) |
+| Claude Code suggestion | $24.99 (personalized $29.99) | ~$12.30 at the same costs |
 
-Steps after filing: business bank account → connect to Shopify Payments → give **Printful the Florida resale certificate** (otherwise Printful charges sales tax on its invoices) → update Shopify store legal name and address.
-
-Formation-service options: Bizee or ZenBusiness ($0 + state fee); Northwest ($39 + state fee, includes domain and website, which isn't needed because unitykeepsakes.com is already owned). Filing directly on Sunbiz is cheapest.
+- Whether shipping is charged separately or built into the price changes these numbers. **Verify real shipping with a test order before publishing.**
+- Bilingual/culture items usually justify the higher price, but the owner decides.
 
 ---
 
-## 6. Design specs
-
-**Shared:** 3000×3000 px, 300 DPI, text kept inside the center ~63% (safe for round ornaments). Fonts are all free for commercial use (SIL Open Font License, Google Fonts): Playfair Display, Great Vibes, Montserrat, Noto Serif SC/TC/JP/KR, Noto Naskh Arabic, Noto Serif Devanagari.
-
-**Fixed-language ornaments**
-
-| Language | First Christmas | Family |
-|---|---|---|
-| Spanish | Nuestra Primera Navidad | Feliz Navidad · La Familia · 2026 |
-| French | Notre Premier Noël | Joyeux Noël · La Famille · 2026 |
-| Portuguese | Nosso Primeiro Natal | Feliz Natal · A Família · 2026 |
-| Italian | Il Nostro Primo Natale | Buon Natale · La Famiglia · 2026 |
-| Chinese (Simplified) | 我们的 第一个 圣诞节 | 圣诞快乐 · 阖家欢乐 · 2026 |
-| Chinese (Traditional) | 我們的 第一個 聖誕節 | 聖誕快樂 · 闔家歡樂 · 2026 |
-
-Each design also carries the English line ("Our First Christmas" / "Merry Christmas"). **A native speaker should check all of these before launch** (they're RAMP/Unity-authored text).
-
-Palettes: First Christmas = navy gradient #16405a→#0b2233, gold #d9b56b / #e8c77d, cream text #f3e6c4. Family = cream #f7f1e5, red #8c1d2b, green #2f5d3a.
-
-**Universal templates:** the text color for each colorway is in `design-scripts/universal-personalized/gen.py` (dict `C`). Clear-acrylic files are transparent PNGs for **Printful's clear acrylic ornament only**. **Order one test print first** to check the frosted window and thin ring. On ceramic (white sublimation), "translucent/iridescent" looks are printed effects only.
-
-**Printful products confirmed:** ceramic ornament (circle, heart, star, snowflake), acrylic, metal and wood ornaments; Throw Blanket 50×60″; Sublimated Sherpa Blanket; Embroidered Premium Sherpa; knit ugly sweaters; all-over-print sweatshirts; embroidered and printed apparel.
+## 6. Drafts ready for review (nothing published)
+- `store-policies.md`: refund, shipping (worldwide, holiday cutoffs), personalization checkbox, terms additions. Placeholders in `[BRACKETS]`; the legal-name line depends on the decision in section 2.
+- `listings-ornaments.md`: two ornament listings with 6 language variants each, plus a personalized version for later; tags, SEO text, collections.
 
 ---
 
-## 7. Research findings (summary)
+## 7. Next tasks (priority order)
 
-- **Personalized ornaments overall: large demand.** Top stores (estimates from the Winning Hunter research tool): Wander Prints $10–18M/mo (~2,800 Facebook ads), Macorner $6–9.5M/mo, Jesuspirit/Joymade $3–6M/mo, Artveraprint $3–5M/mo (bestseller: personalized initial ornament at $11.99). These are high-volume US/Vietnam print-on-demand operations. **Don't compete on volume; compete on the language/culture niche.**
-- **Spanish personalized ornaments: proven.** ParaTigift (Spain) runs about 90–126 Spanish-language ads for name/photo Christmas ornaments. Zazzle has Spanish personalized-ornament collections.
-- **Bilingual gift stores: small but real.** Feppy (bilingual Spanish learning box) about $18–30K/mo; Duck Duck Books (bilingual Chinese books) about $14–24K/mo.
-- **"Any language" personalized ornaments: no seller found.** Unproven demand. The closest proof is Arabic/Chinese **name jewelry** (Theo Grace, Onecklace).
-- **Printful worldwide:** in-house centers in the US (NC, TX), Mexico (Tijuana), Canada (Toronto), UK (Birmingham), Latvia (Riga); partners in Japan, Australia and Brazil. No shipping to sanctioned countries (e.g., Russia, Belarus, Cuba, Iran, Syria, North Korea).
-- **Personalization apps:** Customily (free plan/trial, Printful+Shopify integration doc, unlimited fonts, Arabic tools); Teeinblue (about $19/mo Starter, $59/mo Growth, 14-day trial; supports Printful).
+**Owner:**
+1. **Decide: DBA (A) or new LLC (B)**, see section 2.
+2. File accordingly on Sunbiz (plus the newspaper notice if A).
+3. Set up Shopify Payments with the correct bank account.
+4. Upload the two ornament designs to Printful (circle) and place **one test order** to check shipping cost and print quality.
+5. Run the USPTO trademark search.
+6. Confirm the business address (PO Box or physical).
+7. Approve pricing.
 
----
-
-## 8. Guardrails for whoever continues
-
-- Don't publish new designs or listings without the **owner's approval** (trademark/copyright risk; print-on-demand takedowns can ban the account).
-- Never request secrets in chat; use the secure credential form.
-- No ad spend without explicit owner approval and a set budget.
-- Keep anything that could reflect on RAMP accurate: native-speaker check on any non-English text the store writes; when one isn't possible, use English-only or name-only samples.
-- Bible text: KJV and RVR1909 only.
-- Owner preference: keep things **simple**. They pushed back when the plan got complicated. Prioritize what earns money this season.
+**Claude:**
+1. Finalize policies and listings once sections 2 and 5 are decided.
+2. Design the bilingual ugly sweater, Sherpa blanket, and teacher/team shirt.
+3. Review the theme and shipping rates (read-only until approved).
+4. Set up holiday deadlines from Printful's 2026 schedule (US about mid-Dec; international about Dec 1–5).
+5. After launch: weekly scheduled tasks for research, design drafts and sales reports. All publishing still needs owner approval.
 
 ---
 
-## 9. Sources
-
-- Printful: [personalization (Etsy only)](https://support.printful.com/hc/en-us/articles/41396545783697-How-does-Printful-s-personalization-feature-work) · [text designs / non-Latin](https://support.printful.com/hc/en-us/articles/41396548277777) · [custom fonts](https://support.printful.com/hc/en-us/articles/41396550561553) · [where products are printed](https://support.printful.com/hc/en-us/articles/41396775395729-Where-are-Printful-products-printed) · [fulfillment locations](https://www.printful.com/how-printful-works/warehousing-fulfillment) · [ornaments](https://www.printful.com/custom-christmas-ornaments) · [ceramic ornament](https://www.printful.com/custom/decor/personalized/ceramic-ornament) · [ugly sweaters](https://www.printful.com/make-your-own-ugly-christmas-sweater) · [throw blanket](https://www.printful.com/custom/blankets/personalized/throw) · [sherpa blanket](https://www.printful.com/custom/blankets/personalized/sublimated-sherpa-blanket) · [developer portal / EDM docs](https://developers.printful.com/docs/edm/)
-- Apps: [Customily–Printful for Shopify](https://help.customily.com/articles/5348959213-integrating-printful-for-shopify) · [Customily pricing](https://www.customily.com/pricing-product) · [Teeinblue pricing](https://teeinblue.com/pricing) · [Teeinblue ornaments](https://teeinblue.com/blogs/en/shopify-app-to-create-customized-ornaments) · [Customily ornament comparison](https://www.customily.com/post/the-great-christmas-ornament-showdown-best-pod-ornaments-reviewed)
-- Florida LLC: [StateBusinessCompliance annual report](https://www.statebusinesscompliance.com/blog/florida-llc-annual-report-2026-138-75-due-may-1-400-late-fee-kicks-in-after-september-1) · [LLC Starters Florida](https://llcstarters.com/how-to-start-an-llc/florida/) · [LLC University annual report / Jan 1 effective date](https://www.llcuniversity.com/florida-llc/annual-report/) · [Rho: cheapest LLC formation](https://www.rho.co/blog/cheapest-way-to-form-an-llc)
-- DBA: [Zenind](https://www.zenind.com/help/post/can-your-e-commerce-store-have-a-different-name-than-your-llc-) · [LLC University](https://www.llcuniversity.com/?p=12994)
-- Bible copyright: [Bible Gateway RVR1960](https://www.biblegateway.com/versions/Reina-Valera-1960-RVR1960-Biblia/) · [Logos RVR licensing note](https://www.logos.com/product/1868/reina-valera-revisada) · [SwordSearcher: RV1909 public domain](https://forums.swordsearcher.com/threads/spanish-bible.3160/latest)
-- Market: [Zazzle Spanish name ornaments](https://www.zazzle.es/colecciones/spanish_christmas_name_ornaments_collection-119430166477571722) · [Theo Grace Arabic names](https://www.theograce.com/products/custom-arabic-name-necklace-in-silver) · [Onecklace Chinese names](https://www.onecklace.com/chinese-name-necklace) · [Etsyhunt Christmas ornaments](https://etsyhunt.com/best-etsy-christmas-ornaments)
+## 8. Sources
+- Printful: [personalization (Etsy only)](https://support.printful.com/hc/en-us/articles/41396545783697-How-does-Printful-s-personalization-feature-work) · [where printed](https://support.printful.com/hc/en-us/articles/41396775395729-Where-are-Printful-products-printed) · [fulfillment locations](https://www.printful.com/how-printful-works/warehousing-fulfillment) · [ceramic ornament](https://www.printful.com/custom/decor/personalized/ceramic-ornament) · [ugly sweaters](https://www.printful.com/make-your-own-ugly-christmas-sweater) · [throw](https://www.printful.com/custom/blankets/personalized/throw) · [sherpa](https://www.printful.com/custom/blankets/personalized/sublimated-sherpa-blanket)
+- Apps: [Customily–Printful](https://help.customily.com/articles/5348959213-integrating-printful-for-shopify) · [Teeinblue pricing](https://teeinblue.com/pricing)
+- Florida DBA: [Sunbiz fictitious name form (CR4E001)](https://dos.fl.gov/media/702440/cr4e001-12102019.pdf) · [Florida Trend: fictitious names](https://www.floridatrend.com/small-business-florida/2025/12/23/fictitious-names) · [LegalZoom: DBA in Florida](https://www.legalzoom.com/articles/file-a-dba-in-florida) · [Ezel: FL assumed-name requirements](https://ezel.ai/surveys/assumed-name-registration-requirements/florida)
+- Florida LLC: [annual report fees](https://www.statebusinesscompliance.com/blog/florida-llc-annual-report-2026-138-75-due-may-1-400-late-fee-kicks-in-after-september-1) · [LLC Starters FL](https://llcstarters.com/how-to-start-an-llc/florida/)
+- Bible copyright: [Logos RVR licensing](https://www.logos.com/product/1868/reina-valera-revisada) · [RV1909 public domain](https://forums.swordsearcher.com/threads/spanish-bible.3160/latest)

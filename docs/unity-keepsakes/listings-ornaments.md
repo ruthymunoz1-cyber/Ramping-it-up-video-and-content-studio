@@ -2,7 +2,7 @@
 
 _Status: draft for owner review. Not yet published._
 _Product: Printful ceramic ornament (round). Confirm Printful's base cost before setting prices._
-_Suggested retail: **$24.99** (compare-at price optional: $29.99). Personalized versions: **$29.99**._
+_Price: **NOT SET; owner approval required.** Options: $19.99 (regular-chat estimate) or $24.99 (personalized $29.99). See HANDOFF.md section 5._
 
 ---
 
