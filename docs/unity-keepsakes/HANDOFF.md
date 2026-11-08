@@ -29,9 +29,13 @@ _Private details (EIN, bank, ID numbers, PO Box number, home address) are delibe
 
 ---
 
-## 2. ⚠️ Open decision: DBA under RAMP vs. a separate LLC
+## 2. ✅ DECIDED (2026-11-08): Option A, DBA under RAMP Linguistic Society LLC
 
-The two chats reached different plans. **The owner must choose.**
+The owner chose **A**. Unity Keepsakes is a fictitious name (DBA) of RAMP Linguistic Society LLC. No new LLC, no new EIN or bank account. **Option B stays on file** in case the owner wants to separate later (e.g., 2027).
+
+**Reducing risk to RAMP under A (suggestions; owner decides):** keep store money in a separate account or sub-account and separate bookkeeping; clear refund/content policies; consider asking an insurance agent about general/product liability coverage.
+
+Comparison kept for reference:
 
 | | **A. DBA under RAMP Linguistic Society LLC** (regular-chat plan) | **B. New Unity Keepsakes LLC** (Claude Code recommendation) |
 |---|---|---|
@@ -88,9 +92,11 @@ The two chats reached different plans. **The owner must choose.**
 ### Recommended v1 launch (3–5 ready-made designs, no paid apps)
 1. Our First Christmas ornament, with language variants
 2. Bilingual Family ornament, with language variants
-3. One bilingual ugly sweater (Printful knit, up to 4 yarn colors; ideas: "Feliz Navi-DAD", "Ho Ho Hola"). **Not designed yet.**
-4. One blanket: Printful **Sublimated Sherpa** (about $30 cost; better reviews than the thin $25 Throw). **Not designed yet.**
-5. One teacher or team shirt. **Not designed yet.**
+3. **Ugly sweater "HO HO ¡HOLA!"**: knit-style, exactly 4 colors (red, white, green, gold), 180×150 stitch grid + 3600×3000 PNG. **Designed.** Needs resizing to the Printful knit template (owner reads File guidelines → tells Claude the pixel size).
+4. **Blanket "Familia"** (where life begins & love never ends / donde la vida comienza y el amor nunca termina), cream/navy/gold, 7950×9450 (50×60″ + bleed at 150 DPI; a reference size, not confirmed for Printful). For Printful **Sublimated Sherpa**. **Designed.**
+5. **Teacher shirt "BILINGUAL · BILINGÜE / MAESTRA & Teacher / Two languages. One big heart. / Dos idiomas. Un gran corazón."**: transparent 4500×5400, light-shirt (navy/red) and dark-shirt (white/gold) versions. **Designed.** Idea: a "Maestro" version later.
+
+Preview: `previews/v1-sweater-blanket-teacher.jpg`. Sources: `design-scripts/v1-products/` (sweater.py, blanket.html, teacher.html, render.js).
 
 Later: customer name/photo upload as a paid add-on (needs an app such as Customily or Teeinblue, ~$19+/mo, **approval required**). Printful's own personalization works with **Etsy only**. "Customer types any language" is on hold (no proven demand, extra risk).
 
@@ -115,7 +121,7 @@ Later: customer name/photo upload as a paid add-on (needs an app such as Customi
 ---
 
 ## 6. Drafts ready for review (nothing published)
-- `store-policies.md`: refund, shipping (worldwide, holiday cutoffs), personalization checkbox, terms additions. Placeholders in `[BRACKETS]`; the legal-name line depends on the decision in section 2.
+- `store-policies.md`: refund, shipping (worldwide, holiday cutoffs), personalization checkbox, terms additions. Placeholders in `[BRACKETS]`. Legal-name line set for Option A.
 - `listings-ornaments.md`: two ornament listings with 6 language variants each, plus a personalized version for later; tags, SEO text, collections.
 
 ---
@@ -123,8 +129,8 @@ Later: customer name/photo upload as a paid add-on (needs an app such as Customi
 ## 7. Next tasks (priority order)
 
 **Owner:**
-1. **Decide: DBA (A) or new LLC (B)**, see section 2.
-2. File accordingly on Sunbiz (plus the newspaper notice if A).
+1. ~~Decide DBA or LLC~~ → **A chosen.**
+2. File the DBA: search the name on Sunbiz → run the one-time newspaper notice in the county of the principal place of business → file the fictitious name on Sunbiz ($50).
 3. Set up Shopify Payments with the correct bank account.
 4. Upload the two ornament designs to Printful (circle) and place **one test order** to check shipping cost and print quality.
 5. Run the USPTO trademark search.

@@ -62,14 +62,12 @@ Add these lines to Shopify's generated Terms of Service:
 
 > **Custom content.** You're responsible for any text or images you submit for personalization. You confirm you have the right to use them. We may cancel and fully refund any order containing content that is offensive, hateful or harassing, or that infringes someone else's trademark or copyright.
 
-> **Business information.** Use ONE of these, depending on the entity decision (see HANDOFF.md section 2):
-> - Option A (DBA): "Unity Keepsakes is a trade name of RAMP Linguistic Society LLC, **[business address]**, Florida, USA."
-> - Option B (new LLC): "Unity Keepsakes is operated by Unity Keepsakes LLC, **[business address]**, Florida, USA."
+> **Business information.** Unity Keepsakes is a trade name of RAMP Linguistic Society LLC, **[business address]**, Florida, USA.
 
 ---
 
 ## Contact / Store Info (Shopify → Settings → Store details)
 
-- Legal business name: **[RAMP Linguistic Society LLC (option A) or Unity Keepsakes LLC (option B)]**
+- Legal business name: **RAMP Linguistic Society LLC** (store name: Unity Keepsakes)
 - Support email: **[support@unitykeepsakes.com or similar]**
 - Business address: **[address, or registered agent address for privacy]**
