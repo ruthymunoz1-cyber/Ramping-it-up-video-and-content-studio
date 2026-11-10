@@ -168,3 +168,16 @@ Later: customer name/photo upload as a paid add-on (needs an app such as Customi
 
 Seasonal calendar: Christmas (now) → Valentine's → **Mother's Day (biggest for grandma items)** → Teacher Appreciation (May) → graduation → Father's Day → Hispanic Heritage Month (Sep 15–Oct 15) → Día de los Muertos (memorial, handle respectfully) → Christmas.
 Rule: original sayings only. Don't reproduce copyrighted poems or quotes (e.g., the full "Rainbow Bridge" poem).
+
+---
+
+## 10. Printful API automation status (2026-11-10)
+
+- **Printful token saved** as a network secret for `api.printful.com` on the owner's Default cloud environment (the proxy injects it; never in files or chat). Verified: store **Unity Keepsakes**, Printful store id **19015734**, type shopify.
+- **Limitation:** for Shopify-connected stores, Printful's API **cannot create products** (`/store/products` → "Manual Order / API platform only"). Working approach: create the product in **Shopify** → Printful imports it as an unsynced sync product → link each variant with `PUT /sync/variant/{id}` (catalog `variant_id` + `files[{url}]`).
+- **Printful imports only ACTIVE (not DRAFT) Shopify products.** The storefront is **password-protected** (checked 2026-11-10), so Active products stay invisible to the public until launch. Owner approval is still needed before switching to Active. Owner may also need to enable Printful → Settings → Store settings → "Import existing products", then Stores → Refresh data.
+- **Catalog IDs / print files:** Ceramic Ornament product 881, Circle variant **22782** ($6.34), front 954×954 @300; Sublimated Sherpa 711, 50×60 variant **17482** ($35.76), file **9450×7950 landscape** @150; Knit crew sweater 769 (KNITWEAR; per-size stitch grids, e.g. L 451×634; cost $45.90+); Bella+Canvas 3001 product 71 (front 1800×2400 @150; $11.92 S–XL).
+- **Print files are hosted** at commit-pinned raw GitHub URLs (the repo is **public**): `docs/unity-keepsakes/print-files/ornaments/{first-christmas|family}_{es|fr|pt|it|zh-hans|zh-hant}.png` (1908×1908).
+- **Mockups:** Printful mockup generator works (`POST /mockup-generator/create-task/881`); rate limit is about 2 tasks/minute, so wait and retry on 429.
+- **Shopify DRAFT created:** "Our First Christmas Ornament 2026 – Bilingual Keepsake" (`gid://shopify/Product/15410314641581`), 6 Language variants, SKUs `UK-ORN-FC-{ES,FR,PT,IT,ZH-HANS,ZH-HANT}`, proposed price $24.99 (not approved), 6 mockup images.
+- **Next:** with owner approval → set Active → wait for Printful import → link variants to 22782 + the matching file → repeat for the Family ornament → tee, blanket (re-layout landscape), sweater (per-size knit files).
