@@ -181,3 +181,14 @@ Rule: original sayings only. Don't reproduce copyrighted poems or quotes (e.g., 
 - **Mockups:** Printful mockup generator works (`POST /mockup-generator/create-task/881`); rate limit is about 2 tasks/minute, so wait and retry on 429.
 - **Shopify DRAFT created:** "Our First Christmas Ornament 2026 – Bilingual Keepsake" (`gid://shopify/Product/15410314641581`), 6 Language variants, SKUs `UK-ORN-FC-{ES,FR,PT,IT,ZH-HANS,ZH-HANT}`, proposed price $24.99 (not approved), 6 mockup images.
 - **Next:** with owner approval → set Active → wait for Printful import → link variants to 22782 + the matching file → repeat for the Family ornament → tee, blanket (re-layout landscape), sweater (per-size knit files).
+
+### Update 2026-11-11: products built and synced
+- Printful import works once the owner's Printful (correct account!) has **"Import not synced products from Shopify" = ON** (Printful → Stores → Unity Keepsakes → View products). New ACTIVE Shopify products appear within about 20s.
+- **Live & synced (store still password-protected):**
+  - Our First Christmas Ornament (Shopify 15410314641581 / Printful 492243605): 6/6, catalog 22782, $24.99
+  - Bilingual Family Ornament (15415705698477 / 492244061): 6/6, 22782, $24.99
+  - Maestra Teacher Tee (15415718183085 / 492244554): 28/28, Bella+Canvas 3001 White/Natural (light file) + Navy/Black (dark file), S–4XL, $29.99 / $31.99 / $33.99 / $35.99
+  - Familia Sherpa Blanket 50×60 (15415750721709): 1/1, 17482, $79.99
+- **Ugly sweater (15415766417581) is set to DRAFT:** the Printful API refuses knitwear sync ("cannot be changed to knitting technique"). The owner must create it in Printful's designer (product 769) using `print-files/sweater/ho-ho-hola_front_*.png` (yarns Chili #d52213, Bleach #fdfafa, Pine #243f33, Mustard #dda032). Then delete the Shopify draft to avoid a duplicate.
+- Printful API rate limit: about 2 requests per 3s on sync endpoints. Space PUTs about 5s apart and wait/retry on 429.
+- Pricing rule used: price covers Printful cost + Printful shipping + Shopify card fee, keeping roughly 35–49% margin even with free shipping.
