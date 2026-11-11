@@ -7,7 +7,7 @@ C={ # key: (big, script/sub, country, c1, c2, c3)
  'cuba':('¿Qué bolá,','asere?','CUBA','#002A8F','#CF142B','#002A8F'),
  'pr':('¡WEPA!','Boricua de pura cepa','PUERTO RICO','#ED0000','#0050F0','#ED0000'),
  'venezuela':('¿Qué más,','chamo?','VENEZUELA','#00247D','#CF142B','#E8B400'),
- 'mexico':('¡No manches!','con todo respeto','MÉXICO','#006847','#CE1126','#006847'),
+ 'mexico':('¡No manches!','¡Qué padre!','MÉXICO','#006847','#CE1126','#006847'),
  'colombia':('¿Qué más,','parce?','COLOMBIA','#003893','#CE1126','#E8B400'),
 }
 def html(big,sub,country,c1,c2,c3,dark):
