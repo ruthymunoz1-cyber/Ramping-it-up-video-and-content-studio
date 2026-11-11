@@ -192,3 +192,8 @@ Rule: original sayings only. Don't reproduce copyrighted poems or quotes (e.g., 
 - **Ugly sweater (15415766417581) is set to DRAFT:** the Printful API refuses knitwear sync ("cannot be changed to knitting technique"). The owner must create it in Printful's designer (product 769) using `print-files/sweater/ho-ho-hola_front_*.png` (yarns Chili #d52213, Bleach #fdfafa, Pine #243f33, Mustard #dda032). Then delete the Shopify draft to avoid a duplicate.
 - Printful API rate limit: about 2 requests per 3s on sync endpoints. Space PUTs about 5s apart and wait/retry on 429.
 - Pricing rule used: price covers Printful cost + Printful shipping + Shopify card fee, keeping roughly 35–49% margin even with free shipping.
+
+### Owner rule: faith content (2026-11-11)
+- **Keep faith and humor separate.** Scripture and faith designs are reverent and stand alone: no coffee, jokes, puns or "but first…" style mixing. Fun and cute designs never reference God, Jesus or scripture.
+- The "Powered by Coffee & Prayer" mug was removed for this reason.
+- Faith products go in their own collection ("Faith · Fe"). Don't cross-promote them next to humor items.

@@ -16,10 +16,7 @@ D={}
 D['mug_but-first-cafe']=('mug',mug('''<div style="font-family:Montserrat;font-weight:700;font-size:70px;letter-spacing:14px;color:#8a5a3c">BUT FIRST,</div>
 <div style="font-family:'Great Vibes';font-size:300px;line-height:1;color:#3b2417">café</div>
 <div style="font-family:'Playfair Display';font-style:italic;font-size:62px;color:#8a5a3c;margin-top:10px">pero primero, café ☕</div>'''))
-# 2 Coffee & prayer
-D['mug_coffee-and-prayer']=('mug',mug('''<div style="font-family:Montserrat;font-weight:700;font-size:60px;letter-spacing:12px;color:#1f3550">POWERED BY</div>
-<div style="font-family:'Playfair Display';font-weight:700;font-size:150px;line-height:1.05;color:#1f3550">Coffee<br><span style="font-family:'Great Vibes';font-weight:400;color:#c99a3c">&amp;</span> Prayer</div>
-<div style="font-family:'Playfair Display';font-style:italic;font-size:58px;color:#c99a3c;margin-top:16px">café y oración</div>'''))
+# (Coffee & Prayer design removed at owner's request: never mix faith content with jokes or coffee humor)
 # 3 Phil 4:13 bilingual (KJV + RV1909)
 D['mug_phil-4-13']=('mug',mug('''<div style="font-family:'Playfair Display';font-weight:700;font-size:88px;line-height:1.15;color:#1f3550">I can do all things<br>through Christ which<br>strengtheneth me.</div>
 <div style="font-family:'Playfair Display';font-style:italic;font-size:62px;line-height:1.25;color:#a8323e;margin-top:30px">Todo lo puedo en Cristo<br>que me fortalece.</div>
