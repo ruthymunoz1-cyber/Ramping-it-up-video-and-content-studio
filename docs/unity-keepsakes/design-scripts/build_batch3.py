@@ -94,6 +94,6 @@ if step in ('all','c'):
         rows.append(([('Style',who),('Size','11 oz')],'21.99',1320,f)); rows.append(([('Style',who),('Size','15 oz')],'24.99',4830,f))
     simple('MRMRS','"Sr. & Sra. – Mr. & Mrs." Bilingual Wedding Mug','Drinkware',19,'default',(2700,1050),['Style','Size'],rows,
       '<p><strong>Sr. &amp; Sra. · Mr. &amp; Mrs.</strong> 💍 A bilingual wedding and anniversary gift. Order one of each for the happy couple.</p><ul><li>Glossy ceramic mug, 11 oz or 15 oz</li><li>Printed on both sides; dishwasher &amp; microwave safe</li></ul>',['mr and mrs mug','sr y sra','wedding gift','newlywed gift','Weddings'])
-    apparel('ADORE-SWEAT','"O Come, Let Us Adore Him · Venid, Adoremos" Christmas Sweatshirt','Sweatshirt',145,(1800,2400),['Navy','Maroon','Forest Green'],SW_S,lambda e,c:'batch2/sweatshirt_adore-classic.png',SW_P,
+    apparel('ADORE-SWEAT','"O Come, Let Us Adore Him · Venid, Adoremos" Christmas Sweatshirt','Sweatshirt',145,(1800,2400),['Navy','Maroon','Forest Green'],SW_S[:5],lambda e,c:'batch2/sweatshirt_adore-classic.png',SW_P,
       '<p><em>O come, let us adore Him · Venid, adoremos</em><br>Christ the Lord · Cristo el Señor ✦</p><p>A classic, reverent Christmas sweatshirt in English and Spanish.</p><ul><li>Gildan 18000 unisex crewneck sweatshirt</li><li>Unisex sizing S–3XL</li></ul>',['christian christmas sweatshirt','o come let us adore him','church christmas','Faith · Fe'])
 json.dump(P,open(OUT,'w'),indent=1,ensure_ascii=False); print('built',[p['key'] for p in P])
