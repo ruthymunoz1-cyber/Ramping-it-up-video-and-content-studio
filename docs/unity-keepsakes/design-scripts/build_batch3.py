@@ -97,7 +97,11 @@ if step in ('all','c'):
     apparel('ADORE-SWEAT','"O Come, Let Us Adore Him · Venid, Adoremos" Christmas Sweatshirt','Sweatshirt',145,(1800,2400),['Navy','Maroon','Forest Green'],SW_S[:5],lambda e,c:'batch2/sweatshirt_adore-classic.png',SW_P,
       '<p><em>O come, let us adore Him · Venid, adoremos</em><br>Christ the Lord · Cristo el Señor ✦</p><p>A classic, reverent Christmas sweatshirt in English and Spanish.</p><ul><li>Gildan 18000 unisex crewneck sweatshirt</li><li>Unisex sizing S–3XL</li></ul>',['christian christmas sweatshirt','o come let us adore him','church christmas','Faith · Fe'])
 if step=='d':
-    for k,name,cty in [('dr','KLK ¿Qué lo que?','República Dominicana'),('cuba','¿Qué Bolá, Asere?','Cuba'),('pr','¡Wepa! Boricua de Pura Cepa','Puerto Rico'),('venezuela','¿Qué Más, Chamo?','Venezuela'),('mexico','¡No Manches! ¡Qué Padre!','México'),('colombia','¿Qué Más, Parce?','Colombia')]:
-        apparel('PRIDE-'+k.upper(),f'"{name}" {cty} Pride T-Shirt','T-Shirt',71,(1800,2400),['White','Natural','Navy','Black'],TEE_S,LD(f'countries/tee_{k}').__class__(lambda e,c,k=k: f"countries/tee_{k}_{'light' if c in ('White','Natural') else 'dark'}.png"),TEE_P,
+    CT=[('dr','KLK ¿Qué lo que?','República Dominicana'),('cuba','¿Qué Bolá, Asere?','Cuba'),('pr','¡Wepa! Boricua de Pura Cepa','Puerto Rico'),('venezuela','¿Qué Más, Chamo?','Venezuela'),('mexico','¡No Manches! ¡Qué Padre!','México'),('colombia','¿Qué Más, Parce?','Colombia'),
+        ('elsalvador','¡Puro Guanaco!','El Salvador'),('honduras','¿Qué Onda, Maje?','Honduras'),('guatemala','¡Chapín de Corazón!','Guatemala'),('peru','¿Qué Tal, Causa?','Perú'),('ecuador','¿Qué Más, Ñaño?','Ecuador'),('argentina','¿Qué Hacés, Che?','Argentina'),('panama','¿Qué Xopá, Fren?','Panamá')]
+    only=sys.argv[4].split(',') if len(sys.argv)>4 else None
+    for k,name,cty in CT:
+        if only and k not in only: continue
+        apparel('PRIDE-'+k.upper(),f'"{name}" {cty} Pride T-Shirt','T-Shirt',71,(1800,2400),['White','Natural','Navy','Black'],TEE_S,(lambda e,c,k=k: f"countries/tee_{k}_{'light' if c in ('White','Natural') else 'dark'}.png"),TEE_P,
           f'<p><strong>{name}</strong> · {cty} 💛 Wear your roots with pride, with the everyday greeting everyone back home knows.</p><ul><li>Bella+Canvas 3001 unisex tee, soft and lightweight</li><li>Unisex sizing S–4XL</li></ul>',[f'{cty.lower()} shirt','latino pride','heritage shirt','Orgullo · Heritage Pride'])
 json.dump(P,open(OUT,'w'),indent=1,ensure_ascii=False); print('built',[p['key'] for p in P])

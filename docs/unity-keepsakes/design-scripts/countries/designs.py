@@ -9,6 +9,13 @@ C={ # key: (big, script/sub, country, c1, c2, c3)
  'venezuela':('¿Qué más,','chamo?','VENEZUELA','#00247D','#CF142B','#E8B400'),
  'mexico':('¡No manches!','¡Qué padre!','MÉXICO','#006847','#CE1126','#006847'),
  'colombia':('¿Qué más,','parce?','COLOMBIA','#003893','#CE1126','#E8B400'),
+ 'elsalvador':('¡Puro','guanaco!','EL SALVADOR','#0047AB','#0047AB','#0047AB'),
+ 'honduras':('¿Qué onda,','maje?','HONDURAS','#0073CF','#0073CF','#0073CF'),
+ 'guatemala':('¡Chapín','de corazón!','GUATEMALA','#3D85C6','#3D85C6','#3D85C6'),
+ 'peru':('¿Qué tal,','causa?','PERÚ','#D91023','#D91023','#D91023'),
+ 'ecuador':('¿Qué más,','ñaño?','ECUADOR','#034EA2','#EF3340','#FFD100'),
+ 'argentina':('¿Qué hacés,','che?','ARGENTINA','#3A7DC9','#1F4E8C','#F6B40E'),
+ 'panama':('¿Qué xopá,','fren?','PANAMÁ','#005293','#D21034','#005293'),
 }
 def html(big,sub,country,c1,c2,c3,dark):
     t1='#ffffff' if dark else c1; t2=c2 if not dark else ('#f4b942' if c2 in('#002D62','#002A8F','#003893','#00247D','#006847') else '#ff8a8a')
