@@ -1,6 +1,6 @@
 # Link Shopify products (already imported into Printful) to Printful catalog variants + files, by SKU, using a specs JSON.
 import json,subprocess,time,sys
-SPECS=sys.argv[1]; EXT=json.loads(sys.argv[2])   # {"KEY": "shopify product numeric id"}
+SPECS=sys.argv[1]; EXT=json.loads(sys.argv[2]); FORCE=len(sys.argv)>3 and sys.argv[3]=='force'   # {"KEY": "shopify product numeric id"}
 STORE=19015734
 def api(m,p,b=None):
     while True:
@@ -27,7 +27,7 @@ for key,ext in EXT.items():
     if not pid: print(key,'NOT IMPORTED'); continue
     d=api('GET',f'/sync/products/{pid}?store_id={STORE}')['result']
     for v in d['sync_variants']:
-        if v['synced']: continue
+        if v['synced'] and not FORCE: continue
         l=P[key]['link'].get(v['sku'])
         if not l: print(key,'no link for',v['sku']); continue
         r=api('PUT',f"/sync/variant/{v['id']}?store_id={STORE}",{"variant_id":l['variant_id'],"is_ignored":False,"files":l['files']})
