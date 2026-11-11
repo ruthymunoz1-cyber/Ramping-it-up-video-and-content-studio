@@ -3,7 +3,7 @@ import os,sys,json
 OUT=sys.argv[1]; os.makedirs(OUT+'/html',exist_ok=True)
 F='<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:ital,wght@0,700;1,500&family=Montserrat:wght@600;800&family=Fredoka:wght@600;700&family=Oswald:wght@700&display=swap" rel="stylesheet">'
 def pg(w,h,body,bg='transparent',align='flex-start',pad=0):
-    return (w,h,bg=='transparent',f'<html><head>{F}<style>html,body{{margin:0;background:transparent}}.c{{width:{w}px;height:{h}px;background:{bg};display:flex;flex-direction:column;align-items:center;justify-content:{align};text-align:center;overflow:hidden;box-sizing:border-box;padding-top:{pad}px}}</style></head><body><div class="c">{body}</div></body></html>')
+    return (w,h,bg=='transparent',f'<html><head>{F}<style>html,body{{margin:0;background:transparent}}div[style*="Great Vibes"]{{line-height:1.3!important;margin-top:36px!important;margin-bottom:14px!important}}.c{{width:{w}px;height:{h}px;background:{bg};display:flex;flex-direction:column;align-items:center;justify-content:{align};text-align:center;overflow:hidden;box-sizing:border-box;padding-top:{pad}px}}</style></head><body><div class="c">{body}</div></body></html>')
 J={}
 def dual(name,fn,light,dark,w=1800,h=2400,pad=160):
     J[name+'_light']=pg(w,h,fn(*light),pad=pad); J[name+'_dark']=pg(w,h,fn(*dark),pad=pad)
