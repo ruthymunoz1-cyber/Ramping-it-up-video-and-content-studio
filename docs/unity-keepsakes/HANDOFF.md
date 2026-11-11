@@ -197,3 +197,12 @@ Rule: original sayings only. Don't reproduce copyrighted poems or quotes (e.g., 
 - **Keep faith and humor separate.** Scripture and faith designs are reverent and stand alone: no coffee, jokes, puns or "but first…" style mixing. Fun and cute designs never reference God, Jesus or scripture.
 - The "Powered by Coffee & Prayer" mug was removed for this reason.
 - Faith products go in their own collection ("Faith · Fe"). Don't cross-promote them next to humor items.
+
+### Update 2026-11-11 (later): batch 2 + Family Christmas Pajama collection (owner approved)
+Built with `design-scripts/build_products.py` (specs + mockups) and `design-scripts/link_products.py` (links Printful by SKU). Store still password-protected.
+- **Drinkware** (11oz mug $21.99 / 15oz mug $24.99 / 20oz insulated to-go tumbler w/ straw $39.99; tumblers use centered `tumbler_*.png` files):
+  "But First, Café", Philippians 4:13 bilingual (KJV + RV1909), "Weekend Forecast: Golf", "250 Years of Freedom – Thank you, Veterans", "Once Airborne, Always Airborne" (11oz + black tumbler). All synced.
+- **Apparel:** Airborne veteran tee (Black/Military Green/Navy, S–4XL) synced 21/21; "Faith over Fear / Fe sobre el miedo" tee (White/Natural/Navy/Black) synced 28/28; "Jesus Is the Reason for the Season" Gildan 18000 sweatshirt (Red/Forest Green/Navy, S–3XL, $44.99–48.99).
+- **Family Christmas Pajamas** (matching tops): Mamá/Papá/Abuela/Abuelo Claus (Bella+Canvas 3501 long-sleeve, White/Red, S–2XL, $34.99/$36.99), Duendecito/Duendecita kids (3501Y, $29.99), Bebé Claus (100B baby bodysuit, $24.99), Perrito Claus dog bandana ($29.99).
+- Collections (by tag): Coffee & To-Go · Faith · Fe · Sports & Golf · Veterans & Military · Family Christmas Pajamas.
+- Airborne/military: original parachute art only. No insignia, jump wings, unit patches, or "America250" mark. A "not affiliated with the U.S. Army/DoD" note is on the listings.
