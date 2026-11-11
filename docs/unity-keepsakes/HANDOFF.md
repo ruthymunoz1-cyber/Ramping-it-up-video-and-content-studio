@@ -206,3 +206,12 @@ Built with `design-scripts/build_products.py` (specs + mockups) and `design-scri
 - **Family Christmas Pajamas** (matching tops): Mamá/Papá/Abuela/Abuelo Claus (Bella+Canvas 3501 long-sleeve, White/Red, S–2XL, $34.99/$36.99), Duendecito/Duendecita kids (3501Y, $29.99), Bebé Claus (100B baby bodysuit, $24.99), Perrito Claus dog bandana ($29.99).
 - Collections (by tag): Coffee & To-Go · Faith · Fe · Sports & Golf · Veterans & Military · Family Christmas Pajamas.
 - Airborne/military: original parachute art only. No insignia, jump wings, unit patches, or "America250" mark. A "not affiliated with the U.S. Army/DoD" note is on the listings.
+
+## Update: Nov 11, 2026 (batch 3 + country tees)
+- **Batch 3 (13 products)** all in Shopify and fully synced in Printful: HOLA-SWEAT, HOLA-YOUTH, TAMALE-SWEAT, FLUENT-TEE, AHORITA-TEE, HABLO-TEE, NOVIA-SWEAT, SQUAD-TEE, BABYXMAS, ORN-BABY, ORN-MARRIED, MRMRS, ADORE-SWEAT.
+- **Country Pride tees (13)**, tag "Orgullo · Heritage Pride", Bella+Canvas 3001, White/Natural (light file) + Navy/Black (dark file), S–4XL, all synced 28/28:
+  DR (KLK ¿Qué lo que?), Cuba (¿Qué bolá, asere?), PR (¡Wepa! Boricua de pura cepa), Venezuela (¿Qué más, chamo?), México (¡No manches! ¡Qué padre!), Colombia (¿Qué más, parce?), El Salvador (¡Puro guanaco!), Honduras (¿Qué onda, maje?), Guatemala (¡Chapín de corazón!), Perú (¿Qué tal, causa?), Ecuador (¿Qué más, ñaño?), Argentina (¿Qué hacés, che?), Panamá (¿Qué xopá, fren?).
+  Designs: `design-scripts/countries/designs.py`; builder: `build_batch3.py <commit> <out.json> d [keys]`. Native-speaker check recommended before launch.
+- **Custom & Group Orders page** live (handle `custom-group-orders`). Support email: **hello@unitykeepsakes.com** (forwarding set in Shopify).
+- **Payments: BLOCKER.** Shopify Payments unavailable (no physical address). PayPal Business account created and bank linked, but PayPal is not activated in Shopify (`paypalExpressSubscriptionGatewayStatus: DISABLED`). Cannot be enabled via API; owner must use Shopify live chat (Help → Chat with us) to get PayPal Express activated, then Settings → Payments → PayPal → Activate.
+- **Next idea (owner):** faith digital art: Proverbs 31 woman, Identity in Christ, bilingual KJV/RV1909 verse art, verse-inspired poems (owner approves every faith design). Options: Shopify Digital Downloads app (not installed yet) and/or Printful posters/canvas.
