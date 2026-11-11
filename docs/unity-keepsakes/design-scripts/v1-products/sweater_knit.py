@@ -21,7 +21,7 @@ def front(W,H):
             for x in range(cx-r,cx+r+1):
                 if 0<=x<W: px[x,cy+r]=GREEN
         px[cx,cy+8]=WHITE; px[cx,cy+9]=WHITE; px[cx,cy-1]=GOLD
-    top=int(H*0.20); tw=int(W*0.62)
+    top=int(H*0.36); tw=int(W*0.52)
     band(top)
     for x in range(10,W-6,24): flake(x,top+18)
     def text(s,y,maxw):
