@@ -32,7 +32,7 @@ This policy does not limit any rights you may have under applicable consumer pro
 
 **Delivery after shipping (estimate):** United States, 3–8 business days. You'll get a tracking number by email once your order ships. Delivery times are estimates, not guarantees.
 
-**🎄 Holiday orders:** for Christmas delivery, please order early. Our holiday cutoff date is shown at the top of our store during the season. We can't guarantee delivery dates, especially during the holidays, but we'll always do our best.
+**🎄 Holiday orders:** to receive your order before December 25 in the US, please order by **Tuesday, December 8, 2026**. We can't guarantee delivery dates, especially during the holidays, but we'll always do our best.
 
 **Where we ship:** we currently ship within the United States.
 
@@ -50,3 +50,10 @@ This policy does not limit any rights you may have under applicable consumer pro
 
 ## 4. Privacy policy
 Keep Shopify's text and change `ruthymunoz1+unity@gmail.com` to **hello@unitykeepsakes.com** (it's near the bottom).
+
+---
+
+## 5. Christmas banner (Online Store → Themes → Customize → Announcement bar)
+> 🎄 Order by Dec 8 for Christmas delivery · Free US shipping · Use code FAMILIA10 for 10% off
+
+Source: Printful 2026 holiday deadlines (US-fulfilled apparel Dec 9, home & living Dec 10). We use Dec 8 as a 1-day safety buffer. Knitwear (made outside the US) closes Nov 15, so the knit sweater stays a draft this season.
