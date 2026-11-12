@@ -215,3 +215,13 @@ Built with `design-scripts/build_products.py` (specs + mockups) and `design-scri
 - **Custom & Group Orders page** live (handle `custom-group-orders`). Support email: **hello@unitykeepsakes.com** (forwarding set in Shopify).
 - **Payments: BLOCKER.** Shopify Payments unavailable (no physical address). PayPal Business account created and bank linked, but PayPal is not activated in Shopify (`paypalExpressSubscriptionGatewayStatus: DISABLED`). Cannot be enabled via API; owner must use Shopify live chat (Help → Chat with us) to get PayPal Express activated, then Settings → Payments → PayPal → Activate.
 - **Next idea (owner):** faith digital art: Proverbs 31 woman, Identity in Christ, bilingual KJV/RV1909 verse art, verse-inspired poems (owner approves every faith design). Options: Shopify Digital Downloads app (not installed yet) and/or Printful posters/canvas.
+
+## Update: Nov 12, 2026 (launch prep + batch 4)
+- **Payments:** Shopify Payments ACTIVE (cards, Shop Pay, Apple Pay, Google Pay). Owner to confirm PayPal under Settings → Payments.
+- **FAMILIA10** discount live (10% off everything, all customers, no end date).
+- **Policies:** API lacks `write_legal_policies`; owner pastes from `policies-paste-ready.md`. Public address: PO Box 2504, Palm Beach, FL 33480. Contact hello@unitykeepsakes.com.
+- **Christmas cutoff:** Dec 8 (Printful US: apparel Dec 9, home & living Dec 10). Banner text in policies-paste-ready.md §5.
+- **Taxes:** Shopify Tax active; collect Florida only once FL DOR registration (DR-1) is done; then upload FL resale certificate to Printful.
+- **Agentic storefronts:** left on (Shopify-managed).
+- **Batch 4 (approved, all synced in Printful):** CAL27 "Palabra Viva" 2027 verse calendar (Printful 1643, Sunday start, 11×17 $34.99 / A4 $26.99; Spanish verses written from memory, owner asked to verify RV1909 wording), CARD-XMAS (Feliz / Próspero), CARD-GLORIA (Luke 2:14), CARD-GODPARENT (Padrino/Madrina/Padrinos), cards $8.99 (Printful 568, 5×7, front+inside2+back), TOWEL-RECETA Coquito/Flan $24.99 (Printful 883). Designs `design-scripts/batch4/`, builder `build_batch4.py`.
+- **Next (owner liked all):** kids bilingual placemats (1400), bilingual board book (1556), baptism/quince/communion keepsakes, pet memorial ornament, "No sabo" second-gen tee.
