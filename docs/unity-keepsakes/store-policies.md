@@ -15,7 +15,7 @@ Every Unity Keepsakes item is printed just for you when you order, so we can't a
 - it arrives damaged or defective, or
 - it isn't what you ordered (wrong design, wrong product, or a printing error on our side).
 
-**How to request a replacement:** email **[support email]** within **30 days of delivery** with your order number and a photo of the problem. No need to send the item back.
+**How to request a replacement:** email **hello@unitykeepsakes.com** within **30 days of delivery** with your order number and a photo of the problem. No need to send the item back.
 
 **Personalized items:** we print your text **exactly as you type it**, including spelling, accents, capitalization and characters. Please check your preview before ordering. We can't offer refunds or replacements for spelling or typing errors made when ordering.
 
@@ -62,12 +62,12 @@ Add these lines to Shopify's generated Terms of Service:
 
 > **Custom content.** You're responsible for any text or images you submit for personalization. You confirm you have the right to use them. We may cancel and fully refund any order containing content that is offensive, hateful or harassing, or that infringes someone else's trademark or copyright.
 
-> **Business information.** Unity Keepsakes is a trade name of RAMP Linguistic Society LLC, **[business address]**, Florida, USA.
+> **Business information.** Unity Keepsakes is a trade name of RAMP Linguistic Society LLC, PO Box 2504, Palm Beach, FL 33480, USA.
 
 ---
 
 ## Contact / Store Info (Shopify → Settings → Store details)
 
 - Legal business name: **RAMP Linguistic Society LLC** (store name: Unity Keepsakes)
-- Support email: **[support@unitykeepsakes.com or similar]**
-- Business address: **[address, or registered agent address for privacy]**
+- Support email: **hello@unitykeepsakes.com**
+- Business address: **PO Box 2504, Palm Beach, FL 33480 (public); never the home address**

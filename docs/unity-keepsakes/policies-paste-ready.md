@@ -46,7 +46,7 @@ This policy does not limit any rights you may have under applicable consumer pro
 
 > **Custom content.** You're responsible for any text or images you submit for personalization. You confirm you have the right to use them. We may cancel and fully refund any order containing content that is offensive, hateful or harassing, or that infringes someone else's trademark or copyright.
 >
-> **Business information.** Unity Keepsakes is a trade name of RAMP Linguistic Society LLC, [PO BOX ADDRESS], Florida, USA. Contact: hello@unitykeepsakes.com.
+> **Business information.** Unity Keepsakes is a trade name of RAMP Linguistic Society LLC, PO Box 2504, Palm Beach, FL 33480, USA. Contact: hello@unitykeepsakes.com.
 
 ## 4. Privacy policy
 Keep Shopify's text and change `ruthymunoz1+unity@gmail.com` to **hello@unitykeepsakes.com** (it's near the bottom).
