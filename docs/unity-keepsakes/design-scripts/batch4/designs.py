@@ -24,9 +24,9 @@ M=[('january','Enero','January','#1f3a5f','#c9a227','They are new every morning:
  ('november','Noviembre','November','#6e3b1f','#e3b98a','In every thing give thanks: for this is the will of God in Christ Jesus concerning you.','Dad gracias en todo; porque esta es la voluntad de Dios para con vosotros en Cristo Jesús.','1 Thessalonians 5:18','1 Tesalonicenses 5:18'),
  ('december','Diciembre','December','#14532d','#c9a227','For unto you is born this day in the city of David a Saviour, which is Christ the Lord.','Que os ha nacido hoy, en la ciudad de David, un Salvador, que es Cristo el Señor.','Luke 2:11','Lucas 2:11')]
 for key,es,en,c,soft,kjv,rv,ren,res in M:
-    n=len(kjv)+len(rv); fs=120 if n<130 else 104 if n<190 else 90
+    n=len(kjv)+len(rv); fs=108 if n<130 else 92 if n<190 else 80
     page(f'cal_{key}',CW,CH,f'''<div style="position:absolute;inset:0;background:linear-gradient(180deg,{soft}55 0%,#fbf7ef 40%,#fbf7ef 100%)"></div>
-<div style="position:absolute;left:10%;right:10%;top:7.5%;height:41%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+<div style="position:absolute;left:10%;right:10%;top:6%;height:38%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
 <div style="font-family:Montserrat;font-weight:700;letter-spacing:16px;font-size:58px;color:{c}">{es.upper()} · {en.upper()}</div>
 <div style="width:220px;height:4px;background:{soft};margin:34px 0"></div>
 <div style="font-family:'Playfair Display';font-style:italic;font-size:{fs}px;line-height:1.28;color:#222">“{kjv}”</div>
@@ -84,15 +84,15 @@ TW,TH=5693,9154
 def towel(key,title_es,title_en,flag,ingr,steps,c):
     li=''.join(f'<div style="margin:34px 0"><span style="font-family:\'Playfair Display\';font-weight:700">{a}</span><br><span style="font-family:\'Playfair Display\';font-style:italic;color:#666;font-size:.85em">{b}</span></div>' for a,b in ingr)
     st=''.join(f'<div style="margin:44px 0;display:flex;gap:60px;align-items:flex-start"><div style="font-family:\'Great Vibes\';font-size:300px;line-height:.75;color:{c};min-width:150px">{i+1}</div><div><span style="font-family:\'Playfair Display\'">{a}</span><br><span style="font-family:\'Playfair Display\';font-style:italic;color:#666;font-size:.85em">{b}</span></div></div>' for i,(a,b) in enumerate(steps))
-    H2=lambda t:f'<div style="font-family:Montserrat;font-weight:800;letter-spacing:18px;font-size:120px;color:{c};text-align:center">{t}</div>'
-    page(f'towel_{key}',TW,TH,f'''<div style="position:absolute;inset:0;background:#fbf7ef"></div><div style="position:absolute;inset:140px;border:10px solid {c};border-radius:40px"></div>
-<div style="position:absolute;left:330px;right:330px;top:330px;bottom:330px;display:flex;flex-direction:column;justify-content:space-between;align-items:stretch">
-<div style="text-align:center"><div style="font-family:Montserrat;font-weight:700;letter-spacing:34px;font-size:150px;color:{c}">LA RECETA DE ABUELA</div>
-<div style="font-family:'Great Vibes';font-size:1000px;line-height:1.1;color:#2b2b2b">{title_es}</div>
-<div style="font-family:'Playfair Display';font-style:italic;font-size:210px;color:#666">{title_en} · {flag}</div></div>
+    H2=lambda t:f'<div style="font-family:Montserrat;font-weight:800;letter-spacing:14px;font-size:110px;color:{c};text-align:center">{t}</div>'
+    page(f'towel_{key}',TW,TH,f'''<div style="position:absolute;inset:0;background:#fbf7ef"></div><div style="position:absolute;top:260px;bottom:260px;left:520px;right:520px;border:10px solid {c};border-radius:40px"></div>
+<div style="position:absolute;left:760px;right:760px;top:470px;bottom:470px;display:flex;flex-direction:column;justify-content:space-between;align-items:stretch">
+<div style="text-align:center"><div style="font-family:Montserrat;font-weight:700;letter-spacing:28px;font-size:136px;color:{c}">LA RECETA DE ABUELA</div>
+<div style="font-family:'Great Vibes';font-size:880px;line-height:1.1;color:#2b2b2b">{title_es}</div>
+<div style="font-family:'Playfair Display';font-style:italic;font-size:180px;color:#666">{title_en} · {flag}</div></div>
 <div style="width:700px;height:10px;background:{c};align-self:center"></div>
-<div>{H2('INGREDIENTES · INGREDIENTS')}<div style="font-size:178px;line-height:1.18;text-align:center;margin-top:30px">{li}</div></div>
-<div>{H2('PREPARACIÓN · DIRECTIONS')}<div style="font-size:160px;line-height:1.2;margin-top:30px">{st}</div></div>
+<div>{H2('INGREDIENTES · INGREDIENTS')}<div style="font-size:160px;line-height:1.18;text-align:center;margin-top:30px">{li}</div></div>
+<div>{H2('PREPARACIÓN · DIRECTIONS')}<div style="font-size:142px;line-height:1.2;margin-top:30px">{st}</div></div>
 <div style="text-align:center;font-family:'Great Vibes';font-size:360px;line-height:1;color:{c}">¡Buen provecho!</div></div>''',full=True)
 towel('coquito','Coquito','Coconut Eggnog','Puerto Rico',
  [('1 lata de crema de coco (15 oz)','1 can cream of coconut (15 oz)'),('1 lata de leche evaporada (12 oz)','1 can evaporated milk (12 oz)'),('1 lata de leche condensada (14 oz)','1 can sweetened condensed milk (14 oz)'),('1 taza de ron blanco (opcional)','1 cup white rum (optional)'),('1 cdta. de vainilla · ½ cdta. de canela','1 tsp vanilla · ½ tsp cinnamon'),('Una pizca de nuez moscada','A pinch of nutmeg')],
