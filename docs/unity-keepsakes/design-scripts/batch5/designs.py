@@ -66,7 +66,7 @@ orn('orn_pet','radial-gradient(circle,#ffffff 0%,#f3ebe2 100%)',f'''<div style="
 # ---- No Sabo Kid tee (Bella+Canvas 3001, 1800x2400, transparent) ----
 for mode in ('light','dark'):
     t1='#1f2a44' if mode=='light' else '#ffffff'; acc='#e23b3b' if mode=='light' else '#f5c518'
-    page(f'tee_nosabo_{mode}',1800,2400,f'''<div style="position:absolute;left:0;right:0;top:260px;text-align:center">
+    page(f'tee_nosabo_{mode}',1800,2400,f'''<div style="position:absolute;left:0;right:0;top:560px;text-align:center">
 <div style="font-family:Fredoka;font-weight:700;font-size:400px;line-height:.95;color:{t1}">NO SABO</div>
 <div style="font-family:Fredoka;font-weight:700;font-size:400px;line-height:.95;color:{acc}">KID</div>
 <div style="font-family:'Great Vibes';font-size:250px;line-height:1.3;color:{t1};margin-top:30px">pero entiendo todo</div>

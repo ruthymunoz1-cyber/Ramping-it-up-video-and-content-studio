@@ -22,7 +22,7 @@ def html(big,sub,country,c1,c2,c3,dark):
     t2= c2 if not dark else '#f4b942'
     bar=f'<div style="display:flex;gap:16px;margin:50px 0 30px"><span style="width:180px;height:18px;background:{c1 if not dark else "#ffffff"};border-radius:9px"></span><span style="width:180px;height:18px;background:{c3 if c3!=c1 else "#ffffff" if dark else "#dddddd"};border-radius:9px"></span><span style="width:180px;height:18px;background:{c2};border-radius:9px"></span></div>'
     bigsize=360 if len(big)<=7 else 250
-    return f'''<html><head>{F}<style>html,body{{margin:0;background:transparent}}.c{{width:1800px;height:2400px;display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:200px;box-sizing:border-box}}</style></head><body><div class="c">
+    return f'''<html><head>{F}<style>html,body{{margin:0;background:transparent}}.c{{width:1800px;height:2400px;display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:520px;box-sizing:border-box}}</style></head><body><div class="c">
 <div style="font-family:Fredoka;font-weight:700;font-size:{bigsize}px;line-height:1.05;color:{t1}">{big}</div>
 <div style="font-family:'Great Vibes';font-size:230px;line-height:1.3;margin-top:20px;color:{t2}">{sub}</div>
 {bar}
