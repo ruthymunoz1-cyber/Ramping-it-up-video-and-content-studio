@@ -12,11 +12,11 @@ Every Unity Keepsakes item is printed just for you when you order, so we can't a
 - it arrives damaged or defective, or
 - it isn't what you ordered (wrong design, wrong product, or a printing error on our side).
 
-**How to request a replacement:** email **hello@unitykeepsakes.com** within **30 days of delivery** with your order number and a photo of the problem. No need to send the item back.
+**How to request a replacement:** email **hello@unitykeepsakes.com** within **14 days of delivery** with your order number and a photo of the problem. No need to send the item back.
 
 **Personalized items:** we print your text exactly as you type it, including spelling, accents, capitalization and characters. Please check your preview before ordering. We can't offer refunds or replacements for spelling or typing errors made when ordering.
 
-**Lost packages:** if tracking shows your order as delivered but you didn't receive it, contact us within 30 days and we'll help.
+**Lost packages:** if tracking shows your order as delivered but you didn't receive it, contact us within 14 days and we'll help.
 
 **Cancellations:** orders go to production quickly. Contact us within 2 hours of ordering if you need to cancel or change something. After that, we can't guarantee changes.
 
