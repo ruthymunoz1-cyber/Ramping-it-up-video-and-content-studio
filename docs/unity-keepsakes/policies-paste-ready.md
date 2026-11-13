@@ -6,7 +6,7 @@ Paste each one into **Shopify Admin → Settings → Policies**. Replace all of 
 
 ## 1. Refund policy
 
-Every Unity Keepsakes item is printed just for you when you order, so we can't accept returns or exchanges for change of mind, a wrong size or color chosen, or personalization text entered by the customer.
+Every Unity Keepsakes item is printed just for you when you order, so we can't accept returns or exchanges for change of mind, a wrong size or color chosen, or incorrect personalization text entered by the customer.
 
 **We'll replace or refund your item if:**
 - it arrives damaged or defective, or
