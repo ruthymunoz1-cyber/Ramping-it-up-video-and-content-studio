@@ -67,8 +67,8 @@ orn('orn_pet','radial-gradient(circle,#ffffff 0%,#f3ebe2 100%)',f'''<div style="
 for mode in ('light','dark'):
     t1='#1f2a44' if mode=='light' else '#ffffff'; acc='#e23b3b' if mode=='light' else '#f5c518'
     page(f'tee_nosabo_{mode}',1800,2400,f'''<div style="position:absolute;left:0;right:0;top:260px;text-align:center">
-<div style="font-family:Fredoka;font-weight:700;font-size:330px;line-height:.95;color:{t1}">NO SABO</div>
-<div style="font-family:Fredoka;font-weight:700;font-size:330px;line-height:.95;color:{acc}">KID</div>
-<div style="font-family:'Great Vibes';font-size:170px;line-height:1.3;color:{t1};margin-top:40px">pero entiendo todo</div>
-<div style="font-family:Montserrat;font-weight:700;font-size:56px;letter-spacing:10px;color:{t1};opacity:.8;margin-top:10px">(BUT I UNDERSTAND EVERYTHING)</div></div>''',transparent=True)
+<div style="font-family:Fredoka;font-weight:700;font-size:400px;line-height:.95;color:{t1}">NO SABO</div>
+<div style="font-family:Fredoka;font-weight:700;font-size:400px;line-height:.95;color:{acc}">KID</div>
+<div style="font-family:'Great Vibes';font-size:250px;line-height:1.3;color:{t1};margin-top:30px">pero entiendo todo</div>
+<div style="font-family:Montserrat;font-weight:700;font-size:78px;letter-spacing:6px;color:{t1};opacity:.85;margin-top:10px">(BUT I UNDERSTAND EVERYTHING)</div></div>''',transparent=True)
 json.dump(J,open(OUT+'/jobs.json','w')); print(len(J),'pages')
