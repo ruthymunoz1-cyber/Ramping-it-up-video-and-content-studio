@@ -8,8 +8,10 @@ description: Locked brand rules for Unity Keepsakes (logo, colors, fonts, taglin
 Do not change these without the owner's approval.
 
 ## Logo
-- Master file: `docs/unity-keepsakes/brand/logo-square-1200-v4.png`
-- Structure, top to bottom: "Unity" (italic serif), "KEEPSAKES" (spaced sans), gold rule, "BILINGUAL KEEPSAKES" (pink), interlocked **U and K monogram** (gold U, teal K; K stem passes over the U bottom, K lower arm passes under), "VETERAN-OWNED" (teal).
+- **Final master file: `docs/unity-keepsakes/brand/logo-FINAL-square-1200.png`** (approved by owner).
+- Structure, top to bottom: interlocked **U and K monogram** (small, gold U, teal K, woven: K stem over the U bottom, K lower arm under), "Unity" (large italic serif, the centerpiece), "KEEPSAKES" (spaced sans), pink rule, "BILINGUAL KEEPSAKES" (pink), "VETERAN-OWNED" (teal).
+- The name is the centerpiece. The monogram is never bigger than the name.
+- Side-mark lockup was rejected by the owner. Do not use it.
 - Gold ring with 12 colored dots around the edge.
 - The veteran line must stay inside the ring.
 
