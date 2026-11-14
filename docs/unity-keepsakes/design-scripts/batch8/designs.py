@@ -23,7 +23,7 @@ page('card_es_front',f'''<div style="position:absolute;inset:0;background:radial
 <div style="font-family:Montserrat;font-weight:700;font-size:40px;letter-spacing:16px;color:#c9a227">TARJETA DE FE</div>
 <div style="font-family:'Great Vibes';font-size:250px;line-height:1.2;margin-top:40px">Estad quietos</div>
 <div style="font-family:'Playfair Display';font-style:italic;font-size:72px;margin-top:20px;color:#e9dcc0">y conoced que yo soy Dios</div></div>''')
-back('card_es_back','Salmos 46:10','Estad quietos, y conoced que yo soy Dios; ensalzado seré entre las naciones, ensalzado seré en la tierra.','Psalm 46:10','Be still, and know that I am God: I will be exalted among the heathen, I will be exalted in the earth.','#c9a227')
+back('card_es_back','Salmos 46:10','Estad quietos, y conoced que yo soy Dios: ensalzado he de ser entre las gentes, ensalzado seré en la tierra.','Psalm 46:10','Be still, and know that I am God: I will be exalted among the heathen, I will be exalted in the earth.','#c9a227')
 # 2) English: Psalm 91:1
 page('card_en_front',f'''<div style="position:absolute;inset:0;background:#fbf7ef"></div>
 <div style="position:absolute;inset:60px;border:4px solid #1f3a5f;border-radius:24px"></div>
@@ -40,5 +40,5 @@ page('card_vet_front',f'''<div style="position:absolute;inset:0;background:radia
 <div style="font-family:'Playfair Display';font-weight:700;font-size:170px;line-height:1.1;margin-top:40px">Be Strong</div>
 <div style="font-family:'Playfair Display';font-weight:700;font-size:170px;line-height:1.1;color:#40cdc8">and Courageous</div>
 <div style="font-family:'Playfair Display';font-style:italic;font-size:64px;margin-top:30px;color:#e9dcc0">Fuerte y valiente</div></div>''')
-back('card_vet_back','Josué 1:9','Mira que te mando que te esfuerces y seas valiente: no temas ni desmayes, porque Jehová tu Dios será contigo en dondequiera que vayas.','Joshua 1:9','Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest.','#c9a227')
+back('card_vet_back','Josué 1:9','Mira que te mando que te esfuerces y seas valiente: no temas ni desmayes, porque Jehová tu Dios será contigo en donde quiera que fueres.','Joshua 1:9','Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest.','#c9a227')
 json.dump(J,open(OUT+'/jobs.json','w')); print(len(J))
