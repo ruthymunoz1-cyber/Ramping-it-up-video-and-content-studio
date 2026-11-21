@@ -1538,6 +1538,16 @@ MESA | Spanish word for table"></textarea>
       <div class="page-head"><div class="page-title">🖍️ Coloring Book Studio</div>
       <div class="page-desc">Turn a page list into a full, printable coloring book — clean black-outline line art, no color, one page per idea. Pick a Character Lab character to keep them consistent across every page, or leave it blank for freestanding scenes.</div></div>
       <div class="card">
+        <label class="f-label">⚡ One-click preset (optional) — fills everything below with a ready-to-generate book</label>
+        <div class="row">
+          <select id="cb-preset" style="flex:3">
+            <option value="">— Start from scratch —</option>
+            ${RIU_DATA.coloringPresets.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")}
+          </select>
+          <button class="btn fixed" id="cb-preset-load">Load preset</button>
+        </div>
+        <div class="hint" id="cb-preset-note"></div>
+        <div class="divider"></div>
         <label class="f-label">Book title</label>
         <input type="text" id="cb-title" placeholder="e.g. Maya's Day at the Park">
         <div class="row">
@@ -3980,7 +3990,18 @@ const Bind = {
         let url, cost = 0;
         const { w, h } = trimDims();
         if (modelId.startsWith("pollinations:")) {
-          const out = await Providers.freeImage(prompt, { width: Math.round(w * 100), height: Math.round(h * 100), model: modelId.split(":")[1] });
+          const opts = { width: Math.round(w * 100), height: Math.round(h * 100), model: modelId.split(":")[1] };
+          let out;
+          // The free tier is often busy/rate-limited — retry twice with a pause
+          // before failing, so one hiccup doesn't kill the page.
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try { out = await Providers.freeImage(prompt, opts); break; }
+            catch (err) {
+              if (attempt === 3) throw new Error(`${err.message} If the free service keeps failing, switch Model to "FLUX Schnell" (~$0.003/page) and click 🎨 Generate on this page.`);
+              setStatus("cb-status", "info", `Page ${i + 1}: free service busy — retrying (${attempt}/2) in ${attempt * 8}s…`);
+              await new Promise(r => setTimeout(r, attempt * 8000));
+            }
+          }
           url = out.sourceUrl;
         } else {
           // Always text-only — never pass a character's (colored, photoreal)
@@ -3997,6 +4018,24 @@ const Bind = {
         renderGallery();
         setStatus("cb-status", "ok", `Page ${i + 1} ready.`);
       } catch (e) { setStatus("cb-status", "err", `Page ${i + 1}: ${e.message}`); }
+    };
+
+    $("#cb-preset").onchange = () => {
+      const p = RIU_DATA.coloringPresets.find(x => x.id === $("#cb-preset").value);
+      $("#cb-preset-note").textContent = p ? `${p.note} (${p.pages.length} pages)` : "";
+    };
+    $("#cb-preset-load").onclick = () => {
+      const p = RIU_DATA.coloringPresets.find(x => x.id === $("#cb-preset").value);
+      if (!p) return setStatus("cb-status", "err", "Pick a preset first.");
+      if ($("#cb-pages").value.trim() && !confirm("Replace the current title and page list with this preset?")) return;
+      $("#cb-title").value = p.title;
+      $("#cb-style").value = p.style;
+      $("#cb-trim").value = p.trim;
+      if ([...$("#cb-model").options].some(o => o.value === p.model)) $("#cb-model").value = p.model;
+      $("#cb-char").value = ""; // presets are freestanding scenes — no Character Lab bleed-through
+      $("#cb-pages").value = p.pages.join("\n");
+      updateCost();
+      setStatus("cb-status", "ok", `Loaded "${p.title}" — ${p.pages.length} pages, ${p.style} lines, ${p.trim} in. Edit anything you like, then click 🖍️ Generate all pages.`);
     };
 
     $("#cb-autodraft").onclick = async () => {
