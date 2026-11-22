@@ -1592,6 +1592,7 @@ Maya reading a book before bedtime | You did something new today, and that matte
         <div class="status" id="cb-status"></div>
         <div class="board-grid mt" id="cb-gallery"></div>
         <div class="mt row" id="cb-actions" style="display:none">
+          <label class="fixed" style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="cb-single" checked> Single-sided (blank back behind every design — the coloring-book standard, stops marker bleed-through; doubles the printed page count for KDP)</label>
           <button class="btn sm fixed" id="cb-print">🖨 Print / save PDF (sized to trim)</button>
         </div>
       </div>`;
@@ -4091,6 +4092,7 @@ const Bind = {
       const ready = state.pages.filter(p => p.imgUrl);
       if (!ready.length) return;
       const { w: tw, h: th } = trimDims();
+      const single = $("#cb-single").checked;
       const win = window.open("", "_blank");
       win.document.write(`<!DOCTYPE html><html><head><title>${esc(title)}</title><style>
         @page{size:${tw}in ${th}in;margin:0.5in}
@@ -4102,8 +4104,9 @@ const Bind = {
         img{max-width:100%;max-height:${ready.some(p => p.affirmation) ? "70%" : "82%"};object-fit:contain}
         .affirmation{font-style:italic;font-size:15px;margin-top:10px;padding:0 0.4in;color:#333}
         .pnum{font-size:11px;color:#888;margin-top:6px}</style></head><body>
-        <div class="page title-page"><h1>${esc(title)}</h1><div class="muted">${ready.length} pages</div></div>
-        ${ready.map((p, i) => `<div class="page"><img src="${p.imgUrl}">${p.affirmation ? `<div class="affirmation">${esc(p.affirmation)}</div>` : ""}<div class="pnum">${i + 1}</div></div>`).join("")}
+        <div class="page title-page"><h1>${esc(title)}</h1><div class="muted">${ready.length} designs</div></div>
+        ${single ? `<div class="page"></div>` : ""}
+        ${ready.map((p, i) => `<div class="page"><img src="${p.imgUrl}">${p.affirmation ? `<div class="affirmation">${esc(p.affirmation)}</div>` : ""}<div class="pnum">${i + 1}</div></div>${single && i < ready.length - 1 ? `<div class="page"></div>` : ""}`).join("")}
         <script>window.onload=()=>setTimeout(()=>window.print(),600)<\/script></body></html>`);
       win.document.close();
     };
