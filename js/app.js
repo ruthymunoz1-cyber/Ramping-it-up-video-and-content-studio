@@ -1571,7 +1571,7 @@ MESA | Spanish word for table"></textarea>
         </div>
         ${charSelectHtml("cb-char", "Character (optional — keeps them consistent across every page)")}
         ${modelSelectHtml("cb-model", "image")}
-        <div class="hint">Line art works best on Pollinations (FREE) or FLUX Schnell — photoreal models (Nano Banana, GPT Image 2) tend to fight the "no color" instruction and can add a provider watermark. Coloring pages are always generated from the text description only, never from a character's photo reference, so colors from a reference photo can't bleed into the line art.</div>
+        <div class="hint"><b>Free vs. sellable:</b> Pollinations (FREE) is fine for previewing a book, but in live testing (Nov 2026) its free tier stamps a <i>pollinations.ai</i> watermark on every page, often adds gray shading, and is limited to 1 image every 45 seconds (a 40-page book ≈ 30+ min). For pages you'll <b>sell</b>, use FLUX Schnell (~$0.003/page ≈ $0.15 per 50-page book; needs your fal.ai key in ⚙️ Settings). Photoreal models (Nano Banana, GPT Image 2) fight the "no color" instruction. Coloring pages are always generated from the text description only, never from a character's photo reference, so colors from a reference photo can't bleed into the line art.</div>
         <div class="divider"></div>
         <label class="f-label">Auto-draft page ideas (optional, FREE) — theme + how many pages</label>
         <div class="row">
@@ -3984,8 +3984,11 @@ const Bind = {
       const charId = $("#cb-char").value;
       const modelId = $("#cb-model").value;
       const style = STYLE_PROMPTS[$("#cb-style").value] || STYLE_PROMPTS.bold;
-      const prompt = characterPrefixForLineArt(charId) + p.desc +
-        `. Black-and-white line art coloring book page — ${style}. Pure white background, no color anywhere, no grayscale shading, no gradients, no photographic lighting — flat outline illustration only, like a page from a printed coloring book, printable quality.`;
+      // Lead with the medium: image models weight the first words most, and
+      // putting the subject first produced shaded, photo-like renders in testing.
+      const prompt = `Coloring book page, black and white line art, black ink outlines on pure white paper, outline only, uncolored. Subject: ` +
+        characterPrefixForLineArt(charId) + p.desc +
+        `. Style: ${style}. Flat vector outline drawing with open white space inside every shape for coloring — no shading, no gray tones, no gradients, no filled black areas, no photographic lighting, no text, like a page from a printed coloring book.`;
       setStatus("cb-status", "info", `Generating page ${i + 1}/${state.pages.length}…`);
       try {
         let url, cost = 0;
@@ -3993,14 +3996,21 @@ const Bind = {
         if (modelId.startsWith("pollinations:")) {
           const opts = { width: Math.round(w * 100), height: Math.round(h * 100), model: modelId.split(":")[1] };
           let out;
-          // The free tier is often busy/rate-limited — retry twice with a pause
-          // before failing, so one hiccup doesn't kill the page.
+          // Pollinations' free tier allows ONE image per 45s per IP (it answers
+          // 402 FREE_LIMIT otherwise) — pace requests, and retry after a full
+          // window if we still get refused.
+          const FREE_GAP = 47000;
           for (let attempt = 1; attempt <= 3; attempt++) {
+            const wait = (state.lastFree || 0) + FREE_GAP - Date.now();
+            for (let s = Math.ceil(wait / 1000); s > 0; s--) {
+              setStatus("cb-status", "info", `Page ${i + 1}/${state.pages.length}: the free service allows 1 image every 45s — starting in ${s}s…`);
+              await new Promise(r => setTimeout(r, 1000));
+            }
+            setStatus("cb-status", "info", `Generating page ${i + 1}/${state.pages.length} (free)…`);
+            state.lastFree = Date.now();
             try { out = await Providers.freeImage(prompt, opts); break; }
             catch (err) {
               if (attempt === 3) throw new Error(`${err.message} If the free service keeps failing, switch Model to "FLUX Schnell" (~$0.003/page) and click 🎨 Generate on this page.`);
-              setStatus("cb-status", "info", `Page ${i + 1}: free service busy — retrying (${attempt}/2) in ${attempt * 8}s…`);
-              await new Promise(r => setTimeout(r, attempt * 8000));
             }
           }
           url = out.sourceUrl;
@@ -4009,6 +4019,13 @@ const Bind = {
           // reference image here. An edit model anchored on a reference photo
           // drags its color/shading into what should be flat line art.
           const input = { prompt, aspect_ratio: "4:5" }; // closest supported shape to a portrait print page
+          // FLUX endpoints ignore aspect_ratio and default to landscape — give
+          // them exact pixel dimensions matching the trim (multiples of 16).
+          if (modelId.includes("/flux")) {
+            const pw = 1024, ph = Math.round((pw * h / w) / 16) * 16;
+            input.image_size = { width: pw, height: ph };
+            delete input.aspect_ratio;
+          }
           const res = await Providers.falRun(modelId, input, s => setStatus("cb-status", "info", s));
           url = Providers.extractMedia(res);
           cost = modelsIn("image").find(x => x.id === modelId)?.cost || 0;
@@ -4093,6 +4110,7 @@ const Bind = {
       if (!ready.length) return;
       const { w: tw, h: th } = trimDims();
       const single = $("#cb-single").checked;
+      const pub = RIU_DATA.publisher;
       const win = window.open("", "_blank");
       win.document.write(`<!DOCTYPE html><html><head><title>${esc(title)}</title><style>
         @page{size:${tw}in ${th}in;margin:0.5in}
@@ -4103,10 +4121,12 @@ const Bind = {
         .title-page h1{font-size:36px;margin:0 0 8px}
         img{max-width:100%;max-height:${ready.some(p => p.affirmation) ? "70%" : "82%"};object-fit:contain}
         .affirmation{font-style:italic;font-size:15px;margin-top:10px;padding:0 0.4in;color:#333}
-        .pnum{font-size:11px;color:#888;margin-top:6px}</style></head><body>
-        <div class="page title-page"><h1>${esc(title)}</h1><div class="muted">${ready.length} designs</div></div>
-        ${single ? `<div class="page"></div>` : ""}
-        ${ready.map((p, i) => `<div class="page"><img src="${p.imgUrl}">${p.affirmation ? `<div class="affirmation">${esc(p.affirmation)}</div>` : ""}<div class="pnum">${i + 1}</div></div>${single && i < ready.length - 1 ? `<div class="page"></div>` : ""}`).join("")}
+        .pnum{font-size:11px;color:#888;margin-top:6px}
+        .imprint{font-size:16px;letter-spacing:2px;text-transform:uppercase;margin-top:36px;color:#222}
+        .copyright{font-size:12px;color:#444;gap:6px;justify-content:flex-end;padding-bottom:0.6in}</style></head><body>
+        <div class="page title-page"><h1>${esc(title)}</h1><div class="muted">${ready.length} designs</div><div class="imprint">${esc(pub)}</div></div>
+        <div class="page copyright"><div>${esc(title)}</div><div>© ${new Date().getFullYear()} ${esc(pub)}. All rights reserved.</div><div>Coloring pages may be copied for the purchaser's personal, non-commercial use only.</div><div class="imprint" style="margin-top:14px">${esc(pub)}</div></div>
+        ${ready.map((p, i) => `<div class="page"><img src="${p.imgUrl}">${p.affirmation ? `<div class="affirmation">${esc(p.affirmation)}</div>` : ""}<div class="pnum">${i + 1} · ${esc(pub)}</div></div>${single && i < ready.length - 1 ? `<div class="page"></div>` : ""}`).join("")}
         <script>window.onload=()=>setTimeout(()=>window.print(),600)<\/script></body></html>`);
       win.document.close();
     };

@@ -530,6 +530,9 @@ const RIU_DATA = {
    * accidentally picking a photoreal model that fights "no color".
    * Text after "|" prints as real text under the page (affirmation, or for
    * MEMOIVA a reminiscence conversation prompt). */
+  /* Publishing imprint — printed on every book the studio exports. */
+  publisher: "RAMP Linguistic Society Publishing",
+
   coloringPresets: [
     {
       id: "bts-kids", name: "🎒 Back to School — Kids (ages 4–8)",
