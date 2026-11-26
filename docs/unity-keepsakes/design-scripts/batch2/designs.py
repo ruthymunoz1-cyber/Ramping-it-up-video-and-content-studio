@@ -36,7 +36,7 @@ vet_inner='''<div style="font-family:Montserrat;font-weight:800;font-size:56px;l
 <div style="font-family:'Playfair Display';font-style:italic;font-size:66px;color:#a8323e;margin-top:14px">Thank you, Veterans</div>'''
 D['mug_veterans-250']=('mug',mug(vet_inner))
 # Apparel (1800x2400 @2x → 3600x4800), transparent
-def tee(inner,css=''): return page(1800,2400,f'<div class="p" style="width:1700px;margin-top:-600px">{inner}</div>','transparent',css)
+def tee(inner,css=''): return page(1800,2400,f'<div class="p" style="position:absolute;left:50px;width:1700px;top:520px;bottom:300px;justify-content:center">{inner}</div>','transparent',css)  # safe zone: below collar (520px), 300px clear at bottom
 D['tee_airborne']=('tee',tee(air_inner('#ffffff','#d4b15f','#1b1b1b').replace('width="330"','width="560"').replace('font-size:96px','font-size:150px').replace('font-size:46px','font-size:62px')))
 D['tee_faith-over-fear_light']=('tee',tee('''<div style="font-family:Oswald;font-weight:700;font-size:300px;line-height:.95;color:#1f3550">FAITH<br><span style="font-family:'Great Vibes';font-weight:400;font-size:200px;color:#c0392b">over</span><br>FEAR</div>
 <div style="font-family:'Playfair Display';font-style:italic;font-size:110px;color:#c0392b;margin-top:40px">fe sobre el miedo</div>'''))
