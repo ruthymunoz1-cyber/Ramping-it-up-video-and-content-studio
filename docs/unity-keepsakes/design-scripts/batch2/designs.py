@@ -44,7 +44,7 @@ D['tee_faith-over-fear_dark']=('tee',D['tee_faith-over-fear_light'][1].replace('
 # Church ugly sweater (printed sweatshirt front)
 D['sweatshirt_reason-for-season']=('tee',tee('''<div style="font-size:90px;color:#ffffff;letter-spacing:30px">❄ ✦ ❄ ✦ ❄ ✦ ❄</div>
 <div style="font-family:Fredoka;font-weight:700;font-size:190px;line-height:1.14;letter-spacing:4px;color:#ffffff;margin-top:30px">JESUS IS<br>THE REASON<br>FOR THE SEASON</div>
-<div style="font-family:Fredoka;font-weight:600;font-size:92px;color:#f4d35e;margin-top:40px">Jesús es la razón de esta temporada</div>
+<div style="font-family:Fredoka;font-weight:700;font-size:130px;line-height:1.15;color:#f4d35e;margin-top:40px">Jesús es la razón<br>de esta temporada</div>
 <div style="font-size:90px;color:#ffffff;letter-spacing:30px;margin-top:30px">🎄 ✦ ★ ✦ 🎄</div>'''))
 jobs=[]
 for k,(kind,html) in D.items():
