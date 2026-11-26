@@ -36,14 +36,14 @@ vet_inner='''<div style="font-family:Montserrat;font-weight:800;font-size:56px;l
 <div style="font-family:'Playfair Display';font-style:italic;font-size:66px;color:#a8323e;margin-top:14px">Thank you, Veterans</div>'''
 D['mug_veterans-250']=('mug',mug(vet_inner))
 # Apparel (1800x2400 @2x → 3600x4800), transparent
-def tee(inner,css=''): return page(1800,2400,f'<div class="p" style="position:absolute;left:50px;width:1700px;top:520px;bottom:300px;justify-content:center">{inner}</div>','transparent',css)  # safe zone: below collar (520px), 300px clear at bottom
+def tee(inner,css=''): return page(1800,2400,f'<div class="p" style="position:absolute;left:50px;width:1700px;top:520px;bottom:520px;justify-content:center">{inner}</div>','transparent',css)  # safe zone: below collar (520px), 300px clear at bottom
 D['tee_airborne']=('tee',tee(air_inner('#ffffff','#d4b15f','#1b1b1b').replace('width="330"','width="560"').replace('font-size:96px','font-size:150px').replace('font-size:46px','font-size:62px')))
 D['tee_faith-over-fear_light']=('tee',tee('''<div style="font-family:Oswald;font-weight:700;font-size:300px;line-height:.95;color:#1f3550">FAITH<br><span style="font-family:'Great Vibes';font-weight:400;font-size:200px;color:#c0392b">over</span><br>FEAR</div>
 <div style="font-family:'Playfair Display';font-style:italic;font-size:110px;color:#c0392b;margin-top:40px">fe sobre el miedo</div>'''))
 D['tee_faith-over-fear_dark']=('tee',D['tee_faith-over-fear_light'][1].replace('#1f3550','#ffffff').replace('#c0392b','#f4b942'))
 # Church ugly sweater (printed sweatshirt front)
 D['sweatshirt_reason-for-season']=('tee',tee('''<div style="font-size:90px;color:#ffffff;letter-spacing:30px">❄ ✦ ❄ ✦ ❄ ✦ ❄</div>
-<div style="font-family:Fredoka;font-weight:700;font-size:200px;line-height:1;color:#ffffff;margin-top:30px">JESUS IS<br>THE REASON<br>FOR THE SEASON</div>
+<div style="font-family:Fredoka;font-weight:700;font-size:190px;line-height:1.14;letter-spacing:4px;color:#ffffff;margin-top:30px">JESUS IS<br>THE REASON<br>FOR THE SEASON</div>
 <div style="font-family:Fredoka;font-weight:600;font-size:92px;color:#f4d35e;margin-top:40px">Jesús es la razón de esta temporada</div>
 <div style="font-size:90px;color:#ffffff;letter-spacing:30px;margin-top:30px">🎄 ✦ ★ ✦ 🎄</div>'''))
 jobs=[]
