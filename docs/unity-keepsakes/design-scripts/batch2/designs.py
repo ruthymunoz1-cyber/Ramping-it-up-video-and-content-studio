@@ -26,7 +26,7 @@ D['mug_golf-forecast']=('mug',mug('''<div style="font-family:Montserrat;font-wei
 <div style="font-family:Oswald;font-weight:700;font-size:240px;line-height:1;color:#2f5d3a">GOLF</div>
 <div style="font-family:'Playfair Display';font-style:italic;font-size:70px;color:#6b8f3a">with a chance of coffee ⛳</div>'''))
 # 5 Airborne mug (black bg)
-air_inner=lambda c,a,bg: f'''{CHUTE.format(w=330,c=a,bg=bg)}
+air_inner=lambda c,a,bg: f'''
 <div style="font-family:Oswald;font-weight:700;font-size:96px;letter-spacing:6px;color:{c};line-height:1.05;margin-top:10px">ONCE AIRBORNE,<br>ALWAYS AIRBORNE</div>
 <div style="font-family:Montserrat;font-weight:700;font-size:46px;letter-spacing:14px;color:{a};margin-top:22px">VETERAN · PROUD TO HAVE SERVED</div>'''
 D['mug_airborne']=('mug',mug(air_inner('#ffffff','#d4b15f','#111111').replace('width="330"','width="230"').replace('font-size:96px','font-size:84px').replace('font-size:46px;letter-spacing:14px','font-size:30px;letter-spacing:8px'),bg='#111111'))
