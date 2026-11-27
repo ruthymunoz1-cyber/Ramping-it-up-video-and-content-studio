@@ -5,21 +5,21 @@ F='<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playf
 def pg(w,h,body,bg='transparent',align='flex-start',pad=0):
     return (w,h,bg=='transparent',f'<html><head>{F}<style>html,body{{margin:0;background:transparent}}div[style*="Great Vibes"]{{line-height:1.3!important;margin-top:36px!important;margin-bottom:14px!important}}.c{{width:{w}px;height:{h}px;background:{bg};display:flex;flex-direction:column;align-items:center;justify-content:{align};text-align:center;overflow:hidden;box-sizing:border-box;padding-top:{pad}px}}</style></head><body><div class="c">{body}</div></body></html>')
 J={}
-def dual(name,fn,light,dark,w=1800,h=2400,pad=160):
+def dual(name,fn,light,dark,w=1800,h=2400,pad=520):
     J[name+'_light']=pg(w,h,fn(*light),pad=pad); J[name+'_dark']=pg(w,h,fn(*dark),pad=pad)
 # --- Funny bilingual Christmas sweatshirts (secular) ---
 hola=lambda t,a: f'''<div style="font-size:90px;color:{a};letter-spacing:34px">❄ ✦ ❄ ✦ ❄</div>
 <div style="font-family:Fredoka;font-weight:700;font-size:400px;line-height:.95;color:{t};margin-top:40px">HO HO<br>¡HOLA!</div>
 <div style="font-family:Montserrat;font-weight:800;font-size:84px;letter-spacing:22px;color:{a};margin-top:50px">FELIZ NAVIDAD</div>
 <div style="font-size:90px;color:{a};letter-spacing:34px;margin-top:40px">✦ ❄ ✦ ❄ ✦</div>'''
-J['sweat_ho-ho-hola']=pg(1800,2400,hola('#ffffff','#f4d35e'),pad=160)
-J['youth_ho-ho-hola']=pg(1500,1800,f'<div style="zoom:.78">{hola("#ffffff","#f4d35e")}</div>',pad=110)
+J['sweat_ho-ho-hola']=pg(1800,2400,hola('#ffffff','#f4d35e'),pad=520)
+J['youth_ho-ho-hola']=pg(1500,1800,f'<div style="zoom:.78">{hola("#ffffff","#f4d35e")}</div>',pad=390)
 tam=lambda t,a: f'''<div style="font-family:Montserrat;font-weight:800;font-size:96px;letter-spacing:26px;color:{a}">IT'S</div>
 <div style="font-family:'Great Vibes';font-size:380px;line-height:1;color:{t}">Tamale</div>
 <div style="font-family:Oswald;font-weight:700;font-size:300px;letter-spacing:20px;line-height:1;color:{t}">SEASON</div>
 <div style="font-family:'Playfair Display';font-style:italic;font-size:110px;color:{a};margin-top:50px">es temporada de tamales</div>
 <div style="font-size:90px;color:{a};letter-spacing:34px;margin-top:40px">✦ ✦ ✦</div>'''
-J['sweat_tamale-season']=pg(1800,2400,tam('#ffffff','#f4d35e'),pad=200)
+J['sweat_tamale-season']=pg(1800,2400,tam('#ffffff','#f4d35e'),pad=520)
 # --- Baby's First Christmas ---
 J['baby_first-christmas']=pg(1050,1200,'''<div style="font-family:'Great Vibes';font-size:170px;line-height:1;color:#b3202a">Mi Primera</div>
 <div style="font-family:Fredoka;font-weight:700;font-size:170px;line-height:1;color:#b3202a;letter-spacing:6px">NAVIDAD</div>
@@ -56,11 +56,11 @@ dual('tee_hablo-spanglish',hs,('#1f3550','#c0392b'),('#ffffff','#f4b942'))
 nov=lambda t,a: f'''<div style="font-family:'Great Vibes';font-size:520px;line-height:1;color:{t}">Novia</div>
 <div style="width:900px;height:6px;background:{a};margin:40px 0"></div>
 <div style="font-family:Montserrat;font-weight:600;font-size:110px;letter-spacing:50px;color:{a}">BRIDE</div>'''
-dual('sweat_novia',nov,('#1b1b1b','#c99a3c'),('#ffffff','#e2c275'),pad=260)
+dual('sweat_novia',nov,('#1b1b1b','#c99a3c'),('#ffffff','#e2c275'),pad=520)
 sq=lambda t,a: f'''<div style="font-family:Montserrat;font-weight:600;font-size:100px;letter-spacing:40px;color:{a}">LAS DAMAS</div>
 <div style="font-family:'Great Vibes';font-size:270px;line-height:1.05;color:{t}">Bride Squad</div>
 <div style="font-size:90px;color:{a};letter-spacing:30px;margin-top:30px">✦ ✦ ✦</div>'''
-dual('tee_bride-squad',sq,('#1b1b1b','#c99a3c'),('#ffffff','#e2c275'),pad=260)
+dual('tee_bride-squad',sq,('#1b1b1b','#c99a3c'),('#ffffff','#e2c275'),pad=520)
 def mug(es,en):
     one=f'''<div style="width:1000px;display:flex;flex-direction:column;align-items:center"><div style="font-family:'Great Vibes';font-size:330px;line-height:1;color:#1b1b1b">{es}</div>
 <div style="font-family:Montserrat;font-weight:600;font-size:80px;letter-spacing:30px;color:#c99a3c;margin-top:20px">{en}</div></div>'''
