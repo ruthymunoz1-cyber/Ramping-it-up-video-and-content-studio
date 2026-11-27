@@ -14,9 +14,9 @@ ON={'white':dict(txt='#b3202a',acc='#1f5e3a',hat='#b3202a',fur='#e9e2d0'),'red':
 J={}
 roles=[('mama','Mamá','CLAUS'),('papa','Papá','CLAUS'),('abuela','Abuela','CLAUS'),('abuelo','Abuelo','CLAUS')]
 for k,r,sb in roles:
-    for c,p in ON.items(): J[f'adult_{k}_{c}']=(1800,2400,design(1800,2400,r,sb,scale=1.0,top=150,**p))
+    for c,p in ON.items(): J[f'adult_{k}_{c}']=(1800,2400,design(1800,2400,r,sb,scale=1.0,top=520,**p))
 for k,r,sb in [('duendecito','Duendecito','LITTLE ELF'),('duendecita','Duendecita','LITTLE ELF')]:
-    for c,p in ON.items(): J[f'youth_{k}_{c}']=(1500,1800,design(1500,1800,r,sb,scale=.72,top=100,**p))
+    for c,p in ON.items(): J[f'youth_{k}_{c}']=(1500,1800,design(1500,1800,r,sb,scale=.72,top=390,**p))
 J['baby_bebe_white']=(1050,1200,design(1050,1200,'Bebé','CLAUS',scale=.55,top=60,**ON['white']))
 J['bandana_perrito']=(4650,2475,design(4650,2475,'Perrito','CLAUS',scale=1.15,bg='#b3202a',top=40,**ON['red']))
 for k,(w,h,html) in J.items(): open(f'{OUT}/html/{k}.html','w').write(html)
