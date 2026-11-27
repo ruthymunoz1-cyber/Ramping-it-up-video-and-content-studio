@@ -30,6 +30,7 @@ air_inner=lambda c,a,bg: f'''
 <div style="font-family:Oswald;font-weight:700;font-size:96px;letter-spacing:6px;color:{c};line-height:1.05;margin-top:10px">ONCE AIRBORNE,<br>ALWAYS AIRBORNE</div>
 <div style="font-family:Montserrat;font-weight:700;font-size:46px;letter-spacing:14px;color:{a};margin-top:22px">VETERAN · PROUD TO HAVE SERVED</div>'''
 D['mug_airborne']=('mug',mug(air_inner('#ffffff','#d4b15f','#111111').replace('width="330"','width="230"').replace('font-size:96px','font-size:84px').replace('font-size:46px;letter-spacing:14px','font-size:30px;letter-spacing:8px'),bg='#111111'))
+D['mug_airborne_white']=('mug',mug(air_inner('#111111','#8a6d1f','#ffffff').replace('width="330"','width="230"').replace('font-size:96px','font-size:84px').replace('font-size:46px;letter-spacing:14px','font-size:30px;letter-spacing:6px').replace('font-size:46px','font-size:30px')))
 # 6 Veterans 250 mug
 vet_inner='''<div style="font-family:Montserrat;font-weight:800;font-size:56px;letter-spacing:14px;color:#a8323e">1776 ★ 2026</div>
 <div style="font-family:Oswald;font-weight:700;font-size:150px;line-height:1.02;color:#1f3550">250 YEARS<br>OF FREEDOM</div>
