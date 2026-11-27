@@ -24,7 +24,7 @@ J['sweat_tamale-season']=pg(1800,2400,tam('#ffffff','#f4d35e'),pad=520)
 J['baby_first-christmas']=pg(1050,1200,'''<div style="font-family:'Great Vibes';font-size:170px;line-height:1;color:#b3202a">Mi Primera</div>
 <div style="font-family:Fredoka;font-weight:700;font-size:170px;line-height:1;color:#b3202a;letter-spacing:6px">NAVIDAD</div>
 <div style="font-family:Montserrat;font-weight:800;font-size:46px;letter-spacing:10px;color:#1f5e3a;margin-top:30px">BABY'S FIRST CHRISTMAS</div>
-<div style="font-family:Montserrat;font-weight:800;font-size:60px;letter-spacing:16px;color:#1f5e3a;margin-top:16px">✦ 2026 ✦</div>''',pad=120)
+<div style="font-family:Montserrat;font-weight:800;font-size:60px;letter-spacing:16px;color:#1f5e3a;margin-top:16px">✦ 2026 ✦</div>''',pad=260)
 def orn(w,h,top,script,big,small,bg,txt,acc,heart=False):
     s=1.15 if heart else 1.4
     return pg(w,h,f'''<div style="zoom:{s};display:flex;flex-direction:column;align-items:center">
